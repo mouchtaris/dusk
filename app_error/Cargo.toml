@@ -1,0 +1,11 @@
+[package]
+name = 'app_error'
+version = '0.0.1'
+edition = '2018'
+[dependencies.error]
+version = '0.0.1'
+path = '../error'
+
+[dependencies.parser_1]
+version = '0.0.1'
+path = '../parser_1'

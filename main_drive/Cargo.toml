@@ -1,0 +1,86 @@
+[package]
+name = 'main_drive'
+version = '0.0.1'
+edition = '2018'
+[dependencies.anyhow]
+version = '1.0.38'
+
+[dependencies.app_error]
+version = '0.0.1'
+path = '../app_error'
+
+[dependencies.bincode]
+version = '1.3.2'
+
+[dependencies.git2]
+version = '0.13.14'
+optional = true
+
+[dependencies.lalrpop-util]
+version = '0.19.7'
+
+[dependencies.log]
+version = '0.4'
+
+[dependencies.nom]
+version = '6.0.1'
+
+[dependencies.parser_1]
+version = '0.0.1'
+path = '../parser_1'
+
+[dependencies.pretty_env_logger]
+version = '0.4'
+
+[dependencies.proc-macro2]
+version = '1.0.24'
+
+[dependencies.quote]
+version = '1.0'
+
+[dependencies.ron]
+version = '0.6.4'
+optional = true
+
+[dependencies.serde]
+version = '1.0'
+features = ['derive']
+optional = true
+
+[dependencies.serde-transcode]
+version = '1.1.0'
+
+[dependencies.serde_cbor]
+version = '0.11.1'
+
+[dependencies.serde_json]
+version = '1.0'
+
+[dependencies.serde_yaml]
+version = '0.8'
+
+[dependencies.syn]
+version = '1.0.55'
+features = [
+    'extra-traits',
+    'full',
+    'visit',
+    'visit-mut',
+]
+optional = true
+
+[dependencies.termcolor]
+version = '1.1.2'
+
+[dependencies.thiserror]
+version = '1.0.22'
+
+[dependencies.toml]
+version = '0.5'
+
+[dependencies.trybuild]
+version = '1.0'
+features = ['diff']
+
+[dependencies.url]
+version = '2.2.0'

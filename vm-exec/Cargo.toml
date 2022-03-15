@@ -1,0 +1,7 @@
+[package]
+name = 'vm-exec'
+version = '0.0.1'
+edition = '2018'
+[dependencies.vm-core]
+version = '0.0.1'
+path = '../vm-core'

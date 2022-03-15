@@ -1,0 +1,50 @@
+hello(bob sfog)
+
+@/some/place hello
+@some/place bob(hello)
+
+@target/release //usr/bin/cp
+@target/release /./usr/bin/cp (//usr/local/bin/xs /./local/bin/$saxlamander )
+@target/release //../bin/cp
+
+def pop =
+    @here !hello 
+    (--poasd[]/asdasd__--??##da9s9dasd34lkkm*&@)&!)*#&)!~~~<>?<:"{}|asdoads==== )
+def pop =
+    @here !hello
+    (-xoasd[]/asdasd__--??##da9s9dasd34lkkm*&@)&!)*#&)!~~~<>?<:"{}|asdoads==== )
+def consul =
+    @./$esc/consul_dir !consul ($argv)
+def generate_ca =
+    consul (tls ca create)
+def generate_key = 
+    consul (keygen)
+def generate_cert =
+    consul (tls cert create -$cert_owner -dc $dc)
+def consul_init = {
+    generate_key
+    generate_ca
+    generate_cert (server)
+    generate_cert (client)
+}
+def tf_gen = @$tf_src !dhall-to-json /./$tf_mod
+def main = !terraform (version)
+
+def provision = {
+    def echo = !echo ()
+    dhall-to-json 
+    </ echo
+    (--omit-empty )
+}
+
+let bob = hello(kitty)
+def bab = goodbye(kitty)
+let beb = bab
+let bib = !echo (hello kitty)
+let poem_by_nikos_kavadias = "
+    Mia einai i varka eis to gyalon
+"
+
+def f(n) = !echo($n)
+def f(n) = "Mia vradia sto leverkouzen"
+let p = "Ligo ekso apto stathmo"

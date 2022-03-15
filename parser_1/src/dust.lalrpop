@@ -1,0 +1,111 @@
+// vim: et ts=2 sw=2
+grammar;
+use super::ast::*;
+use super::ast::PathOps;
+
+pub Script: Script<'input> =
+  Item*
+;
+
+Item: Item<'input> = {
+  Command => <>.into(),
+  Let => <>.into(),
+  Def => <>.into(),
+}
+
+Path: Path<'input> = {
+  <abs: "/"?> <a: Term> <b: ("/" <Term>)*> => (abs.is_some(), deq_prepend(a, b)),
+}
+
+Term: Term<'input> = {
+  Variable => <>.into(),
+  Ident => <>.into(),
+  ".." => Term::DotDot(<>.into()),
+  "." => Term::Dot(<>.into()),
+}
+
+Variable: Variable<'input> =
+  "$" <Ident> => <>.into()
+;
+
+Ident: Ident<'input> =
+  r"[a-z][a-z0-9_-]*" => <>.into()
+;
+
+Command: Command<'input> =
+  <cwd: ("@" <Path>)?>
+  <dispatch: Dispatch>
+  <redir: Redir?>
+  <args: ("(" <Value*> ")")?>
+  =>
+    Command {
+      cwd,
+      dispatch,
+      redir,
+      args: args.unwrap_or_default(),
+    }
+;
+
+Redir: Redir<'input> = {
+  "<=" <Dispatch> => Redir::Pipe(<>.into()),
+  "<$" <Ident> => Redir::Variable(<>.into()),
+  "</" <Path>  => Redir::File(<>.into()),
+}
+
+Path_: Path<'input> = {
+  "//" <Path> => <>.set_abs(true).into(),
+  "/./" <Path> => <>.set_abs(false).into(),
+}
+
+Value: Value<'input> = {
+  Term => <>.into(),
+  Path_ => <>.into(),
+  Opt => <>.into(),
+  Literal => <>.into(),
+}
+
+Literal: Literal<'input> = {
+  RawText => Literal::Text(<>),
+}
+
+Dispatch: Dispatch<'input> = {
+  Path_ => Dispatch::System(<>.into()),
+  "!" <Ident> => Dispatch::System(<>.into()),
+  Ident => Dispatch::Local(<>.into()),
+}
+
+Def: Def<'input> =
+  "def" <name: Ident> 
+  <args: ( "(" <Ident*> ")" )?>
+  "=" <body: Body>
+  => (
+      name,
+      args.unwrap_or_default(),
+      body
+    ).into()
+;
+
+Let: Let<'input> =
+  "let" <Ident> "=" <Body> => (<>).into()
+;
+
+Opt: Opt<'input> = {
+  r"--[^= \t\n]+(=[^ \t\n]*)?" => LongOpt::new(<>).into(),
+  r"-[^$-][^ \t\n]*" => ShortOpt::new(<>).into(),
+  r"-\$[^-][^ \t\n]*" => VarShortOpt::new(<>).into(),
+}
+
+Body: Body<'input> = {
+  Command => Body::Command(<>.into()),
+  Block => Body::Block(<>.into()),
+  Expr => Body::Expr(<>),
+}
+Block: Block<'input> =
+  "{" <Script> "}"
+;
+
+Expr: Expr<'input> = {
+  Literal => <>.into(),
+}
+
+RawText = r#""[^"]*""#;
