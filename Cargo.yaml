@@ -4,21 +4,21 @@ config:
 
 module:
   error: {}
-  parser_1:
+  either: {}
+  ast:
+    dep_mod:
+      - either
+  parse:
+    dep_mod:
+      - ast
+      - error
     dep_crate:
       - lalrpop-util
-  vm-core: {}
-  vm-exec:
-    dep_mod:
-      - vm-core
-  app_error:
+  main:
     dep_mod:
       - error
-      - parser_1
-  main_drive:
-    dep_mod:
-      - app_error
-      - parser_1
+      - ast
+      - parse
     dep_crate:
       - lalrpop-util
       - anyhow
@@ -42,24 +42,24 @@ module:
       - trybuild
       - url
 crate:
-  anyhow: "1.0.38"
-  bincode: "1.3.2"
-  git2: { version: "0.13.14", optional: true }
-  log: "0.4"
-  nom: "6.0.1"
-  pretty_env_logger: "0.4"
-  proc-macro2: { version: "1.0.24" }
-  quote: "1.0"
-  ron: { version: "0.6.4", optional: true }
-  serde-transcode: "1.1.0"
-  serde: { version: "1.0", features: ["derive"], optional: true }
-  serde_cbor: "0.11.1"
-  serde_json: "1.0"
-  serde_yaml: "0.8"
-  syn: { version: "1.0.55", features: ["full", "extra-traits", "visit", "visit-mut"], optional: true }
-  termcolor: "1.1.2"
-  thiserror: "1.0.22"
-  toml: "0.5"
-  trybuild: { version: "1.0", features: ["diff"] }
-  url: "2.2.0"
-  lalrpop-util: "0.19.7"
+  anyhow: "*"
+  bincode: "*"
+  git2: { version: "*", optional: true }
+  log: "*"
+  nom: "*"
+  pretty_env_logger: "*"
+  proc-macro2: { version: "*" }
+  quote: "*"
+  ron: { version: "*", optional: true }
+  serde-transcode: "*"
+  serde: { version: "*", features: ["derive"], optional: true }
+  serde_cbor: "*"
+  serde_json: "*"
+  serde_yaml: "*"
+  syn: { version: "*", features: ["full", "extra-traits", "visit", "visit-mut"], optional: true }
+  termcolor: "*"
+  thiserror: "*"
+  toml: "*"
+  trybuild: { version: "*", features: ["diff"] }
+  url: "*"
+  lalrpop-util: "*"

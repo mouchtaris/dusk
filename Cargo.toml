@@ -1,26 +1,22 @@
 [workspace]
 members = [
-    './app_error',
+    './ast',
+    './either',
     './error',
-    './main_drive',
-    './parser_1',
-    './vm-core',
-    './vm-exec',
+    './main',
+    './parse',
 ]
-[patch.crates-io.app_error]
-path = './app_error'
+[patch.crates-io.ast]
+path = './ast'
+
+[patch.crates-io.either]
+path = './either'
 
 [patch.crates-io.error]
 path = './error'
 
-[patch.crates-io.main_drive]
-path = './main_drive'
+[patch.crates-io.main]
+path = './main'
 
-[patch.crates-io.parser_1]
-path = './parser_1'
-
-[patch.crates-io.vm-core]
-path = './vm-core'
-
-[patch.crates-io.vm-exec]
-path = './vm-exec'
+[patch.crates-io.parse]
+path = './parse'

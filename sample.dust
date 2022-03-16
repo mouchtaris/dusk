@@ -6,6 +6,7 @@ hello(bob sfog)
 @target/release //usr/bin/cp
 @target/release /./usr/bin/cp (//usr/local/bin/xs /./local/bin/$saxlamander )
 @target/release //../bin/cp
+@target/release /cp
 
 def pop =
     @here !hello 
@@ -48,3 +49,18 @@ let poem_by_nikos_kavadias = "
 def f(n) = !echo($n)
 def f(n) = "Mia vradia sto leverkouzen"
 let p = "Ligo ekso apto stathmo"
+def echo_p = !cat <$p
+
+def registry_domain(setting) = {
+    let script = "
+    	./"
+        ++ $esc
+        ++ "/../../earth/chefy/compose/settings.dhall
+            in s.name/domain/docker/image-registry"
+        ++ $setting
+
+    !dhall <$script
+}
+
+!echo ('Here I can put some quotes ""')
+

@@ -1,0 +1,16 @@
+[package]
+name = 'parse'
+version = '0.0.1'
+edition = '2018'
+[dependencies.ast]
+version = '0.0.1'
+path = '../ast'
+
+[dependencies.error]
+version = '0.0.1'
+path = '../error'
+
+[dependencies.lalrpop-util]
+version = '*'
+[build-dependencies]
+lalrpop = "0.19.6"

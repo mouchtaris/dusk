@@ -1,0 +1,36 @@
+# Try out syntax
+./asd
+@./here
+p           = 0
+EL_SHALOHIM = "pop"
+PATH        = /usr/bin/local
+maria
+2129asd98as0d8as08asd089a0d-=+_+_=
+-salabaxo=0
+--salabaxo=12313
+;
+
+# List terraform modules
+dhall "0";
+
+# List terraform modules
+#
+# writes to stdout with prefix dhall.1 for $out1 and dhall.2 for $out2
+#
+#   dhall >$out1 >$out2;
+dhall
+    @~/code/
+    <./list_terraform_modules.dhall
+    <$string
+    <$or_another_command
+    >/dev/bull
+    >$out_string
+    >$or_another_out_command
+    docker-context = p5001
+    fish_user_path = /usr/bin:/dodeka:/kioytena/tilefonima
+    bob_sfong = $patrick_wildcards
+    123
+    --foo=ball
+    -cJOLL
+    maria $i sarantapodarousa
+;

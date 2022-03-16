@@ -1,0 +1,87 @@
+// vim: et ts=4 sw=4
+grammar;
+
+pub Module = Item*;
+Item: ast::Item<'input> = {
+    <Invocation> ";" => <>.into(),
+}
+Invocation: ast::Invocation<'input> = {
+    DocComment*
+    InvocationTarget
+    InvocationCwd?
+    InvocationRedirection*
+    InvocationEnv*
+    InvocationArg*
+    => (<>).into(),
+}
+InvocationTarget: ast::InvocationTarget<'input> = {
+    Ident => <>.into(),
+    Path => <>.into(),
+}
+InvocationArg: ast::InvocationArg<'input> = {
+    Ident => <>.into(),
+    Word => <>.into(),
+    Opt => <>.into(),
+    Path => <>.into(),
+    String => <>.into(),
+    Variable => <>.into(),
+}
+InvocationCwd = "@" <Path>;
+InvocationEnv = <IDENT_NO_EQ> "=" <InvocationArg>;
+
+InvocationRedirection: ast::InvocationRedirection<'input> = {
+    "<" <Redirect> => ast::RedirectInput((<>,)).into(),
+    ">" <Redirect> => ast::RedirectOutput((<>,)).into(),
+}
+
+Redirect: ast::Redirect<'input> = {
+    Path => <>.into(),
+    Variable => <>.into(),
+}
+
+Opt: ast::Opt<'input> = {
+    ShortOpt => <>.into(),
+    LongOpt => <>.into(),
+}
+Path: ast::Path<'input> = {
+    AbsPath => <>.into(),
+    RelPath => <>.into(),
+    HomePath => <>.into(),
+}
+
+Variable: ast::Variable<'input> = {
+    "$" <Ident> => (<>,).into(),
+}
+
+
+DocComment = DOC_COMMENT;
+Ident = { IDENT, IDENT_NO_EQ }
+Word: ast::Word<'input> = WORD => (<>,).into();
+String: ast::String<'input> = RAW_STRING => (<>,).into();
+AbsPath: ast::AbsPath<'input> = ABS_PATH => (<>,).into();
+RelPath: ast::RelPath<'input> = REL_PATH => (<>,).into();
+HomePath: ast::HomePath<'input> = HOME_PATH => (<>,).into();
+LongOpt: ast::LongOpt<'input> = LONG_OPT => (<>,).into();
+ShortOpt: ast::ShortOpt<'input> = SHORT_OPT => (<>,).into();
+match {
+    r"[a-zA-Z_][a-zA-Z0-9:.,_/-]*" => IDENT_NO_EQ,
+} else {
+    r"--[a-zA-Z0-9:.,_=/-]*" => LONG_OPT,
+    r"\./[a-zA-Z0-9:.,_=/-]*" => REL_PATH,
+    r"/[a-zA-Z0-9:.,_=/-]*" => ABS_PATH,
+    r"~/[a-zA-Z0-9:.,_=/-]*" => HOME_PATH,
+    r"[a-zA-Z_][a-zA-Z0-9:.,_=/-]*" => IDENT,
+    r#""[^"]*""# => RAW_STRING,
+    r"#.*" => DOC_COMMENT,
+    "=",
+    "$",
+    "\"",
+    ";",
+    "@",
+    "<",
+    ">",
+} else {
+    r"-[a-zA-Z0-9:.,_=/-]*" => SHORT_OPT,
+} else {
+    r"[a-zA-Z0-9:.,_=+/-]*" => WORD,
+}

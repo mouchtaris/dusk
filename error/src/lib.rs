@@ -31,6 +31,19 @@ macro_rules! te {
 }
 
 #[macro_export]
+macro_rules! Error {
+    ($($n:ident = $t:ty)*) => {
+        $crate::error_kind! {
+            ErrorKind {
+                $($n = $t)*
+            }
+        }
+        pub type Error = $crate::Error<ErrorKind>;
+        pub type Result<T> = $crate::Result<T, ErrorKind>;
+    }
+}
+
+#[macro_export]
 macro_rules! error_kind {
     ($e:ident { $($n:ident = $t:ty)* }) => {
         #[derive(Debug)]

@@ -1,66 +1,70 @@
 [package]
-name = 'main_drive'
+name = 'main'
 version = '0.0.1'
 edition = '2018'
 [dependencies.anyhow]
-version = '1.0.38'
+version = '*'
 
-[dependencies.app_error]
+[dependencies.ast]
 version = '0.0.1'
-path = '../app_error'
+path = '../ast'
 
 [dependencies.bincode]
-version = '1.3.2'
+version = '*'
+
+[dependencies.error]
+version = '0.0.1'
+path = '../error'
 
 [dependencies.git2]
-version = '0.13.14'
+version = '*'
 optional = true
 
 [dependencies.lalrpop-util]
-version = '0.19.7'
+version = '*'
 
 [dependencies.log]
-version = '0.4'
+version = '*'
 
 [dependencies.nom]
-version = '6.0.1'
+version = '*'
 
-[dependencies.parser_1]
+[dependencies.parse]
 version = '0.0.1'
-path = '../parser_1'
+path = '../parse'
 
 [dependencies.pretty_env_logger]
-version = '0.4'
+version = '*'
 
 [dependencies.proc-macro2]
-version = '1.0.24'
+version = '*'
 
 [dependencies.quote]
-version = '1.0'
+version = '*'
 
 [dependencies.ron]
-version = '0.6.4'
+version = '*'
 optional = true
 
 [dependencies.serde]
-version = '1.0'
+version = '*'
 features = ['derive']
 optional = true
 
 [dependencies.serde-transcode]
-version = '1.1.0'
+version = '*'
 
 [dependencies.serde_cbor]
-version = '0.11.1'
+version = '*'
 
 [dependencies.serde_json]
-version = '1.0'
+version = '*'
 
 [dependencies.serde_yaml]
-version = '0.8'
+version = '*'
 
 [dependencies.syn]
-version = '1.0.55'
+version = '*'
 features = [
     'extra-traits',
     'full',
@@ -70,17 +74,17 @@ features = [
 optional = true
 
 [dependencies.termcolor]
-version = '1.1.2'
+version = '*'
 
 [dependencies.thiserror]
-version = '1.0.22'
+version = '*'
 
 [dependencies.toml]
-version = '0.5'
+version = '*'
 
 [dependencies.trybuild]
-version = '1.0'
+version = '*'
 features = ['diff']
 
 [dependencies.url]
-version = '2.2.0'
+version = '*'
