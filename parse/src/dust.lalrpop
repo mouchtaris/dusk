@@ -58,7 +58,10 @@ Variable: ast::Variable<'input> = {
 DocComment = DOC_COMMENT;
 Ident = { IDENT, IDENT_NO_EQ }
 Word: ast::Word<'input> = WORD => (<>,).into();
-String: ast::String<'input> = RAW_STRING => (<>,).into();
+String: ast::String<'input> = {
+    DOUBLE_QUOTE_RAW_STRING => (<>,).into(),
+    SINGLE_QUOTE_RAW_STRING => (<>,).into(),
+}
 AbsPath: ast::AbsPath<'input> = ABS_PATH => (<>,).into();
 RelPath: ast::RelPath<'input> = REL_PATH => (<>,).into();
 HomePath: ast::HomePath<'input> = HOME_PATH => (<>,).into();
@@ -72,7 +75,8 @@ match {
     r"/[a-zA-Z0-9:.,_=/-]*" => ABS_PATH,
     r"~/[a-zA-Z0-9:.,_=/-]*" => HOME_PATH,
     r"[a-zA-Z_][a-zA-Z0-9:.,_=/-]*" => IDENT,
-    r#""[^"]*""# => RAW_STRING,
+    r#""[^"]*""# => DOUBLE_QUOTE_RAW_STRING,
+    r#"'[^']*'"# => SINGLE_QUOTE_RAW_STRING,
     r"#.*" => DOC_COMMENT,
     "=",
     "$",
