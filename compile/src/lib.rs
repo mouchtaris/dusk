@@ -1,5 +1,6 @@
 pub const VERSION: &str = "0.0.1";
-use collection::Map;
+use collection::{Entry, Map};
+use std::{io, mem};
 use vm::Instr as i;
 
 error::Error! {
@@ -14,25 +15,26 @@ pub struct Compiler {
     pub icode: vm::ICode,
     sym_info: Map<usize, Scope>,
     current_scope: usize,
+    retval: SymInfo,
 }
 
 pub type Scope = Map<String, SymInfo>;
 
-#[derive(Debug, Default, Copy, Eq, Ord, Hash, Clone, PartialEq, PartialOrd)]
+#[derive(Debug, Default, Clone)]
 pub struct SymInfo {
     pub id: usize,
 }
 
-pub trait Compile<T> {
-    fn compile(&mut self, node: &T) -> Result<()>;
+pub trait Compile<T>: Sized {
+    fn compile(self, node: &T) -> Result<Self>;
 }
 
 macro_rules! compile {
     ($($t:ident, $c:expr),*) => {
         $(
         impl <'i> Compile<ast::$t<'i>> for Compiler {
-            fn compile(&mut self, node: &ast::$t<'i>) -> Result<()> {
-                let f: fn(&mut Self, &ast::$t<'i>) -> Result<()> = $c;
+            fn compile(self, node: &ast::$t<'i>) -> Result<Self> {
+                let f: fn(Self, &ast::$t<'i>) -> Result<Self> = $c;
                 f(self, node)
             }
         }
@@ -41,7 +43,7 @@ macro_rules! compile {
 }
 compile![
     Module,
-    |cmp, module| {
+    |mut cmp, module| {
         cmp.enter_scope();
         cmp.emit1(i::Allocate { size: 0 });
         let instr_alloc = cmp.instr_id();
@@ -49,7 +51,7 @@ compile![
         for item in module {
             match item {
                 ast::Item::Invocation(invc) => {
-                    te!(cmp.compile(invc));
+                    cmp = te!(cmp.compile(invc));
                     soft_todo!();
                 }
             }
@@ -60,30 +62,56 @@ compile![
             i::Allocate { size } => Ok(*size = frame_size),
             _ => terr!("not an allocate instr"),
         }));
-        Ok(())
+
+        Ok(cmp)
     },
     Invocation,
-    |cmp,
+    |mut cmp,
      ast::Invocation((doc_comment_opt, invocation_target, cwd_opt, redirections, envs, args))| {
-        te!(cmp.compile(invocation_target));
+        cmp = te!(cmp.compile(invocation_target));
+        let jobid = cmp.retval.id;
 
-        soft_todo!();
-        //if let Some(cwd) = cwd_opt {
-        //    te!(cmp.compile_path(cwd));
-        //    cmp.emit1(i::JobSetCwd);
-        //    soft_todo!();
-        //}
+        if let Some(path) = cwd_opt {
+            cmp.retval = cmp.new_tmp_var();
+            te!(cmp.path_to_string(path));
+
+            let cwdid = cmp.retval.id;
+            cmp.emit1(i::JobSetCwd { jobid, cwdid });
+        }
+
         soft_todo!();
         let _ = redirections;
         soft_todo!();
         let _ = envs;
         soft_todo!();
         let _ = args;
-        cmp.emit1(i::CompleteProcessJob);
-        Ok(())
+        {
+            let vars = std::iter::repeat_with(|| cmp.new_tmp_var());
+            let mut args_and_vars: Vec<_> = vars.zip(args).collect();
+            for (arg_var, arg) in &mut args_and_vars {
+                mem::swap(&mut cmp.retval, arg_var);
+                cmp = te!(cmp.compile(*arg));
+                mem::swap(&mut cmp.retval, arg_var);
+            }
+            soft_todo!();
+            cmp.emit1(i::CompleteProcessJob);
+        }
+
+        Ok(cmp)
+    },
+    InvocationArg,
+    |mut cmp, invocation_argument| {
+        use ast::InvocationArg as A;
+        match invocation_argument {
+            A::Opt(opt) => cmp.opt_to_string(opt),
+            A::String(ast::String((s,))) => cmp.text_to_string(s),
+            A::Ident(id) => cmp.text_to_string(id),
+            other => panic!("{:?}", other),
+        }
+        .map(|_| cmp)
     },
     InvocationTarget,
-    |cmp, invocation_target| {
+    |mut cmp, invocation_target| {
         use ast::InvocationTarget as T;
         match invocation_target {
             &T::InvocationTargetLocal(ast::InvocationTargetLocal((_id,))) => {
@@ -105,10 +133,11 @@ compile![
                         dst: var_proc.id,
                     },
                 ]);
+                cmp.retval = var_proc;
             }
             ast::InvocationTarget::InvocationTargetSystemPath(_) => todo!(),
         }
-        Ok(())
+        Ok(cmp)
     }
 ];
 
@@ -117,12 +146,32 @@ impl Compiler {
         self.add_string("").unwrap();
     }
 
-    pub fn compile<N>(&mut self, node: &N) -> Result<()>
+    pub fn compile<N>(self, node: &N) -> Result<Self>
     where
         Self: Compile<N>,
     {
         Compile::compile(self, node)
     }
+
+    pub fn write_to<O>(&self, o: io::Result<O>) -> io::Result<()>
+    where
+        O: io::Write,
+    {
+        o.and_then(|mut o| {
+            Ok({
+                writeln!(o, "=== STRINGS ===")?;
+                for (s, vm::StringInfo { id }) in &self.icode.strings {
+                    writeln!(o, "[{}] {:?}", id, s)?;
+                }
+                writeln!(o, "=== ICODE ===")?;
+                for instr in &self.icode.instructions {
+                    writeln!(o, "{:?}", instr)?;
+                }
+                write!(o, "")?;
+            })
+        })
+    }
+
     fn add_string<S>(&mut self, s: S) -> Result<usize>
     where
         S: Into<String>,
@@ -131,27 +180,6 @@ impl Compiler {
         let SI { id } = te!(SI::add(&mut self.icode, s));
         Ok(id)
     }
-    //
-    //    fn compile_path(&mut self, path: &ast::Path) -> Result<()> {
-    //        use ast::Path as P;
-    //        match path {
-    //            P::HomePath(ast::HomePath(p))
-    //            | P::AbsPath(ast::AbsPath(p))
-    //            | P::RelPath(ast::RelPath(p)) => {
-    //                te!(self.compile_string(p.0));
-    //            }
-    //        }
-    //        Ok(())
-    //    }
-    //
-    //    fn compile_string<S>(&mut self, s: S) -> Result<()>
-    //    where
-    //        S: Into<String>,
-    //    {
-    //        let strid = te!(self.add_string(s));
-    //        self.emit(vec![i::LoadString { strid }]);
-    //        Ok(())
-    //    }
 
     fn emit<I>(&mut self, instr: I)
     where
@@ -196,7 +224,45 @@ impl Compiler {
         let id = scope.len();
         let name = format!("t:{}:{}", self.current_scope, id);
         let sym_info = SymInfo { id };
-        scope.insert(name, sym_info);
-        sym_info
+        match scope.entry(name) {
+            Entry::Occupied(occ) => panic!("Tmp variable re-entry: {}", occ.key()),
+            Entry::Vacant(vac) => vac.insert(sym_info).clone(),
+        }
+    }
+
+    /// [`text_to_string`] this option
+    fn opt_to_string(&mut self, opt: &ast::Opt) -> Result<()> {
+        let cmp = self;
+        use ast::Opt as O;
+        match opt {
+            O::LongOpt(ast::LongOpt((a,))) | O::ShortOpt(ast::ShortOpt((a,))) => {
+                cmp.text_to_string(a)
+            }
+            other => panic!("{:?}", other),
+        }
+    }
+
+    /// [`text_to_string`] this path
+    fn path_to_string(&mut self, path: &ast::Path) -> Result<()> {
+        let cmp = self;
+        use ast::Path as P;
+        match path {
+            P::HomePath(ast::HomePath(p))
+            | P::AbsPath(ast::AbsPath(p))
+            | P::RelPath(ast::RelPath(p)) => cmp.text_to_string(&p.0),
+        }
+    }
+
+    /// Add the given string as a literal and emit to load it into `cmp.retval`
+    fn text_to_string<S>(&mut self, text: S) -> Result<()>
+    where
+        S: AsRef<str>,
+    {
+        let cmp = self;
+        let text = text.as_ref();
+        let strid = te!(cmp.add_string(text));
+        let dst = cmp.retval.id;
+        cmp.emit1(i::LoadString { strid, dst });
+        Ok(())
     }
 }

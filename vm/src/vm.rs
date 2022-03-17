@@ -121,7 +121,6 @@ impl Vm {
             self.add_string(i.clone(), s.clone());
         }
         self = te!(self.run_instructions(&icode.instructions));
-        soft_todo!();
         Ok(self)
     }
 

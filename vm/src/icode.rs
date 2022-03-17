@@ -22,7 +22,7 @@ pub enum Instr {
     FindInBinPath { id: usize, dst: usize },
     CreateProcessJob { path: usize, dst: usize },
     CompleteProcessJob,
-    JobSetCwd,
+    JobSetCwd { jobid: usize, cwdid: usize },
 }
 
 impl Instr {
@@ -60,12 +60,11 @@ impl Instr {
                 let proc = ProcessBuilder::new(path);
                 vm.frame_set(dst, proc);
             }
-            Self::CompleteProcessJob => {
-                soft_todo!();
-            }
-            Self::JobSetCwd => {
-                let _proc = te!(vm.rv_mut::<ProcessBuilder>());
-                todo!()
+            Self::CompleteProcessJob => {}
+            &Self::JobSetCwd { jobid, cwdid } => {
+                let cwd: String = te!(vm.frame_take(cwdid));
+                let proc: &mut ProcessBuilder = te!(vm.frame_mut(jobid));
+                proc.current_dir(cwd);
             }
             &Self::LoadString { strid, dst } => {
                 vm.load_string(strid, dst);
@@ -84,7 +83,7 @@ impl StringInfo {
         let t = &mut icode.borrow_mut().strings;
         let id = t.len();
         match t.entry(s.into()) {
-            Entry::Occupied(occ) => te!(Err(format!("Re-insert string: {}", occ.key()))),
+            Entry::Occupied(occ) => Ok(occ.get().clone()),
             Entry::Vacant(vac) => Ok(vac.insert(StringInfo { id }).to_owned()),
         }
     }

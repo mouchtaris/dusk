@@ -4,11 +4,5 @@
 #
 #   dhall >$out1 >$out2;
 #
-!dhall @/nobody;
-!fd @./thessaloniki ;
-!echo;
-!terraform;
-!mill;
-!cs;
-!cargo;
-!earthly;
+!bash echo -- -s --long_opt=leme;
+!bash @/dev/ -c "pwd";
