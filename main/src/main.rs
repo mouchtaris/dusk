@@ -29,9 +29,10 @@ fn main() -> Result<()> {
 
     let mut vm = vm::Vm::default();
     vm.reset();
-    te!(vm.init_bin_path_from_path_env());
+    // te!(vm.init_bin_path_from_path_env());
+    vm.init_bin_path_system();
     vm = te!(vm.load_icode(&cmp.icode));
-    te!(fs::write("./_.vm.txt", format!("{:#?}", vm).as_bytes()));
+    te!(vm.write_to(fs::File::create("./_.vm.txt")));
 
     Ok(())
 }

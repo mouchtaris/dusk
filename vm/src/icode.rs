@@ -1,5 +1,7 @@
 use {
-    super::{ldebug, ltrace, soft_todo, te, value, BorrowMut, Deq, Entry, Map, Result, Vm},
+    super::{
+        ldebug, ltrace, soft_todo, te, temg, value, BorrowMut, Deq, Entry, Map, Result, Value, Vm,
+    },
     value::ProcessBuilder,
 };
 
@@ -19,10 +21,12 @@ pub enum Instr {
     Init,
     Allocate { size: usize },
     LoadString { strid: usize, dst: usize },
+    SetNatural { value: usize, dst: usize },
     FindInBinPath { id: usize, dst: usize },
     CreateProcessJob { path: usize, dst: usize },
-    CompleteProcessJob,
+    CompleteProcessJob { jobid: usize },
     JobSetCwd { jobid: usize, cwdid: usize },
+    JobPushArg { jobid: usize, argid: usize },
 }
 
 impl Instr {
@@ -60,15 +64,33 @@ impl Instr {
                 let proc = ProcessBuilder::new(path);
                 vm.frame_set(dst, proc);
             }
-            Self::CompleteProcessJob => {}
+            &Self::CompleteProcessJob { jobid } => match te!(vm.frame_take_value(jobid)) {
+                Value::ProcessBuilder(mut cmd) => {
+                    ltrace!("Spawning child");
+                    use std::process::{Child, ExitStatus};
+                    let mut child: Child = te!(cmd.spawn());
+                    let status: ExitStatus = te!(child.wait());
+                    if !status.success() {
+                        temg!("Subprocess failed: {:?}", status)
+                    }
+                    soft_todo!();
+                }
+                other => temg!("{:?}", other),
+            },
             &Self::JobSetCwd { jobid, cwdid } => {
                 let cwd: String = te!(vm.frame_take(cwdid));
                 let proc: &mut ProcessBuilder = te!(vm.frame_mut(jobid));
                 proc.current_dir(cwd);
             }
+            &Self::JobPushArg { jobid, argid } => {
+                let cwd: String = te!(vm.frame_take(argid));
+                let proc: &mut ProcessBuilder = te!(vm.frame_mut(jobid));
+                proc.arg(cwd);
+            }
             &Self::LoadString { strid, dst } => {
                 vm.load_string(strid, dst);
             }
+            &Self::SetNatural { value, dst } => vm.frame_set(dst, value),
         }
         Ok(vm)
     }

@@ -5,11 +5,13 @@ either::either![
     pub Value,
         Null,
         String,
-        ProcessBuilder
+        ProcessBuilder,
+        Natural
 ];
 
 pub type Null = ();
 pub use std::process::Command as ProcessBuilder;
+pub type Natural = usize;
 
 impl Default for Value {
     fn default() -> Self {
@@ -23,6 +25,7 @@ impl Value {
             Value::Null(_) => Null::type_info_name(),
             Value::String(_) => String::type_info_name(),
             Value::ProcessBuilder(_) => ProcessBuilder::type_info_name(),
+            Value::Natural(_) => Natural::type_info_name(),
         }
     }
 
@@ -80,5 +83,10 @@ impl ValueTypeInfo for ProcessBuilder {
 impl ValueTypeInfo for Null {
     fn type_info_name() -> &'static str {
         "Null"
+    }
+}
+impl ValueTypeInfo for Natural {
+    fn type_info_name() -> &'static str {
+        "Natural"
     }
 }

@@ -64,6 +64,13 @@ macro_rules! terr {
 }
 
 #[macro_export]
+macro_rules! temg {
+    ($l:literal $($a:tt)*) => {
+        te!(Err(format!($l $($a)*)))
+    };
+}
+
+#[macro_export]
 macro_rules! Error {
     ($($n:ident = $t:ty)*) => {
         $crate::error_kind! {

@@ -12,6 +12,7 @@ use {
     std::{
         borrow::{Borrow, BorrowMut},
         convert::TryFrom,
+        io,
     },
 };
 
@@ -19,6 +20,7 @@ error::Error! {
     Msg = &'static str
     Message = String
     Var = std::env::VarError
+    Io = io::Error
 }
-use error::te;
 use error::{ldebug, ltrace, soft_todo};
+use error::{te, temg};

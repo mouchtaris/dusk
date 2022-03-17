@@ -1,9 +1,8 @@
 use {
     super::{
-        ldebug, ltrace, soft_todo, te, Deq, ICode, Instr, Result, StringInfo, TryFrom, Value,
-        ValueTypeInfo,
+        ldebug, ltrace, te, Deq, ICode, Instr, Result, StringInfo, TryFrom, Value, ValueTypeInfo,
     },
-    std::{borrow::Borrow, fmt, mem},
+    std::{borrow::Borrow, fmt, io, mem},
 };
 
 #[derive(Default, Debug)]
@@ -70,14 +69,19 @@ impl Vm {
         *self.stack.get_mut(addr).unwrap() = value;
     }
     /// Take the value from stack-frame-offset
+    pub fn frame_take_value(&mut self, offset: usize) -> Result<Value> {
+        let addr = self.frame_addr(offset);
+        let r = mem::take(te!(self.stack.get_mut(addr)));
+        ltrace!("Reading stack {}: {:?}", addr, r);
+        Ok(r)
+    }
+
+    /// Take the value from stack-frame-offset
     pub fn frame_take<T>(&mut self, offset: usize) -> Result<T>
     where
         T: TryFrom<Value, Error = Value> + ValueTypeInfo + fmt::Debug,
     {
-        let addr = self.frame_addr(offset);
-        let r = mem::take(te!(self.stack.get_mut(addr))).try_into();
-        ltrace!("Reading stack {}: {:?}", addr, r);
-        r
+        te!(self.frame_take_value(offset)).try_into()
     }
     /// Borrow retval, converting to mut ref to underlying type
     pub fn frame_mut<T>(&mut self, offset: usize) -> Result<&mut T>
@@ -142,6 +146,9 @@ impl Vm {
         let vm = self;
         vm.bin_path = source.as_ref().split(':').map(<_>::to_owned).collect();
     }
+    pub fn init_bin_path_system(&mut self) {
+        self.init_bin_path("/sbin:/usr/sbin:/usr/local/sbin:/bin:/usr/bin:/usr/local/bin")
+    }
     pub fn init_bin_path_from_env<S>(&mut self, env_name: S) -> Result<()>
     where
         S: AsRef<str>,
@@ -150,5 +157,33 @@ impl Vm {
     }
     pub fn init_bin_path_from_path_env(&mut self) -> Result<()> {
         self.init_bin_path_from_env("PATH")
+    }
+
+    pub fn write_to<O>(&self, o: io::Result<O>) -> io::Result<()>
+    where
+        O: io::Write,
+    {
+        o.and_then(|mut o| {
+            Ok({
+                writeln!(o, "=== BIN_PATH ===")?;
+                for path in &self.bin_path {
+                    writeln!(o, "> {}", path)?;
+                }
+                writeln!(o, "=== STRING TABLE ===")?;
+                let mut i = 0;
+                for string in &self.string_table {
+                    writeln!(o, ">[{:4}] {:?}", i, string)?;
+                    i += 1;
+                }
+                writeln!(o, "=== STACK ===")?;
+                let mut i = 0;
+                for cell in &self.stack {
+                    writeln!(o, ">[{:4}] {:?}", i, cell)?;
+                    i += 1;
+                }
+                writeln!(o, "=== STATE ===")?;
+                writeln!(o, "- frame pointer    : {}", self.frame_pointer)?;
+            })
+        })
     }
 }

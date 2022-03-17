@@ -66,7 +66,7 @@ compile![
         Ok(cmp)
     },
     Invocation,
-    |mut cmp,
+    |mut cmp: Compiler,
      ast::Invocation((doc_comment_opt, invocation_target, cwd_opt, redirections, envs, args))| {
         cmp = te!(cmp.compile(invocation_target));
         let jobid = cmp.retval.id;
@@ -83,19 +83,17 @@ compile![
         let _ = redirections;
         soft_todo!();
         let _ = envs;
-        soft_todo!();
-        let _ = args;
         {
-            let vars = std::iter::repeat_with(|| cmp.new_tmp_var());
-            let mut args_and_vars: Vec<_> = vars.zip(args).collect();
-            for (arg_var, arg) in &mut args_and_vars {
-                mem::swap(&mut cmp.retval, arg_var);
-                cmp = te!(cmp.compile(*arg));
-                mem::swap(&mut cmp.retval, arg_var);
+            cmp.retval = cmp.new_tmp_var();
+            let argid = cmp.retval.id;
+            for arg in args {
+                cmp = te!(cmp.compile(arg));
+                cmp.emit1(i::JobPushArg { jobid, argid });
             }
-            soft_todo!();
-            cmp.emit1(i::CompleteProcessJob);
         }
+
+        let argc_var = cmp.new_tmp_var();
+        cmp.emit([i::CompleteProcessJob { jobid }]);
 
         Ok(cmp)
     },
@@ -104,7 +102,7 @@ compile![
         use ast::InvocationArg as A;
         match invocation_argument {
             A::Opt(opt) => cmp.opt_to_string(opt),
-            A::String(ast::String((s,))) => cmp.text_to_string(s),
+            A::String(s) => cmp.string_to_string(s),
             A::Ident(id) => cmp.text_to_string(id),
             other => panic!("{:?}", other),
         }
@@ -112,7 +110,11 @@ compile![
     },
     InvocationTarget,
     |mut cmp, invocation_target| {
+        let mut var_path = cmp.new_tmp_var();
+        let var_proc = cmp.new_tmp_var();
+
         use ast::InvocationTarget as T;
+
         match invocation_target {
             &T::InvocationTargetLocal(ast::InvocationTargetLocal((_id,))) => {
                 todo!()
@@ -120,23 +122,27 @@ compile![
             &T::InvocationTargetSystemName(ast::InvocationTargetSystemName((id,))) => {
                 let strid = te!(cmp.add_string(id));
                 let var = cmp.new_tmp_var();
-                let var_path = cmp.new_tmp_var();
-                let var_proc = cmp.new_tmp_var();
                 cmp.emit([
                     i::LoadString { strid, dst: var.id },
                     i::FindInBinPath {
                         id: var.id,
                         dst: var_path.id,
                     },
-                    i::CreateProcessJob {
-                        path: var_path.id,
-                        dst: var_proc.id,
-                    },
                 ]);
-                cmp.retval = var_proc;
             }
-            ast::InvocationTarget::InvocationTargetSystemPath(_) => todo!(),
+            ast::InvocationTarget::InvocationTargetSystemPath(ast::InvocationTargetSystemPath(
+                (path,),
+            )) => {
+                mem::swap(&mut cmp.retval, &mut var_path);
+                te!(cmp.path_to_string(path));
+                mem::swap(&mut cmp.retval, &mut var_path);
+            }
         }
+        cmp.emit([i::CreateProcessJob {
+            path: var_path.id,
+            dst: var_proc.id,
+        }]);
+        cmp.retval = var_proc;
         Ok(cmp)
     }
 ];
@@ -167,7 +173,13 @@ impl Compiler {
                 for instr in &self.icode.instructions {
                     writeln!(o, "{:?}", instr)?;
                 }
-                write!(o, "")?;
+                writeln!(o, "=== SYMBOLS ===")?;
+                for (scope_id, scope) in &self.sym_info {
+                    writeln!(o, "-- SCOPE {}", scope_id)?;
+                    for (name, sym_info) in scope {
+                        writeln!(o, ": {:12} : {:?}", name, sym_info)?;
+                    }
+                }
             })
         })
     }
@@ -230,6 +242,12 @@ impl Compiler {
         }
     }
 
+    /// [`text_to_string`] this raw string
+    fn string_to_string(&mut self, ast::String((s,)): &ast::String) -> Result<()> {
+        let cmp = self;
+        cmp.text_to_string(&s[1..s.len() - 1])
+    }
+
     /// [`text_to_string`] this option
     fn opt_to_string(&mut self, opt: &ast::Opt) -> Result<()> {
         let cmp = self;
@@ -238,7 +256,6 @@ impl Compiler {
             O::LongOpt(ast::LongOpt((a,))) | O::ShortOpt(ast::ShortOpt((a,))) => {
                 cmp.text_to_string(a)
             }
-            other => panic!("{:?}", other),
         }
     }
 
