@@ -1,17 +1,4 @@
-# vim: et ts=4 sw=4
-
-# List terraform modules
-#
-# writes to stdout with prefix dhall.1 for $out1 and dhall.2 for $out2
-#
-#   dhall >$out1 >$out2;
-#
-!jq -n --arg your_arms "{you_aram: 12}" "
-
-def sjsn: {
-  sweet_jsonnet: 12
-};
-
-sjsn 
-| .take_me = $your_arms "
+let pop = ;;
+;
+!echo hi;
 ;

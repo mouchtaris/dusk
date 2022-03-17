@@ -5,6 +5,10 @@ use {
     value::ProcessBuilder,
 };
 
+fn _use() {
+    soft_todo!();
+}
+
 #[derive(Default, Debug)]
 pub struct ICode {
     pub instructions: Deq<Instr>,
@@ -73,7 +77,6 @@ impl Instr {
                     if !status.success() {
                         temg!("Subprocess failed: {:?}", status)
                     }
-                    soft_todo!();
                 }
                 other => temg!("{:?}", other),
             },

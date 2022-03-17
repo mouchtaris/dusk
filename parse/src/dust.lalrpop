@@ -4,6 +4,8 @@ grammar;
 pub Module = Item*;
 Item: ast::Item<'input> = {
     <Invocation> ";" => <>.into(),
+    ";" => ast::Item::Empty(<_>::default()),
+    "let" <Ident> "=" <Box<Body>> => ast::Item::LetStmt((<>,)),
 }
 Invocation: ast::Invocation<'input> = {
     DocComment*
@@ -54,6 +56,10 @@ Variable: ast::Variable<'input> = {
     "$" <Ident> => (<>,).into(),
 }
 
+Body: ast::Body<'input> = {
+    <Item> => <>.into(),
+}
+
 
 DocComment = DOC_COMMENT;
 Ident = { IDENT, IDENT_NO_EQ }
@@ -68,6 +74,8 @@ HomePath: ast::HomePath<'input> = HOME_PATH => (<>,).into();
 LongOpt: ast::LongOpt<'input> = LONG_OPT => (<>,).into();
 ShortOpt: ast::ShortOpt<'input> = SHORT_OPT => (<>,).into();
 match {
+    "let",
+} else {
     r"[a-zA-Z_][a-zA-Z0-9:.,_/-]*" => IDENT_NO_EQ,
 } else {
     r"--[a-zA-Z0-9:.,_=/-]*" => LONG_OPT,
@@ -91,3 +99,5 @@ match {
 } else {
     r"[a-zA-Z0-9:.,_=+/-]*" => WORD,
 }
+
+Box<T>: Box<T> = T => Box::new(<>);

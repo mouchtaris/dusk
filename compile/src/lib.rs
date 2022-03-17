@@ -29,6 +29,8 @@ pub trait Compile<T>: Sized {
     fn compile(self, node: &T) -> Result<Self>;
 }
 
+pub type CompileEv<T> = fn(Compiler, &T) -> Result<Compiler>;
+
 macro_rules! compile {
     ($($t:ident, $c:expr),*) => {
         $(
@@ -41,7 +43,41 @@ macro_rules! compile {
         )*
     }
 }
+
+mod cmp {
+    use super::CompileEv as E;
+    use super::*;
+    use ast::*;
+
+    pub trait Compilers<'i> {
+        fn box_body() -> E<BoxBody<'i>> {
+            |cmp, body| match body.as_ref() {
+                ast::Body::Item(item) => cmp.compile(item),
+            }
+        }
+        fn item() -> E<Item<'i>> {
+            |mut cmp, item| match item {
+                ast::Item::Invocation(invc) => cmp.compile(invc),
+                ast::Item::LetStmt((name, body)) => {
+                    cmp.retval = cmp.new_tmp_var();
+                    cmp = te!(cmp.compile(body));
+                    soft_todo!();
+                    Ok(cmp)
+                }
+                ast::Item::Empty(_) => Ok(cmp),
+            }
+        }
+    }
+    pub struct CompilersImpl;
+    impl<'i> Compilers<'i> for CompilersImpl {}
+}
+use cmp::{Compilers, CompilersImpl as cmps};
+
 compile![
+    BoxBody,
+    cmps::box_body(),
+    Item,
+    cmps::item(),
     Module,
     |mut cmp, module| {
         cmp.enter_scope();
@@ -49,12 +85,7 @@ compile![
         let instr_alloc = cmp.instr_id();
 
         for item in module {
-            match item {
-                ast::Item::Invocation(invc) => {
-                    cmp = te!(cmp.compile(invc));
-                    soft_todo!();
-                }
-            }
+            cmp = te!(cmp.compile(item));
         }
 
         let frame_size = cmp.stack_frame_size();
@@ -92,7 +123,6 @@ compile![
             }
         }
 
-        let argc_var = cmp.new_tmp_var();
         cmp.emit([i::CompleteProcessJob { jobid }]);
 
         Ok(cmp)

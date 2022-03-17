@@ -26,7 +26,8 @@ macro_rules! name {
     };
 }
 
-either![Item, Invocation];
+either![Body, Item];
+either![Item, Invocation, LetStmt, Empty];
 either![
     InvocationTarget,
     InvocationTargetLocal,
@@ -61,14 +62,18 @@ name![
     AnyInvocationArg
 ];
 
+pub type LetStmt<'i> = (Ident<'i>, BoxBody<'i>);
 pub type InvocationEnv<'i> = (Ident<'i>, InvocationArg<'i>);
 pub type Text<'i> = &'i str;
 pub type Ident<'i> = Text<'i>;
+pub type DocComment<'i> = Text<'i>;
 pub type OptText<'i> = Option<Text<'i>>;
 pub type OptPath<'i> = Option<Path<'i>>;
-pub type DocComment<'i> = Text<'i>;
 pub type AnyDocComment<'i> = Any<DocComment<'i>>;
 pub type AnyInvocationArg<'i> = Any<InvocationArg<'i>>;
 pub type AnyInvocationEnv<'i> = Any<InvocationEnv<'i>>;
 pub type AnyInvocationRedirection<'i> = Any<InvocationRedirection<'i>>;
+pub type BoxBody<'i> = Box<Body<'i>>;
 pub type Any<T> = Vec<T>;
+
+pub type Empty<'i> = std::marker::PhantomData<&'i ()>;
