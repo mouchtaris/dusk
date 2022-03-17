@@ -15,8 +15,9 @@ Invocation: ast::Invocation<'input> = {
     => (<>).into(),
 }
 InvocationTarget: ast::InvocationTarget<'input> = {
-    Ident => <>.into(),
-    Path => <>.into(),
+    Ident => ast::InvocationTarget::InvocationTargetLocal((<>,).into()),
+    "!" <Ident> => ast::InvocationTarget::InvocationTargetSystemName((<>,).into()),
+    Path => ast::InvocationTarget::InvocationTargetSystemPath((<>,).into()),
 }
 InvocationArg: ast::InvocationArg<'input> = {
     Ident => <>.into(),
@@ -80,6 +81,7 @@ match {
     "@",
     "<",
     ">",
+    "!",
 } else {
     r"-[a-zA-Z0-9:.,_=/-]*" => SHORT_OPT,
 } else {

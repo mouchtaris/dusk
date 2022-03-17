@@ -44,7 +44,51 @@ macro_rules! either {
             ;
             fn try_from(a: $name
                 $(< $($alt_lt),* >)?
-            ) -> Result<Self, Self::Error>
+            ) -> std::result::Result<Self, Self::Error>
+            {
+                match a {
+                    $name::$alt(v) => Ok(v),
+                    v => Err(v)
+                }
+            }
+        }
+
+        impl
+            < 'a, $( $($alt_lt),* )? >
+        std::convert::TryFrom< &'a mut $name
+            $(< $($alt_lt),* >)?
+        >
+        for &'a mut $alt
+            $(< $($alt_lt),* >)?
+        {
+            type Error = &'a mut $name
+                $(< $($alt_lt),* >)?
+            ;
+            fn try_from(a: &'a mut $name
+                $(< $($alt_lt),* >)?
+            ) -> std::result::Result<Self, Self::Error>
+            {
+                match a {
+                    $name::$alt(v) => Ok(v),
+                    v => Err(v)
+                }
+            }
+        }
+
+        impl
+            < 'a, $( $($alt_lt),* )? >
+        std::convert::TryFrom< &'a $name
+            $(< $($alt_lt),* >)?
+        >
+        for &'a $alt
+            $(< $($alt_lt),* >)?
+        {
+            type Error = &'a $name
+                $(< $($alt_lt),* >)?
+            ;
+            fn try_from(a: &'a $name
+                $(< $($alt_lt),* >)?
+            ) -> std::result::Result<Self, Self::Error>
             {
                 match a {
                     $name::$alt(v) => Ok(v),
@@ -80,4 +124,39 @@ macro_rules! name {
             }
         }
     };
+}
+
+#[cfg(test)]
+mod test {
+    struct A;
+    struct B;
+    either![E, A, B];
+
+    #[test]
+    fn impl_from() {
+        let _: E = A.into();
+        let _: E = B.into();
+    }
+
+    #[test]
+    fn impl_try_into() {
+        use std::convert::TryFrom;
+        let a: fn() -> E = || A.into();
+        let b: fn() -> E = || B.into();
+
+        assert!(A::try_from(a()).is_ok());
+        assert!(B::try_from(b()).is_ok());
+        assert!(A::try_from(b()).is_err());
+        assert!(B::try_from(a()).is_err());
+
+        assert!(<&mut A>::try_from(&mut a()).is_ok());
+        assert!(<&mut B>::try_from(&mut b()).is_ok());
+        assert!(<&mut A>::try_from(&mut b()).is_err());
+        assert!(<&mut B>::try_from(&mut a()).is_err());
+
+        assert!(<&A>::try_from(&a()).is_ok());
+        assert!(<&B>::try_from(&b()).is_ok());
+        assert!(<&A>::try_from(&b()).is_err());
+        assert!(<&B>::try_from(&a()).is_err());
+    }
 }

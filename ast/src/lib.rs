@@ -27,7 +27,12 @@ macro_rules! name {
 }
 
 either![Item, Invocation];
-either![InvocationTarget, Ident, Path];
+either![
+    InvocationTarget,
+    InvocationTargetLocal,
+    InvocationTargetSystemName,
+    InvocationTargetSystemPath
+];
 either![InvocationArg, Ident, Opt, Path, String, Variable, Word];
 either![InvocationRedirection, RedirectInput, RedirectOutput];
 either![Path, AbsPath, RelPath, HomePath];
@@ -43,6 +48,9 @@ name![HomePath, Text];
 name![LongOpt, Text];
 name![ShortOpt, Text];
 name![Variable, Text];
+name![InvocationTargetLocal, Ident];
+name![InvocationTargetSystemName, Ident];
+name![InvocationTargetSystemPath, Path];
 name![
     Invocation,
     AnyDocComment,

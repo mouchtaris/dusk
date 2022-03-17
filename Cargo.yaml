@@ -5,20 +5,44 @@ config:
 module:
   error: {}
   either: {}
+  collection: {}
   ast:
     dep_mod:
       - either
+      - collection
+  vm:
+    dep_mod:
+      - error
+      - ast
+      - collection
+      - either
+    dep_crate:
+      - log
   parse:
     dep_mod:
       - ast
       - error
+      - collection
     dep_crate:
       - lalrpop-util
+      - log
+  compile:
+    dep_mod:
+      - error
+      - ast
+      - vm
+      - parse
+      - collection
+    dep_crate:
+      - log
   main:
     dep_mod:
       - error
       - ast
       - parse
+      - vm
+      - compile
+      - collection
     dep_crate:
       - lalrpop-util
       - anyhow

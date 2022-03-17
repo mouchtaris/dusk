@@ -12,6 +12,14 @@ path = '../ast'
 [dependencies.bincode]
 version = '*'
 
+[dependencies.collection]
+version = '0.0.1'
+path = '../collection'
+
+[dependencies.compile]
+version = '0.0.1'
+path = '../compile'
+
 [dependencies.error]
 version = '0.0.1'
 path = '../error'
@@ -88,3 +96,7 @@ features = ['diff']
 
 [dependencies.url]
 version = '*'
+
+[dependencies.vm]
+version = '0.0.1'
+path = '../vm'

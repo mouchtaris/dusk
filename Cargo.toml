@@ -1,13 +1,22 @@
 [workspace]
 members = [
     './ast',
+    './collection',
+    './compile',
     './either',
     './error',
     './main',
     './parse',
+    './vm',
 ]
 [patch.crates-io.ast]
 path = './ast'
+
+[patch.crates-io.collection]
+path = './collection'
+
+[patch.crates-io.compile]
+path = './compile'
 
 [patch.crates-io.either]
 path = './either'
@@ -20,3 +29,6 @@ path = './main'
 
 [patch.crates-io.parse]
 path = './parse'
+
+[patch.crates-io.vm]
+path = './vm'

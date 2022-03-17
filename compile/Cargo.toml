@@ -1,5 +1,5 @@
 [package]
-name = 'parse'
+name = 'compile'
 version = '0.0.1'
 edition = '2018'
 [dependencies.ast]
@@ -14,10 +14,13 @@ path = '../collection'
 version = '0.0.1'
 path = '../error'
 
-[dependencies.lalrpop-util]
-version = '*'
-
 [dependencies.log]
 version = '*'
-[build-dependencies]
-lalrpop = "0.19.6"
+
+[dependencies.parse]
+version = '0.0.1'
+path = '../parse'
+
+[dependencies.vm]
+version = '0.0.1'
+path = '../vm'

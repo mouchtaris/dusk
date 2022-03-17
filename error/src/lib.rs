@@ -8,16 +8,42 @@ pub type Frame = (FileTrace, LineTrace);
 
 pub type Trace = Vec<Frame>;
 
-#[derive(Debug)]
 pub struct Error<Kind> {
     pub kind: Kind,
     pub trace: Trace,
 }
 
+mod error_debug;
+
 pub type Result<T, K> = std::result::Result<T, Error<K>>;
 
 pub trait IntoResult<K, T> {
     fn into_result(self) -> Result<T, K>;
+}
+
+#[macro_export]
+macro_rules! ltrace {
+    ($($t:tt)*) => {
+        ::log::trace!("[{}:{}] {}", file!(), line!(), format_args!($($t)*))
+    };
+}
+#[macro_export]
+macro_rules! ldebug {
+    ($($t:tt)*) => {
+        ::log::debug!("[{}:{}] {}", file!(), line!(), format_args!($($t)*))
+    };
+}
+#[macro_export]
+macro_rules! lwarn {
+    ($($t:tt)*) => {
+        ::log::warn!("[{}:{}] {}", file!(), line!(), format_args!($($t)*))
+    };
+}
+#[macro_export]
+macro_rules! soft_todo {
+    () => {
+        $crate::lwarn!("todo")
+    };
 }
 
 #[macro_export]
@@ -27,6 +53,13 @@ macro_rules! te {
             e.trace.push((file!(), line!()));
             e
         })?
+    };
+}
+
+#[macro_export]
+macro_rules! terr {
+    ($e:expr) => {
+        te!(Err($e))
     };
 }
 

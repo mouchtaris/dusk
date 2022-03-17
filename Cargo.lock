@@ -30,6 +30,7 @@ dependencies = [
 name = "ast"
 version = "0.0.1"
 dependencies = [
+ "collection",
  "either 0.0.1",
 ]
 
@@ -100,6 +101,22 @@ name = "cfg-if"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
+
+[[package]]
+name = "collection"
+version = "0.0.1"
+
+[[package]]
+name = "compile"
+version = "0.0.1"
+dependencies = [
+ "ast",
+ "collection",
+ "error",
+ "log",
+ "parse",
+ "vm",
+]
 
 [[package]]
 name = "crunchy"
@@ -423,6 +440,8 @@ dependencies = [
  "anyhow",
  "ast",
  "bincode",
+ "collection",
+ "compile",
  "error",
  "git2",
  "lalrpop-util",
@@ -444,6 +463,7 @@ dependencies = [
  "toml",
  "trybuild",
  "url",
+ "vm",
 ]
 
 [[package]]
@@ -535,9 +555,11 @@ name = "parse"
 version = "0.0.1"
 dependencies = [
  "ast",
+ "collection",
  "error",
  "lalrpop",
  "lalrpop-util",
+ "log",
 ]
 
 [[package]]
@@ -906,6 +928,17 @@ name = "vcpkg"
 version = "0.2.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "accd4ea62f7bb7a82fe23066fb0957d48ef677f6eeb8215f372f52e48bb32426"
+
+[[package]]
+name = "vm"
+version = "0.0.1"
+dependencies = [
+ "ast",
+ "collection",
+ "either 0.0.1",
+ "error",
+ "log",
+]
 
 [[package]]
 name = "wasi"
