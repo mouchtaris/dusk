@@ -5,7 +5,8 @@ pub Module = Item*;
 Item: ast::Item<'input> = {
     <Invocation> ";" => <>.into(),
     ";" => ast::Item::Empty(<_>::default()),
-    "let" <Ident> "=" <Box<Body>> => ast::Item::LetStmt((<>,)),
+    "let" <Ident> "=" <Box<Body>> => ast::Item::LetStmt((<>,).into()),
+    "def" <Ident> "=" <Box<Body>> => ast::Item::DefStmt((<>,).into()),
 }
 Invocation: ast::Invocation<'input> = {
     DocComment*
@@ -75,6 +76,7 @@ LongOpt: ast::LongOpt<'input> = LONG_OPT => (<>,).into();
 ShortOpt: ast::ShortOpt<'input> = SHORT_OPT => (<>,).into();
 match {
     "let",
+    "def",
 } else {
     r"[a-zA-Z_][a-zA-Z0-9:.,_/-]*" => IDENT_NO_EQ,
 } else {

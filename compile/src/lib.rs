@@ -58,9 +58,27 @@ mod cmp {
         fn item() -> E<Item<'i>> {
             |mut cmp, item| match item {
                 ast::Item::Invocation(invc) => cmp.compile(invc),
-                ast::Item::LetStmt((name, body)) => {
+                ast::Item::LetStmt(ast::LetStmt((name, body))) => {
                     cmp.retval = cmp.new_tmp_var();
                     cmp = te!(cmp.compile(body));
+                    soft_todo!();
+                    Ok(cmp)
+                }
+                ast::Item::DefStmt(ast::DefStmt((name, body))) => {
+                    cmp.retval = cmp.new_tmp_var();
+
+                    cmp.emit1(i::Jump { addr: 0 });
+                    let jump_instr = cmp.instr_id();
+
+                    cmp = te!(cmp.compile(body));
+                    let jump_target = cmp.instr_id() + 1;
+
+                    te!(cmp.backpatch(jump_instr, |i| {
+                        Ok(match i {
+                            i::Jump { addr } => *addr = jump_target,
+                            _ => terr!("not a jump instr"),
+                        })
+                    }));
                     soft_todo!();
                     Ok(cmp)
                 }
@@ -200,8 +218,10 @@ impl Compiler {
                     writeln!(o, "[{}] {:?}", id, s)?;
                 }
                 writeln!(o, "=== ICODE ===")?;
+                let mut i = 0;
                 for instr in &self.icode.instructions {
-                    writeln!(o, "{:?}", instr)?;
+                    writeln!(o, "[{:4}] {:?}", i, instr)?;
+                    i += 1;
                 }
                 writeln!(o, "=== SYMBOLS ===")?;
                 for (scope_id, scope) in &self.sym_info {
@@ -238,6 +258,7 @@ impl Compiler {
     {
         self.emit(std::iter::once(instr.into()))
     }
+    /// Return the last instruction id
     fn instr_id(&self) -> usize {
         self.icode.instructions.len() - 1
     }
@@ -253,6 +274,13 @@ impl Compiler {
         scope.len()
     }
 
+    /// ### Example
+    ///
+    ///     te!(cmp.backpatch(instr_alloc, |i| match i {
+    ///         i::Allocate { size } => Ok(*size = frame_size),
+    ///         _ => terr!("not an allocate instr"),
+    ///     }));
+    ///
     fn backpatch<B>(&mut self, instr_id: usize, block: B) -> Result<()>
     where
         B: FnOnce(&mut i) -> Result<()>,

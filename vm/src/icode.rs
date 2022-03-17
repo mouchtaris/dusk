@@ -31,6 +31,7 @@ pub enum Instr {
     CompleteProcessJob { jobid: usize },
     JobSetCwd { jobid: usize, cwdid: usize },
     JobPushArg { jobid: usize, argid: usize },
+    Jump { addr: usize },
 }
 
 impl Instr {
@@ -94,6 +95,7 @@ impl Instr {
                 vm.load_string(strid, dst);
             }
             &Self::SetNatural { value, dst } => vm.frame_set(dst, value),
+            &Self::Jump { addr } => vm.jump(addr),
         }
         Ok(vm)
     }

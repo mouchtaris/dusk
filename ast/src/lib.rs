@@ -27,7 +27,7 @@ macro_rules! name {
 }
 
 either![Body, Item];
-either![Item, Invocation, LetStmt, Empty];
+either![Item, Invocation, LetStmt, DefStmt, Empty];
 either![
     InvocationTarget,
     InvocationTargetLocal,
@@ -39,6 +39,8 @@ either![InvocationRedirection, RedirectInput, RedirectOutput];
 either![Path, AbsPath, RelPath, HomePath];
 either![Opt, ShortOpt, LongOpt];
 either![Redirect, Path, Variable];
+name![LetStmt, Ident, BoxBody];
+name![DefStmt, Ident, BoxBody];
 name![RedirectInput, Redirect];
 name![RedirectOutput, Redirect];
 name![String, Text];
@@ -62,7 +64,6 @@ name![
     AnyInvocationArg
 ];
 
-pub type LetStmt<'i> = (Ident<'i>, BoxBody<'i>);
 pub type InvocationEnv<'i> = (Ident<'i>, InvocationArg<'i>);
 pub type Text<'i> = &'i str;
 pub type Ident<'i> = Text<'i>;

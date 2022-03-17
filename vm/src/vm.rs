@@ -11,7 +11,8 @@ pub struct Vm {
     retval: Value,
     string_table: Deq<String>,
     stack: Vec<Value>,
-    frame_pointer: usize,
+    frame_ptr: usize,
+    instr_ptr: usize,
 }
 
 impl Vm {
@@ -31,15 +32,16 @@ impl Vm {
     }
 
     fn frame_addr(&self, offset: usize) -> usize {
-        self.frame_pointer + offset
+        self.frame_ptr + offset
     }
 
     /// Reset to init state
     pub fn reset(&mut self) {
         self.string_table.clear();
 
-        self.frame_pointer = 0;
+        self.frame_ptr = 0;
         self.stack.clear();
+        self.instr_ptr = 0;
     }
 
     /// Take retval, converting to underlying type
@@ -128,15 +130,17 @@ impl Vm {
         Ok(self)
     }
 
-    pub fn run_instructions<I>(mut self, icode: I) -> Result<Self>
-    where
-        I: IntoIterator,
-        I::Item: Borrow<Instr>,
-    {
-        for instruction in icode {
+    pub fn run_instructions(mut self, icode: &Deq<Instr>) -> Result<Self> {
+        while self.instr_ptr < icode.len() {
+            let instruction = &icode[self.instr_ptr];
+            self.instr_ptr += 1;
             self = te!(instruction.borrow().operate_on(self));
         }
         Ok(self)
+    }
+
+    pub fn jump(&mut self, addr: usize) {
+        self.instr_ptr = addr;
     }
 
     pub fn init_bin_path<S>(&mut self, source: S)
@@ -182,7 +186,7 @@ impl Vm {
                     i += 1;
                 }
                 writeln!(o, "=== STATE ===")?;
-                writeln!(o, "- frame pointer    : {}", self.frame_pointer)?;
+                writeln!(o, "- frame pointer    : {}", self.frame_ptr)?;
             })
         })
     }

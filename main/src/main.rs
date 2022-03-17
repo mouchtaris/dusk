@@ -14,11 +14,13 @@ error::Error! {
 fn main() -> Result<()> {
     pretty_env_logger::init();
 
-    const SAMPLE_PATH: &str = "test.dust";
-    log::debug!("Loading {}", SAMPLE_PATH);
-    let sample_text: String = te!(fs::read_to_string(SAMPLE_PATH));
+    let args = std::env::args().collect::<Vec<_>>();
 
-    log::debug!("Parsing {}", SAMPLE_PATH);
+    let sample_path = args.get(1).map(|s| s.as_str()).unwrap_or("sample.dust");
+    log::debug!("Loading {}", sample_path);
+    let sample_text: String = te!(fs::read_to_string(sample_path));
+
+    log::debug!("Parsing {}", sample_path);
     let module_ast = te!(parse::parse(&sample_text));
     log::trace!("AST: {:#?}", module_ast);
 

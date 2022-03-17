@@ -1,4 +1,3 @@
-let pop = ;;
-;
-!echo hi;
-;
+let qs = !echo microdose;
+def l = !ls;
+let sq = !echo kalamri;
