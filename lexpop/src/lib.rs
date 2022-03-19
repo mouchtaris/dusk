@@ -1,0 +1,313 @@
+pub const VERSION: &str = "0.0.1";
+
+use error::{te, temg};
+//macro_rules! ltrace { ($l:literal $($a:tt)*) => { eprintln!($l $($a)*) }; }
+
+pub trait Prop {
+    fn prop(&mut self, range: &[char]) -> Option<usize>;
+
+    fn match_range<const N: usize, I>(&mut self, inp: I) -> Span
+    where
+        I: IntoIterator,
+        I::Item: Into<char>,
+    {
+        let mut buf = Buffer::<N, char>::new();
+        let mut inp = inp.into_iter().map(<_>::into);
+
+        let mut span = 0;
+        loop {
+            if !buf.read_one(&mut inp) {
+                break;
+            }
+            if let Some(n) = self.prop(&buf) {
+                span += n;
+            } else {
+                break;
+            }
+        }
+
+        span
+    }
+}
+impl<F> Prop for F
+where
+    F: FnMut(Range) -> Option<usize>,
+{
+    fn prop(&mut self, range: Range) -> Option<usize> {
+        self(range)
+    }
+}
+
+impl<const N: usize, T> Buffer<N, T>
+where
+    T: Default + Copy,
+{
+    pub fn read_one<I>(&mut self, inp: &mut I) -> bool
+    where
+        I: Iterator,
+        I::Item: Into<T>,
+        T: Default,
+    {
+        let Self { range } = self;
+
+        match inp.map(<_>::into).next() {
+            Some(c) => {
+                for n in 0..N - 1 {
+                    let n = (N - 1) - n;
+                    range[n] = range[n - 1];
+                }
+                range[0] = c;
+                true
+            }
+            None => false,
+        }
+    }
+
+    pub fn new() -> Self {
+        Self {
+            range: [<_>::default(); N],
+        }
+    }
+}
+impl<const N: usize, T> std::ops::Deref for Buffer<N, T> {
+    type Target = [T];
+    fn deref(&self) -> &[T] {
+        &self.range
+    }
+}
+
+pub type Range<'a> = &'a [char];
+pub type Span = usize;
+
+pub trait CharDeco: Into<char> {
+    fn d10(self) -> bool {
+        self.into().is_digit(10)
+    }
+}
+impl CharDeco for char {}
+
+#[derive(Debug)]
+pub struct Buffer<const N: usize, T> {
+    pub range: [T; N],
+}
+
+#[macro_export]
+macro_rules! lexpop {
+    (
+    $(
+    $name:ident, $body:expr
+    ),*
+    ) => {
+    $(
+        pub fn $name() -> impl Prop {
+            fn f<F: FnMut($crate::Range) -> Option<usize>>(f: F) -> F { f }
+            f($body)
+        }
+    )*
+    };
+}
+
+#[cfg(test)]
+mod __ {
+    use super::{CharDeco, Prop};
+    lexpop![fat, {
+        let mut h = 0;
+        let mut state = 0;
+        let mut j = 0;
+        let mut count = 0;
+        move |r| {
+            eprintln!("count={} state={} h={} j={} {:?}", count, state, h, j, r);
+            let ret = match (state, r) {
+                // 0: Init
+                (0, &['r', ..]) => {
+                    h = 0;
+                    state = 1;
+                    Some(0)
+                }
+                // 1: Reading hashes
+                (1, &['#', ..]) => {
+                    h += 1;
+                    Some(0)
+                }
+                (1, &['"', ..]) => {
+                    state = 2;
+                    j = h;
+                    Some(0)
+                }
+                // 2: Reading content
+                (2, &['"', ..]) if h == 0 => {
+                    // Completely done, no hashes to read
+
+                    // The extra commit is only r" and "
+                    Some(2 + 1)
+                }
+                (2, &['"', ..]) => {
+                    state = 3;
+                    Some(0)
+                }
+                (2, _) => Some(1),
+                // 3: Reading closing hashes
+                (3, &['#', ..]) if j > 1 => {
+                    // One less closing hash
+                    j -= 1;
+                    Some(0)
+                }
+                (3, &['#', ..]) if j == 1 => {
+                    // Totally closed
+                    // Commit:
+                    //  1 r
+                    //  h opening #
+                    //  1 opening "
+                    //  h closing #
+                    //  1 closing "
+                    Some(1 + h + 1 + 1 + h)
+                }
+                (3, &['"', ..]) => {
+                    // Not closing yet
+
+                    // Commit skipped stuff
+                    // 1        false closing "
+                    // (h - j)  false closing #
+                    let n = 1 + (h - j);
+
+                    // Commit this as content and continue trying to close
+                    j = h;
+                    Some(n)
+                }
+                (3, _) => {
+                    // Not closing yet
+
+                    // Commit skipped stuff
+                    // 1        false closing "
+                    // (h - j)  false closing #
+                    // 1        non-special character consumed just now
+                    let n = 1 + (h - j) + 1;
+
+                    // Back to reading content
+                    state = 2;
+                    j = h;
+
+                    Some(n)
+                }
+                other => panic!("{}:{} {:?}", h, j, other),
+            };
+            if let &Some(c) = &ret {
+                count += c
+            }
+            ret
+        }
+    }];
+    #[test]
+    fn complex_prop0() {
+        let wat = fat().match_range::<6, _>("r".chars());
+        assert_eq!(wat, 0);
+    }
+    #[test]
+    fn complex_prop1() {
+        let wat = fat().match_range::<6, _>("r#".chars());
+        assert_eq!(wat, 0);
+    }
+    #[test]
+    fn complex_prop2() {
+        let wat = fat().match_range::<6, _>("r#\"".chars());
+        assert_eq!(wat, 0);
+    }
+    #[test]
+    fn complex_prop3() {
+        let wat = fat().match_range::<6, _>("r#\"\"".chars());
+        assert_eq!(wat, 0);
+    }
+    #[test]
+    fn complex_prop4() {
+        let wat = fat().match_range::<6, _>("r##\"\"#".chars());
+        assert_eq!(wat, 0);
+    }
+    #[test]
+    fn complex_prop5() {
+        let wat = fat().match_range::<6, _>("r##\"\"##".chars());
+        assert_eq!(wat, 7);
+    }
+    #[test]
+    fn complex_prop6() {
+        let s = || "r#\"What is happening\"#".chars();
+        let wat = fat().match_range::<6, _>(s());
+        assert_eq!(wat, s().count());
+    }
+    #[test]
+    fn complex_prop7() {
+        let s = || r###"r##"a"b"#c"##"###.chars();
+        let wat = fat().match_range::<6, _>(s());
+        assert_eq!(wat, s().count());
+    }
+    #[test]
+    fn complex_prop8() {
+        let s = || r####"r"""####.chars();
+        let wat = fat().match_range::<6, _>(s());
+        assert_eq!(wat, s().count());
+    }
+    #[test]
+    fn complex_prop9() {
+        let s = || r####"r#"""#"####.chars();
+        let wat = fat().match_range::<6, _>(s());
+        assert_eq!(wat, s().count());
+    }
+    #[test]
+    fn complex_prop10() {
+        let s = || r####"r##""#"##"####.chars();
+        let wat = fat().match_range::<6, _>(s());
+        assert_eq!(wat, s().count());
+    }
+    #[test]
+    fn complex_prop11() {
+        let s = || r####"r###"""#"##"###"####.chars();
+        let wat = fat().match_range::<6, _>(s());
+        assert_eq!(wat, s().count());
+    }
+
+    lexpop![nat, |r| match r {
+        &[p, ..] if p.d10() => Some(1),
+        _ => None,
+    }];
+    #[test]
+    fn match_range() {
+        let wat = nat().match_range::<4, _>("Hello".chars());
+        assert_eq!(wat, 0);
+
+        let wat = nat().match_range::<4, _>("".chars());
+        assert_eq!(wat, 0);
+
+        let wat = nat().match_range::<4, _>("1".chars());
+        assert_eq!(wat, 1);
+
+        let wat = nat().match_range::<4, _>("12".chars());
+        assert_eq!(wat, 2);
+
+        let wat = nat().match_range::<4, _>("123".chars());
+        assert_eq!(wat, 3);
+
+        let wat = nat().match_range::<4, _>("1234".chars());
+        assert_eq!(wat, 4);
+
+        let wat = nat().match_range::<4, _>("12345".chars());
+        assert_eq!(wat, 5);
+
+        let wat = nat().match_range::<4, _>("a12345".chars());
+        assert_eq!(wat, 0);
+
+        let wat = nat().match_range::<4, _>("abcd+12345".chars());
+        assert_eq!(wat, 0);
+
+        let wat = nat().match_range::<4, _>("+12345".chars());
+        assert_eq!(wat, 0);
+
+        let wat = nat().match_range::<4, _>("-12345".chars());
+        assert_eq!(wat, 0);
+
+        let wat = nat().match_range::<4, _>("abcd-12345".chars());
+        assert_eq!(wat, 0);
+    }
+}
+
+error::Error! {
+    Msg = String
+}

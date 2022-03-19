@@ -27,12 +27,13 @@ fn main() -> Result<()> {
     let mut cmp = compile::Compiler::default();
     cmp.init();
     cmp = te!(cmp.compile(&module_ast));
+    use show::Show;
     te!(cmp.write_to(fs::File::create("_.compiler.txt")));
 
     let mut vm = vm::Vm::default();
     vm.reset();
-    // te!(vm.init_bin_path_from_path_env());
-    vm.init_bin_path_system();
+    // vm.init_bin_path_system();
+    te!(vm.init_bin_path_from_path_env());
     vm = te!(vm.load_icode(&cmp.icode));
     te!(vm.write_to(fs::File::create("./_.vm.txt")));
 

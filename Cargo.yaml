@@ -6,6 +6,15 @@ module:
   error: {}
   either: {}
   collection: {}
+  show: {}
+  lexpop:
+    dep_mod:
+      - either
+      - collection
+      - error
+      - show
+    dep_crate:
+      - log
   ast:
     dep_mod:
       - either
@@ -16,6 +25,7 @@ module:
       - ast
       - collection
       - either
+      - show
     dep_crate:
       - log
   parse:
@@ -23,6 +33,7 @@ module:
       - ast
       - error
       - collection
+      - lexpop
     dep_crate:
       - lalrpop-util
       - log
@@ -33,6 +44,8 @@ module:
       - vm
       - parse
       - collection
+      - show
+      - lexpop
     dep_crate:
       - log
   main:
@@ -43,6 +56,8 @@ module:
       - vm
       - compile
       - collection
+      - show
+      - lexpop
     dep_crate:
       - lalrpop-util
       - anyhow

@@ -1,7 +1,5 @@
 pub const VERSION: &str = "0.0.1";
 
-pub type Module<'i> = Any<Item<'i>>;
-
 macro_rules! either {
     ($name:ident $(, $alt:ident)*) => {
         ::either::either! {
@@ -26,6 +24,8 @@ macro_rules! name {
     };
 }
 
+name![Module, AnyItem];
+
 either![Body, Item];
 either![Item, Invocation, LetStmt, DefStmt, Empty];
 either![
@@ -39,6 +39,7 @@ either![InvocationRedirection, RedirectInput, RedirectOutput];
 either![Path, AbsPath, RelPath, HomePath];
 either![Opt, ShortOpt, LongOpt];
 either![Redirect, Path, Variable];
+
 name![LetStmt, Ident, BoxBody];
 name![DefStmt, Ident, BoxBody];
 name![RedirectInput, Redirect];
@@ -74,6 +75,7 @@ pub type AnyDocComment<'i> = Any<DocComment<'i>>;
 pub type AnyInvocationArg<'i> = Any<InvocationArg<'i>>;
 pub type AnyInvocationEnv<'i> = Any<InvocationEnv<'i>>;
 pub type AnyInvocationRedirection<'i> = Any<InvocationRedirection<'i>>;
+pub type AnyItem<'i> = Any<Item<'i>>;
 pub type BoxBody<'i> = Box<Body<'i>>;
 pub type Any<T> = Vec<T>;
 

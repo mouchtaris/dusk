@@ -1,7 +1,10 @@
 // vim: et ts=4 sw=4
 grammar;
 
-pub Module = Item*;
+pub Module: ast::Module<'input> =
+    Item* => (<>,).into()
+;
+
 Item: ast::Item<'input> = {
     <Invocation> ";" => <>.into(),
     ";" => ast::Item::Empty(<_>::default()),

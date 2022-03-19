@@ -31,6 +31,10 @@ optional = true
 [dependencies.lalrpop-util]
 version = '*'
 
+[dependencies.lexpop]
+version = '0.0.1'
+path = '../lexpop'
+
 [dependencies.log]
 version = '*'
 
@@ -70,6 +74,10 @@ version = '*'
 
 [dependencies.serde_yaml]
 version = '*'
+
+[dependencies.show]
+version = '0.0.1'
+path = '../show'
 
 [dependencies.syn]
 version = '*'

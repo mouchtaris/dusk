@@ -1,63 +1,40 @@
 use {
-    super::{
-        ldebug, ltrace, te, Deq, ICode, Instr, Result, StringInfo, TryFrom, Value, ValueTypeInfo,
-    },
+    super::{ltrace, te, Deq, ICode, Instr, Result, StringInfo, TryFrom, Value, ValueTypeInfo},
     std::{borrow::Borrow, fmt, io, mem},
 };
 
 #[derive(Default, Debug)]
 pub struct Vm {
     pub bin_path: Deq<String>,
-    retval: Value,
     string_table: Deq<String>,
     stack: Vec<Value>,
     frame_ptr: usize,
+    arg_ptr: usize,
+    stack_ptr: usize,
     instr_ptr: usize,
 }
 
 impl Vm {
-    fn add_string(&mut self, i: StringInfo, s: String) {
-        let t = &mut self.string_table;
-        let id = i.id;
-        if id < t.len() {
-            t[id] = s;
-        } else {
-            t.resize(id + 1, s);
-        }
-    }
-    /// Put current retval to recycle bins and return reference to fresh
-    /// Return the current retval as it is and reset retval.
-    fn take_retval(&mut self) -> Value {
-        mem::take(&mut self.retval)
-    }
-
-    fn frame_addr(&self, offset: usize) -> usize {
-        self.frame_ptr + offset
-    }
-
     /// Reset to init state
     pub fn reset(&mut self) {
         self.string_table.clear();
 
         self.frame_ptr = 0;
+        self.stack_ptr = 0;
+        self.arg_ptr = 0;
         self.stack.clear();
         self.instr_ptr = 0;
     }
 
-    /// Take retval, converting to underlying type
-    pub fn rv_take<T>(&mut self) -> Result<T>
-    where
-        T: TryFrom<Value, Error = Value> + ValueTypeInfo,
-    {
-        self.take_retval().try_into()
+    fn argp_next(&mut self) -> usize {
+        let argp = self.arg_ptr;
+        self.arg_ptr += 1;
+        argp
     }
-    /// Borrow retval, converting to mut ref to underlying type
-    pub fn rv_mut<T>(&mut self) -> Result<&mut T>
-    where
-        for<'s> &'s mut T: TryFrom<&'s mut Value, Error = &'s mut Value>,
-        T: ValueTypeInfo,
-    {
-        (&mut self.retval).try_mut()
+
+    /// Increase frame pointer
+    fn frame_addr(&self, offset: usize) -> usize {
+        self.frame_ptr + offset
     }
 
     /// Set a value to offset from stack-frame-pointer
@@ -70,7 +47,7 @@ impl Vm {
         ltrace!("frame[{}] = {:?}", addr, value);
         *self.stack.get_mut(addr).unwrap() = value;
     }
-    /// Take the value from stack-frame-offset
+
     pub fn frame_take_value(&mut self, offset: usize) -> Result<Value> {
         let addr = self.frame_addr(offset);
         let r = mem::take(te!(self.stack.get_mut(addr)));
@@ -78,14 +55,13 @@ impl Vm {
         Ok(r)
     }
 
-    /// Take the value from stack-frame-offset
     pub fn frame_take<T>(&mut self, offset: usize) -> Result<T>
     where
         T: TryFrom<Value, Error = Value> + ValueTypeInfo + fmt::Debug,
     {
         te!(self.frame_take_value(offset)).try_into()
     }
-    /// Borrow retval, converting to mut ref to underlying type
+
     pub fn frame_mut<T>(&mut self, offset: usize) -> Result<&mut T>
     where
         for<'s> &'s mut T: TryFrom<&'s mut Value, Error = &'s mut Value> + fmt::Debug,
@@ -97,28 +73,39 @@ impl Vm {
         r
     }
 
-    /// ! Assumes reset has been done !
-    /// Set retval. Does not recycle.
-    pub fn set_retval<V>(&mut self, v: V)
+    pub fn frame<T>(&self, offset: usize) -> Result<&T>
     where
-        V: Into<Value> + ValueTypeInfo,
+        for<'s> &'s T: TryFrom<&'s Value, Error = &'s Value> + fmt::Debug,
+        T: ValueTypeInfo,
     {
-        ltrace!("value = {}", V::type_info_name());
-        self.retval = v.into();
+        let addr = self.frame_addr(offset);
+        let r = te!(self.stack.get(addr)).try_ref();
+        ltrace!("Reading mut stack {}: {:?}", addr, r);
+        r
     }
 
-    /// Set frame-offset to String, initializing from `string_table[strid]`
-    pub fn load_string(&mut self, strid: usize, dst: usize) -> &mut String {
+    pub fn push_val<T>(&mut self, src: T)
+    where
+        T: ValueTypeInfo + Into<Value>,
+    {
+        let addr = self.argp_next();
+        self.frame_set(addr, src);
+    }
+
+    pub fn push_null(&mut self) {
+        self.push_val(());
+    }
+
+    pub fn push_str(&mut self, strid: usize) {
         let src = self.string_table[strid].to_owned();
-        ldebug!("Loading string {}: {}", strid, src);
-        self.frame_set(dst, src);
-        self.frame_mut(dst).unwrap()
+        self.push_val(src);
     }
 
     /// Grow the stack by `size`
     pub fn allocate(&mut self, size: usize) {
         self.stack
             .resize_with(self.stack.len() + size, <_>::default);
+        self.stack_ptr += size;
     }
 
     pub fn load_icode(mut self, icode: &ICode) -> Result<Self> {
@@ -189,5 +176,15 @@ impl Vm {
                 writeln!(o, "- frame pointer    : {}", self.frame_ptr)?;
             })
         })
+    }
+
+    fn add_string(&mut self, i: StringInfo, s: String) {
+        let t = &mut self.string_table;
+        let id = i.id;
+        if id < t.len() {
+            t[id] = s;
+        } else {
+            t.resize(id + 1, s);
+        }
     }
 }

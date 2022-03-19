@@ -47,6 +47,15 @@ impl Value {
             Ok(t) => Ok(t),
         }
     }
+    pub fn try_ref<'a, T>(&'a self) -> Result<&'a T>
+    where
+        &'a T: TryFrom<&'a Self, Error = &'a Value> + ValueTypeInfo,
+    {
+        match <&'a T>::try_from(self) {
+            Err(v) => wrong_type_error(v),
+            Ok(t) => Ok(t),
+        }
+    }
 }
 
 fn wrong_type_error<T, V>(v: V) -> Result<T>
@@ -61,6 +70,14 @@ where
 
 pub trait ValueTypeInfo {
     fn type_info_name() -> &'static str;
+}
+impl<'a, T> ValueTypeInfo for &'a T
+where
+    T: ValueTypeInfo,
+{
+    fn type_info_name() -> &'static str {
+        T::type_info_name()
+    }
 }
 impl<'a, T> ValueTypeInfo for &'a mut T
 where

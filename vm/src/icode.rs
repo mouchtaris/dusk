@@ -1,6 +1,7 @@
 use {
     super::{
-        ldebug, ltrace, soft_todo, te, temg, value, BorrowMut, Deq, Entry, Map, Result, Value, Vm,
+        ldebug, ltrace, soft_todo, te, temg, terr, value, BorrowMut, Deq, Entry, Map, Result,
+        Value, Vm,
     },
     value::ProcessBuilder,
 };
@@ -22,16 +23,22 @@ pub struct StringInfo {
 
 #[derive(Debug, Copy, Eq, Ord, Hash, PartialEq, PartialOrd, Clone)]
 pub enum Instr {
-    Init,
     Allocate { size: usize },
-    LoadString { strid: usize, dst: usize },
+    Jump { addr: usize },
+
+    PushNull,
+    PushStr(usize),
+    PushNat(usize),
+
+    SysCall(u8),
+
+    Init,
     SetNatural { value: usize, dst: usize },
     FindInBinPath { id: usize, dst: usize },
     CreateProcessJob { path: usize, dst: usize },
     CompleteProcessJob { jobid: usize },
     JobSetCwd { jobid: usize, cwdid: usize },
     JobPushArg { jobid: usize, argid: usize },
-    Jump { addr: usize },
 }
 
 impl Instr {
@@ -91,13 +98,22 @@ impl Instr {
                 let proc: &mut ProcessBuilder = te!(vm.frame_mut(jobid));
                 proc.arg(cwd);
             }
-            &Self::LoadString { strid, dst } => {
-                vm.load_string(strid, dst);
-            }
+            &Self::PushNull => vm.push_null(),
+            &Self::PushNat(id) => vm.push_val(id),
+            &Self::PushStr(id) => vm.push_str(id),
             &Self::SetNatural { value, dst } => vm.frame_set(dst, value),
             &Self::Jump { addr } => vm.jump(addr),
+            &Self::SysCall(id) => te!(crate::syscall::call(&mut vm, id)),
         }
         Ok(vm)
+    }
+
+    pub fn allocate_size(&mut self, size: usize) -> Result<()> {
+        let me = self;
+        Ok(*match me {
+            Self::Allocate { size } => size,
+            _ => terr!("not an allocate instr"),
+        } = size)
     }
 }
 

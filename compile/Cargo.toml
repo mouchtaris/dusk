@@ -14,12 +14,20 @@ path = '../collection'
 version = '0.0.1'
 path = '../error'
 
+[dependencies.lexpop]
+version = '0.0.1'
+path = '../lexpop'
+
 [dependencies.log]
 version = '*'
 
 [dependencies.parse]
 version = '0.0.1'
 path = '../parse'
+
+[dependencies.show]
+version = '0.0.1'
+path = '../show'
 
 [dependencies.vm]
 version = '0.0.1'

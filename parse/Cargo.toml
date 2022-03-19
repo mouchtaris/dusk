@@ -17,6 +17,10 @@ path = '../error'
 [dependencies.lalrpop-util]
 version = '*'
 
+[dependencies.lexpop]
+version = '0.0.1'
+path = '../lexpop'
+
 [dependencies.log]
 version = '*'
 [build-dependencies]

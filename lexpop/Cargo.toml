@@ -1,11 +1,7 @@
 [package]
-name = 'vm'
+name = 'lexpop'
 version = '0.0.1'
 edition = '2018'
-[dependencies.ast]
-version = '0.0.1'
-path = '../ast'
-
 [dependencies.collection]
 version = '0.0.1'
 path = '../collection'

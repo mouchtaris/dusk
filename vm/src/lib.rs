@@ -1,5 +1,6 @@
 pub const VERSION: &str = "0.0.1";
 mod icode;
+pub mod syscall;
 mod value;
 mod vm;
 pub use {
@@ -23,4 +24,4 @@ error::Error! {
     Io = io::Error
 }
 use error::{ldebug, ltrace, soft_todo};
-use error::{te, temg};
+use error::{te, temg, terr};
