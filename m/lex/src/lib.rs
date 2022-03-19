@@ -2,7 +2,7 @@ pub const VERSION: &str = "0.0.1";
 
 use {
     ::error::ltrace,
-    ::lexpop::{chain, exact, from_fn, lexpop},
+    ::lexpop::{exact, fn_, lexpop, one_and_any},
 };
 
 macro_rules! either {
@@ -30,28 +30,78 @@ name![Kwd(T), Op(T), Nada(T), Whsp(T), Idnt(T), IdntNe(T)];
 
 either![Tok(Whsp, Nada, Kwd, Op, Idnt, IdntNe)];
 
-lexpop![whsp, from_fn(char::is_whitespace)];
-lexpop![kwd, chain(exact("let"), exact("def"))];
-lexpop![ident, chain(from_fn(ident_init), from_fn(ident_rest))];
+lexpop![whsp, fn_(char::is_whitespace)];
+lexpop![kwd, exact("let")];
+lexpop![ident, one_and_any(fn_(ident_init), fn_(ident_rest))];
 lexpop![
     ident_no_eq,
-    chain(from_fn(ident_init), from_fn(ident_rest_no_eq))
+    one_and_any(fn_(ident_init), fn_(ident_rest_no_eq))
 ];
-lexpop![op, chain(exact("$"), exact("="))];
+lexpop![op, exact("$")];
 
 pub const TOK_NADA: Tok<'static> = Tok::Nada(Nada(""));
 
 pub type Offset = usize;
 pub type Spanned<T> = (Offset, T, Offset);
 
-pub struct Lex<'i> {
+#[derive(Clone)]
+pub struct LexState<'i> {
     inp: T<'i>,
     pos: usize,
 }
 
+pub struct Lex<'i> {
+    pub state: LexState<'i>,
+}
+impl<'i> Lex<'i> {
+    pub fn new(inp: &'i str) -> Self {
+        let state = LexState::new(inp);
+        Self { state }
+    }
+}
 impl<'i> Iterator for Lex<'i> {
+    type Item = IterItem<LexState<'i>>;
+    fn next(&mut self) -> Item<Self> {
+        self.state.next()
+    }
+}
+
+fn to_str<'i>(tok: Option<&'i Spanned<Tok>>) -> &'i str {
+    tok.as_ref().unwrap().1.as_ref()
+}
+
+fn ident_or_kwd<'i>(s: &mut LexState<'i>) -> Item<LexState<'i>> {
+    let mut s0 = s.clone();
+
+    match s.mtch(ident(), Idnt) {
+        None => None,
+
+        tid @ Some(_) => {
+            let id = to_str(tid.as_ref());
+
+            match s0.mtch(kwd(), Kwd) {
+                None => tid,
+
+                tkwd @ Some(_) => {
+                    let kwd = to_str(tkwd.as_ref());
+
+                    if kwd.len() == id.len() {
+                        tkwd
+                    } else {
+                        tid
+                    }
+                }
+            }
+        }
+    }
+}
+
+impl<'i> Lex<'i> {
+}
+
+impl<'i> Iterator for LexState<'i> {
     type Item = Spanned<Tok<'i>>;
-    fn next(&mut self) -> Option<Self::Item> {
+    fn next(&mut self) -> Item<Self> {
         let Self { inp, pos } = self;
         let p = *pos;
 
@@ -62,15 +112,18 @@ impl<'i> Iterator for Lex<'i> {
         let ws = self.mtch(whsp(), Whsp);
         ltrace!("ws: {:?}", ws);
 
-        let ident = self.mtch(ident(), Idnt);
+        let iok = ident_or_kwd(self);
 
-        let r = ident;
+        let r = iok;
         ltrace!("rt: -> {:?}", r);
         r
     }
 }
 
-impl<'i> Lex<'i> {
+type IterItem<S> = <S as Iterator>::Item;
+pub type Item<S> = Option<IterItem<S>>;
+
+impl<'i> LexState<'i> {
     pub fn new(inp: &'i str) -> Self {
         Self { inp, pos: 0 }
     }

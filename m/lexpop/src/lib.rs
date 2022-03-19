@@ -1,6 +1,13 @@
 pub const VERSION: &str = "0.0.1";
 
-pub fn from_fn<F>(mut f: F) -> impl FnMut(Range) -> Option<usize>
+pub fn fnr<F>(mut f: F) -> impl FnMut(Range) -> Option<usize>
+where
+    F: FnMut(&char) -> bool,
+{
+    fn_(move |c| f(&c))
+}
+
+pub fn fn_<F>(mut f: F) -> impl FnMut(Range) -> Option<usize>
 where
     F: FnMut(char) -> bool,
 {
@@ -10,24 +17,34 @@ where
     }
 }
 
-pub fn chain<P, Q>(mut p: P, mut q: Q) -> impl FnMut(Range) -> Option<usize>
+//  -> impl FnMut(Range) -> Option<usize> + '_ {
+
+pub fn one_of<I>(set: I) -> impl FnMut(Range) -> Option<usize>
 where
-    P: FnMut(Range) -> Option<usize>,
-    Q: FnMut(Range) -> Option<usize>,
+    I: IntoIterator,
+    I::Item: Into<char>,
 {
-    let mut s = 0;
-    move |r: Range| {
-        if s == 0 {
-            match p(r) {
-                p @ Some(_) => p,
-                None => {
-                    s = 1;
-                    Some(0)
-                }
-            }
+    let mut set = set.into_iter().map(<_>::into);
+    let mut done = false;
+    move |r| {
+        if done {
+            None
         } else {
-            q(r)
+            done = true;
+            let c = &r[0];
+            set.find(|x| x == c).map(|_| 1)
         }
+    }
+}
+
+pub fn one_and_any<A: Prop, B: Prop>(mut a: A, mut b: B) -> impl FnMut(Range) -> Option<usize> {
+    let mut s = 0;
+    move |r| match s {
+        0 => {
+            s = 1;
+            a.prop(r)
+        }
+        _ => b.prop(r),
     }
 }
 
@@ -37,12 +54,11 @@ pub fn exact(s: &str) -> impl FnMut(Range) -> Option<usize> + '_ {
     move |r: Range| match (chars.next(), r) {
         (Some(x), &[c, ..]) if c == x => {
             n += 1;
-            Some(0)
-        }
-        (None, _) if n > 0 => {
-            let m = n;
-            n = 0;
-            Some(m)
+            let r = match n {
+                n if n == s.len() => n,
+                _ => 0,
+            };
+            Some(r)
         }
         _ => None,
     }
@@ -50,6 +66,13 @@ pub fn exact(s: &str) -> impl FnMut(Range) -> Option<usize> + '_ {
 
 pub trait Prop {
     fn prop(&mut self, range: &[char]) -> Option<usize>;
+
+    fn match_str<const N: usize, S>(&mut self, inp: S) -> Span
+    where
+        S: AsRef<str>,
+    {
+        self.match_range::<N, _>(inp.as_ref().chars())
+    }
 
     fn match_range<const N: usize, I>(&mut self, inp: I) -> Span
     where
@@ -159,7 +182,6 @@ mod __ {
         let mut h = 0;
         let mut state = 0;
         let mut j = 0;
-        let mut count = 0;
         move |r| {
             let ret = match (state, r) {
                 // 0: Init
@@ -235,9 +257,6 @@ mod __ {
                 }
                 other => panic!("{}:{} {:?}", h, j, other),
             };
-            if let &Some(c) = &ret {
-                count += c
-            }
             ret
         }
     }];
