@@ -1,46 +1,46 @@
 [workspace]
 members = [
-    './ast',
-    './collection',
-    './compile',
-    './either',
-    './error',
-    './lex',
-    './lexpop',
-    './main',
-    './parse',
-    './show',
-    './vm',
+    './m/ast',
+    './m/collection',
+    './m/compile',
+    './m/either',
+    './m/error',
+    './m/lex',
+    './m/lexpop',
+    './m/main',
+    './m/parse',
+    './m/show',
+    './m/vm',
 ]
 [patch.crates-io.ast]
-path = './ast'
+path = './m/ast'
 
 [patch.crates-io.collection]
-path = './collection'
+path = './m/collection'
 
 [patch.crates-io.compile]
-path = './compile'
+path = './m/compile'
 
 [patch.crates-io.either]
-path = './either'
+path = './m/either'
 
 [patch.crates-io.error]
-path = './error'
+path = './m/error'
 
 [patch.crates-io.lex]
-path = './lex'
+path = './m/lex'
 
 [patch.crates-io.lexpop]
-path = './lexpop'
+path = './m/lexpop'
 
 [patch.crates-io.main]
-path = './main'
+path = './m/main'
 
 [patch.crates-io.parse]
-path = './parse'
+path = './m/parse'
 
 [patch.crates-io.show]
-path = './show'
+path = './m/show'
 
 [patch.crates-io.vm]
-path = './vm'
+path = './m/vm'

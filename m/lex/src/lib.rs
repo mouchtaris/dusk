@@ -31,12 +31,13 @@ name![Kwd(T), Op(T), Nada(T), Whsp(T), Idnt(T), IdntNe(T)];
 either![Tok(Whsp, Nada, Kwd, Op, Idnt, IdntNe)];
 
 lexpop![whsp, from_fn(char::is_whitespace)];
-lexpop![kwd, exact("let")];
+lexpop![kwd, chain(exact("let"), exact("def"))];
 lexpop![ident, chain(from_fn(ident_init), from_fn(ident_rest))];
 lexpop![
     ident_no_eq,
     chain(from_fn(ident_init), from_fn(ident_rest_no_eq))
 ];
+lexpop![op, chain(exact("$"), exact("="))];
 
 pub const TOK_NADA: Tok<'static> = Tok::Nada(Nada(""));
 
@@ -61,8 +62,10 @@ impl<'i> Iterator for Lex<'i> {
         let ws = self.mtch(whsp(), Whsp);
         ltrace!("ws: {:?}", ws);
 
-        let r = self.mtch(kwd(), Kwd).or_else(|| self.mtch(ident(), Idnt));
-        ltrace!("r: {:?}", r);
+        let ident = self.mtch(ident(), Idnt);
+
+        let r = ident;
+        ltrace!("rt: -> {:?}", r);
         r
     }
 }

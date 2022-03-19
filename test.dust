@@ -1,1 +1,1 @@
-let ident
+def iden = !echo hi;

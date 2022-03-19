@@ -1,5 +1,5 @@
 config:
-  module_dir: .
+  module_dir: ./m
   version: 0.0.1
 
 module:
