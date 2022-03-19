@@ -5,6 +5,7 @@ members = [
     './compile',
     './either',
     './error',
+    './lex',
     './lexpop',
     './main',
     './parse',
@@ -25,6 +26,9 @@ path = './either'
 
 [patch.crates-io.error]
 path = './error'
+
+[patch.crates-io.lex]
+path = './lex'
 
 [patch.crates-io.lexpop]
 path = './lexpop'

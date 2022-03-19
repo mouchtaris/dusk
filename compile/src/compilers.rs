@@ -142,7 +142,7 @@ pub trait Compilers<'i> {
             use ast::InvocationTargetSystemName as SysName;
             use ast::InvocationTargetSystemPath as SysPath;
 
-            cmp = te!(match invocation_target {
+            cmp = te!(match &invocation_target {
                 &TLocal(Local((_id,))) => todo!(),
                 &TSysName(SysName((id,))) => {
                     cmp.retval = PROCESS_JOB_TYPE;

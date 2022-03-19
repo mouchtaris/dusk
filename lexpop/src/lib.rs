@@ -1,7 +1,52 @@
 pub const VERSION: &str = "0.0.1";
 
-use error::{te, temg};
-//macro_rules! ltrace { ($l:literal $($a:tt)*) => { eprintln!($l $($a)*) }; }
+pub fn from_fn<F>(mut f: F) -> impl FnMut(Range) -> Option<usize>
+where
+    F: FnMut(char) -> bool,
+{
+    move |r: Range| match r {
+        &[c, ..] if f(c) => Some(1),
+        _ => None,
+    }
+}
+
+pub fn chain<P, Q>(mut p: P, mut q: Q) -> impl FnMut(Range) -> Option<usize>
+where
+    P: FnMut(Range) -> Option<usize>,
+    Q: FnMut(Range) -> Option<usize>,
+{
+    let mut s = 0;
+    move |r: Range| {
+        if s == 0 {
+            match p(r) {
+                p @ Some(_) => p,
+                None => {
+                    s = 1;
+                    Some(0)
+                }
+            }
+        } else {
+            q(r)
+        }
+    }
+}
+
+pub fn exact(s: &str) -> impl FnMut(Range) -> Option<usize> + '_ {
+    let mut chars = s.chars();
+    let mut n = 0;
+    move |r: Range| match (chars.next(), r) {
+        (Some(x), &[c, ..]) if c == x => {
+            n += 1;
+            Some(0)
+        }
+        (None, _) if n > 0 => {
+            let m = n;
+            n = 0;
+            Some(m)
+        }
+        _ => None,
+    }
+}
 
 pub trait Prop {
     fn prop(&mut self, range: &[char]) -> Option<usize>;
@@ -99,7 +144,7 @@ macro_rules! lexpop {
     ),*
     ) => {
     $(
-        pub fn $name() -> impl Prop {
+        pub fn $name() -> impl $crate::Prop {
             fn f<F: FnMut($crate::Range) -> Option<usize>>(f: F) -> F { f }
             f($body)
         }
@@ -116,7 +161,6 @@ mod __ {
         let mut j = 0;
         let mut count = 0;
         move |r| {
-            eprintln!("count={} state={} h={} j={} {:?}", count, state, h, j, r);
             let ret = match (state, r) {
                 // 0: Init
                 (0, &['r', ..]) => {

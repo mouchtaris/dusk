@@ -366,6 +366,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
 
 [[package]]
+name = "lex"
+version = "0.0.1"
+dependencies = [
+ "either 0.0.1",
+ "error",
+ "lexpop",
+ "log",
+]
+
+[[package]]
 name = "lexpop"
 version = "0.0.1"
 dependencies = [
@@ -455,9 +465,11 @@ dependencies = [
  "bincode",
  "collection",
  "compile",
+ "either 0.0.1",
  "error",
  "git2",
  "lalrpop-util",
+ "lex",
  "lexpop",
  "log",
  "nom",
@@ -574,7 +586,7 @@ dependencies = [
  "error",
  "lalrpop",
  "lalrpop-util",
- "lexpop",
+ "lex",
  "log",
 ]
 

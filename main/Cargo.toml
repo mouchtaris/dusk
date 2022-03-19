@@ -20,6 +20,10 @@ path = '../collection'
 version = '0.0.1'
 path = '../compile'
 
+[dependencies.either]
+version = '0.0.1'
+path = '../either'
+
 [dependencies.error]
 version = '0.0.1'
 path = '../error'
@@ -30,6 +34,10 @@ optional = true
 
 [dependencies.lalrpop-util]
 version = '*'
+
+[dependencies.lex]
+version = '0.0.1'
+path = '../lex'
 
 [dependencies.lexpop]
 version = '0.0.1'

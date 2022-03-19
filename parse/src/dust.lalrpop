@@ -1,5 +1,6 @@
 // vim: et ts=4 sw=4
-grammar;
+grammar<'input>;
+use super::{Error, lex::{self, Tok, TOK_NADA}};
 
 pub Module: ast::Module<'input> =
     Item* => (<>,).into()
@@ -33,8 +34,8 @@ InvocationArg: ast::InvocationArg<'input> = {
     String => <>.into(),
     Variable => <>.into(),
 }
-InvocationCwd = "@" <Path>;
-InvocationEnv = <IDENT_NO_EQ> "=" <InvocationArg>;
+InvocationCwd: ast::Path<'input> = "@" <Path>;
+InvocationEnv: ast::InvocationEnv<'input> = <IDENT_NO_EQ> "=" <InvocationArg>;
 
 InvocationRedirection: ast::InvocationRedirection<'input> = {
     "<" <Redirect> => ast::RedirectInput((<>,)).into(),
@@ -65,8 +66,10 @@ Body: ast::Body<'input> = {
 }
 
 
-DocComment = DOC_COMMENT;
-Ident = { IDENT, IDENT_NO_EQ }
+DocComment: ast::Text<'input> = DOC_COMMENT;
+IdentSimple: ast::Ident<'input> = IDENT;
+IdentNeq: ast::Ident<'input> = IDENT_NO_EQ;
+Ident: ast::Ident<'input> = { IdentSimple, IdentNeq };
 Word: ast::Word<'input> = WORD => (<>,).into();
 String: ast::String<'input> = {
     DOUBLE_QUOTE_RAW_STRING => (<>,).into(),
@@ -77,32 +80,76 @@ RelPath: ast::RelPath<'input> = REL_PATH => (<>,).into();
 HomePath: ast::HomePath<'input> = HOME_PATH => (<>,).into();
 LongOpt: ast::LongOpt<'input> = LONG_OPT => (<>,).into();
 ShortOpt: ast::ShortOpt<'input> = SHORT_OPT => (<>,).into();
-match {
-    "let",
-    "def",
-} else {
-    r"[a-zA-Z_][a-zA-Z0-9:.,_/-]*" => IDENT_NO_EQ,
-} else {
-    r"--[a-zA-Z0-9:.,_=/-]*" => LONG_OPT,
-    r"\./[a-zA-Z0-9:.,_=/-]*" => REL_PATH,
-    r"/[a-zA-Z0-9:.,_=/-]*" => ABS_PATH,
-    r"~/[a-zA-Z0-9:.,_=/-]*" => HOME_PATH,
-    r"[a-zA-Z_][a-zA-Z0-9:.,_=/-]*" => IDENT,
-    r#""[^"]*""# => DOUBLE_QUOTE_RAW_STRING,
-    r#"'[^']*'"# => SINGLE_QUOTE_RAW_STRING,
-    r"#.*" => DOC_COMMENT,
-    "=",
-    "$",
-    "\"",
-    ";",
-    "@",
-    "<",
-    ">",
-    "!",
-} else {
-    r"-[a-zA-Z0-9:.,_=/-]*" => SHORT_OPT,
-} else {
-    r"[a-zA-Z0-9:.,_=+/-]*" => WORD,
-}
 
 Box<T>: Box<T> = T => Box::new(<>);
+
+extern {
+    type Location = usize;
+    type Error = Error;
+    enum Tok<'input> {
+        "let"               => Tok::Kwd     (lex::Kwd       (<&'input str>)     ),
+        "def"               => Tok::Kwd     (lex::Kwd       (<&'input str>)     ),
+        "="                 => Tok::Op      (lex::Op        (<&'input str>)     ),
+        "$"                 => Tok::Op      (lex::Op        (<&'input str>)     ),
+        "\""                => Tok::Op      (lex::Op        (<&'input str>)     ),
+        ";"                 => Tok::Op      (lex::Op        (<&'input str>)     ),
+        "@"                 => Tok::Op      (lex::Op        (<&'input str>)     ),
+        "<"                 => Tok::Op      (lex::Op        (<&'input str>)     ),
+        ">"                 => Tok::Op      (lex::Op        (<&'input str>)     ),
+        "!"                 => Tok::Op      (lex::Op        (<&'input str>)     ),
+        IDENT               => Tok::Idnt    (lex::Idnt      (<&'input str>)     ),
+        IDENT_NO_EQ         => Tok::IdntNe  (lex::IdntNe    (<&'input str>)     ),
+
+        // IDENT            r"[a-zA-Z_][a-zA-Z0-9:.,_=/-]*"
+        // IDENT_NO_EQ      r"[a-zA-Z_][a-zA-Z0-9:.,_/-]*"
+
+
+        // r"--[a-zA-Z0-9:.,_=/-]*"
+        LONG_OPT                => Tok::Nada ( lex::Nada ( <&'input str> ) ),
+        // r"\./[a-zA-Z0-9:.,_=/-]*"
+        REL_PATH                => Tok::Nada ( lex::Nada ( <&'input str> ) ),
+        // r"/[a-zA-Z0-9:.,_=/-]*"
+        ABS_PATH                => Tok::Nada ( lex::Nada ( <&'input str> ) ),
+        // r"~/[a-zA-Z0-9:.,_=/-]*"
+        HOME_PATH               => Tok::Nada ( lex::Nada ( <&'input str> ) ),
+        // r#""[^"]*""#
+        DOUBLE_QUOTE_RAW_STRING => Tok::Nada ( lex::Nada ( <&'input str> ) ),
+        // r#"'[^']*'"#
+        SINGLE_QUOTE_RAW_STRING => Tok::Nada ( lex::Nada ( <&'input str> ) ),
+        // r"#.*"
+        DOC_COMMENT             => Tok::Nada ( lex::Nada ( <&'input str> ) ),
+        // r"-[a-zA-Z0-9:.,_=/-]*"
+        SHORT_OPT               => Tok::Nada ( lex::Nada ( <&'input str> ) ),
+        // r"[a-zA-Z0-9:.,_=+/-]*"
+        WORD                    => Tok::Nada ( lex::Nada ( <&'input str> ) ),
+    }
+}
+
+//match {
+//    "let",
+//    "def",
+//} else {
+//    r"[a-zA-Z_][a-zA-Z0-9:.,_/-]*" => IDENT_NO_EQ,
+//} else {
+//    r"--[a-zA-Z0-9:.,_=/-]*" => LONG_OPT,
+//    r"\./[a-zA-Z0-9:.,_=/-]*" => REL_PATH,
+//    r"/[a-zA-Z0-9:.,_=/-]*" => ABS_PATH,
+//    r"~/[a-zA-Z0-9:.,_=/-]*" => HOME_PATH,
+//    r"[a-zA-Z_][a-zA-Z0-9:.,_=/-]*" => IDENT,
+//    r#""[^"]*""# => DOUBLE_QUOTE_RAW_STRING,
+//    r#"'[^']*'"# => SINGLE_QUOTE_RAW_STRING,
+//    r"#.*" => DOC_COMMENT,
+//    "=",
+//    "$",
+//    "\"",
+//    ";",
+//    "@",
+//    "<",
+//    ">",
+//    "!",
+//} else {
+//    r"-[a-zA-Z0-9:.,_=/-]*" => SHORT_OPT,
+//} else {
+//    r"[a-zA-Z0-9:.,_=+/-]*" => WORD,
+//}
+

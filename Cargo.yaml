@@ -15,6 +15,13 @@ module:
       - show
     dep_crate:
       - log
+  lex:
+    dep_mod:
+      - lexpop
+      - either
+      - error
+    dep_crate:
+      - log
   ast:
     dep_mod:
       - either
@@ -33,7 +40,7 @@ module:
       - ast
       - error
       - collection
-      - lexpop
+      - lex
     dep_crate:
       - lalrpop-util
       - log
@@ -58,6 +65,8 @@ module:
       - collection
       - show
       - lexpop
+      - either
+      - lex
     dep_crate:
       - lalrpop-util
       - anyhow

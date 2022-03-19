@@ -1,0 +1,18 @@
+[package]
+name = 'lex'
+version = '0.0.1'
+edition = '2018'
+[dependencies.either]
+version = '0.0.1'
+path = '../either'
+
+[dependencies.error]
+version = '0.0.1'
+path = '../error'
+
+[dependencies.lexpop]
+version = '0.0.1'
+path = '../lexpop'
+
+[dependencies.log]
+version = '*'
