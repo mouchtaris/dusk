@@ -87,18 +87,18 @@ extern {
     type Location = usize;
     type Error = Error;
     enum Tok<'input> {
-        "let"               => Tok::Kwd     (lex::Kwd       (<&'input str>)     ),
-        "def"               => Tok::Kwd     (lex::Kwd       (<&'input str>)     ),
-        "="                 => Tok::Op      (lex::Op        (<&'input str>)     ),
-        "$"                 => Tok::Op      (lex::Op        (<&'input str>)     ),
-        "\""                => Tok::Op      (lex::Op        (<&'input str>)     ),
-        ";"                 => Tok::Op      (lex::Op        (<&'input str>)     ),
-        "@"                 => Tok::Op      (lex::Op        (<&'input str>)     ),
-        "<"                 => Tok::Op      (lex::Op        (<&'input str>)     ),
-        ">"                 => Tok::Op      (lex::Op        (<&'input str>)     ),
-        "!"                 => Tok::Op      (lex::Op        (<&'input str>)     ),
-        IDENT               => Tok::Idnt    (lex::Idnt      (<&'input str>)     ),
-        IDENT_NO_EQ         => Tok::IdntNe  (lex::IdntNe    (<&'input str>)     ),
+        "let"               => Tok::Kwd     (lex::Kwd       ("let"          )   ),
+        "def"               => Tok::Kwd     (lex::Kwd       ("def"          )   ),
+        "="                 => Tok::Kwd     (lex::Kwd       ("="            )   ),
+        "$"                 => Tok::Kwd     (lex::Kwd       ("$"            )   ),
+        "\""                => Tok::Kwd     (lex::Kwd       ("\""           )   ),
+        ";"                 => Tok::Kwd     (lex::Kwd       (";"            )   ),
+        "@"                 => Tok::Kwd     (lex::Kwd       ("@"            )   ),
+        "<"                 => Tok::Kwd     (lex::Kwd       ("<"            )   ),
+        ">"                 => Tok::Kwd     (lex::Kwd       (">"            )   ),
+        "!"                 => Tok::Kwd     (lex::Kwd       ("!"            )   ),
+        IDENT               => Tok::Idnt    (lex::Idnt      (<&'input str>  )   ),
+        IDENT_NO_EQ         => Tok::IdntNe  (lex::IdntNe    (<&'input str>  )   ),
 
         // IDENT            r"[a-zA-Z_][a-zA-Z0-9:.,_=/-]*"
         // IDENT_NO_EQ      r"[a-zA-Z_][a-zA-Z0-9:.,_/-]*"

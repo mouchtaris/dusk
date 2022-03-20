@@ -1,5 +1,28 @@
 #[cfg(test)]
-use lexpop::{exact, fn_, fnr, one_and_any, one_of, Prop};
+use lexpop::{either, exact, fn_, fnr, one_and_any, one_of, Prop};
+
+#[test]
+fn test_either() {
+    const N: usize = 1;
+
+    let a = || exact("the");
+    let b = || exact("apple");
+    let m = || either(b(), a());
+    let m = |s| m().match_str::<N, _>(s);
+
+    assert_eq!(m(""), 0);
+    assert_eq!(m("t"), 0);
+    assert_eq!(m("th"), 0);
+    assert_eq!(m("the"), 3);
+    assert_eq!(m("a"), 0);
+    assert_eq!(m("ap"), 0);
+    assert_eq!(m("app"), 0);
+    assert_eq!(m("appl"), 0);
+    assert_eq!(m("apple"), 5);
+    assert_eq!(m("theextra"), 3);
+    assert_eq!(m("theapple"), 3);
+    assert_eq!(m("applethe"), 5);
+}
 
 #[test]
 fn test_one_and_any() {

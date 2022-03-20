@@ -19,6 +19,46 @@ where
 
 //  -> impl FnMut(Range) -> Option<usize> + '_ {
 
+pub fn either<A: Prop, B: Prop>(mut a: A, mut b: B) -> impl FnMut(Range) -> Option<usize> {
+    let mut pos_a = Some(0);
+    let mut pos_b = Some(0);
+    let mut pos = 0;
+
+    move |r| {
+        use std::cmp::max;
+
+        let mut c = pos;
+
+        if let Some(pa) = pos_a.as_mut() {
+            match a.prop(r) {
+                Some(n) => {
+                    *pa += n;
+                    c = max(pos, *pa);
+                }
+                None => pos_a = None,
+            }
+        }
+        if let Some(pb) = pos_b.as_mut() {
+            match b.prop(r) {
+                Some(n) => {
+                    *pb += n;
+                    c = max(pos, *pb);
+                }
+                None => pos_b = None,
+            }
+        }
+
+        let n = c - pos;
+        pos = c;
+
+        if pos_a.is_some() || pos_b.is_some() {
+            Some(n)
+        } else {
+            None
+        }
+    }
+}
+
 pub fn one_of<I>(set: I) -> impl FnMut(Range) -> Option<usize>
 where
     I: IntoIterator,

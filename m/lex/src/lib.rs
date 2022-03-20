@@ -2,7 +2,7 @@ pub const VERSION: &str = "0.0.1";
 
 use {
     ::error::ltrace,
-    ::lexpop::{exact, fn_, lexpop, one_and_any},
+    ::lexpop::{either, exact, fn_, lexpop, one_and_any},
 };
 
 macro_rules! either {
@@ -31,7 +31,34 @@ name![Kwd(T), Op(T), Nada(T), Whsp(T), Idnt(T), IdntNe(T)];
 either![Tok(Whsp, Nada, Kwd, Op, Idnt, IdntNe)];
 
 lexpop![whsp, fn_(char::is_whitespace)];
-lexpop![kwd, exact("let")];
+lexpop![
+    kwd,
+    either(
+        exact("="),
+        either(
+            exact("$"),
+            either(
+                exact("\""),
+                either(
+                    exact(";"),
+                    either(
+                        exact("@"),
+                        either(
+                            exact("<"),
+                            either(
+                                exact(">"),
+                                either(
+                                    exact("!"),
+                                    either(exact("let"), either(exact("def"), exact("if")))
+                                )
+                            )
+                        )
+                    )
+                )
+            )
+        )
+    )
+];
 lexpop![ident, one_and_any(fn_(ident_init), fn_(ident_rest))];
 lexpop![
     ident_no_eq,
@@ -96,8 +123,7 @@ fn ident_or_kwd<'i>(s: &mut LexState<'i>) -> Item<LexState<'i>> {
     }
 }
 
-impl<'i> Lex<'i> {
-}
+impl<'i> Lex<'i> {}
 
 impl<'i> Iterator for LexState<'i> {
     type Item = Spanned<Tok<'i>>;
@@ -112,7 +138,7 @@ impl<'i> Iterator for LexState<'i> {
         let ws = self.mtch(whsp(), Whsp);
         ltrace!("ws: {:?}", ws);
 
-        let iok = ident_or_kwd(self);
+        let iok = ident_or_kwd(self).or_else(|| self.mtch(kwd(), Kwd));
 
         let r = iok;
         ltrace!("rt: -> {:?}", r);

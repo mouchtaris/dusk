@@ -1,1 +1,1 @@
-def iden = !echo hi;
+def wat = !echo hi;
