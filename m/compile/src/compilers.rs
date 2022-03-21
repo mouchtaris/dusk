@@ -35,7 +35,6 @@ pub trait Compilers<'i> {
 
                 cmp.new_address(*name, jump_instr + 1);
 
-                soft_todo!();
                 Ok(cmp)
             }
             ast::Item::Empty(_) => Ok(cmp),
@@ -79,10 +78,8 @@ pub trait Compilers<'i> {
             envs,
             args,
         ))| {
-            soft_todo!();
+            // TODO
             let _ = redirections;
-
-            soft_todo!();
             let _ = envs;
 
             cmp = te!(cmp.compile(args));
@@ -113,7 +110,26 @@ pub trait Compilers<'i> {
     }
 
     fn string() -> E<String<'i>> {
-        |cmp, ast::String((s,))| cmp.compile_text(&s[1..s.len() - 1])
+        |cmp, ast::String((s,))| {
+            let t = if s.starts_with('r') {
+                let h = s[1..]
+                    .chars()
+                    .scan(Some(()), |s, c| {
+                        s.and_then(|u| match c {
+                            '#' => Some(u),
+                            _ => None,
+                        })
+                    })
+                    .count();
+                &s[1 + h + 1..s.len() - 1 - h]
+            } else if s.starts_with('"') {
+                &s[1..s.len() - 1]
+            } else {
+                s
+            };
+            ltrace!("[string] {} -> {}", s, t);
+            cmp.compile_text(t)
+        }
     }
 
     fn invocation_arg() -> E<InvocationArg<'i>> {

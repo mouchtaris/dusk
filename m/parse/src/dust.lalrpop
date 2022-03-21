@@ -88,24 +88,26 @@ extern {
     type Location = usize;
     type Error = Error;
     enum Tok<'input> {
-        "let"               => Tok::Kwd     (lex::Kwd       ("let"          )   ),
-        "def"               => Tok::Kwd     (lex::Kwd       ("def"          )   ),
-        "="                 => Tok::Kwd     (lex::Kwd       ("="            )   ),
-        "$"                 => Tok::Kwd     (lex::Kwd       ("$"            )   ),
-        "\""                => Tok::Kwd     (lex::Kwd       ("\""           )   ),
-        ";"                 => Tok::Kwd     (lex::Kwd       (";"            )   ),
-        "@"                 => Tok::Kwd     (lex::Kwd       ("@"            )   ),
-        "<"                 => Tok::Kwd     (lex::Kwd       ("<"            )   ),
-        ">"                 => Tok::Kwd     (lex::Kwd       (">"            )   ),
-        "!"                 => Tok::Kwd     (lex::Kwd       ("!"            )   ),
-        "{"                 => Tok::Kwd     (lex::Kwd       ("{"            )   ),
-        "}"                 => Tok::Kwd     (lex::Kwd       ("}"            )   ),
-        IDENT               => Tok::Idnt    (lex::Idnt      (<&'input str>  )   ),
-        IDENT_NO_EQ         => Tok::IdntNe  (lex::IdntNe    (<&'input str>  )   ),
-        ABS_PATH            => Tok::AbsPath (lex::AbsPath   (<&'input str>  )   ),
-        REL_PATH            => Tok::RelPath (lex::RelPath   (<&'input str>  )   ),
-        LONG_OPT            => Tok::LongOpt (lex::LongOpt   (<&'input str>  )   ),
-        SHORT_OPT           => Tok::ShortOpt(lex::ShortOpt  (<&'input str>  )   ),
+        "let"                       => Tok::Kwd         (lex::Kwd           ("let"          )   ),
+        "def"                       => Tok::Kwd         (lex::Kwd           ("def"          )   ),
+        "="                         => Tok::Kwd         (lex::Kwd           ("="            )   ),
+        "$"                         => Tok::Kwd         (lex::Kwd           ("$"            )   ),
+        "\""                        => Tok::Kwd         (lex::Kwd           ("\""           )   ),
+        ";"                         => Tok::Kwd         (lex::Kwd           (";"            )   ),
+        "@"                         => Tok::Kwd         (lex::Kwd           ("@"            )   ),
+        "<"                         => Tok::Kwd         (lex::Kwd           ("<"            )   ),
+        ">"                         => Tok::Kwd         (lex::Kwd           (">"            )   ),
+        "!"                         => Tok::Kwd         (lex::Kwd           ("!"            )   ),
+        "{"                         => Tok::Kwd         (lex::Kwd           ("{"            )   ),
+        "}"                         => Tok::Kwd         (lex::Kwd           ("}"            )   ),
+        IDENT                       => Tok::Idnt        (lex::Idnt          (<&'input str>  )   ),
+        IDENT_NO_EQ                 => Tok::IdntNe      (lex::IdntNe        (<&'input str>  )   ),
+        ABS_PATH                    => Tok::AbsPath     (lex::AbsPath       (<&'input str>  )   ),
+        REL_PATH                    => Tok::RelPath     (lex::RelPath       (<&'input str>  )   ),
+        LONG_OPT                    => Tok::LongOpt     (lex::LongOpt       (<&'input str>  )   ),
+        SHORT_OPT                   => Tok::ShortOpt    (lex::ShortOpt      (<&'input str>  )   ),
+        DOUBLE_QUOTE_RAW_STRING     => Tok::RawString   (lex::RawString     (<&'input str>  )   ),
+        SINGLE_QUOTE_RAW_STRING     => Tok::RawString   (lex::RawString     (<&'input str>  )   ),
 
         // IDENT            r"[a-zA-Z_][a-zA-Z0-9:.,_=/-]*"
         // IDENT_NO_EQ      r"[a-zA-Z_][a-zA-Z0-9:.,_/-]*"
@@ -113,13 +115,11 @@ extern {
         // REL_PATH         r"\./[a-zA-Z0-9:.,_=/-]*"
         // LONG_OPT         r"--[a-zA-Z0-9:.,_=/-]*"
         // SHORT_OPT        r"-[a-zA-Z0-9:.,_=/-]*"
+        // DOUBLE_QUOTE_RAW_STRING  r#""[^"]*""#
+        // SINGLE_QUOTE_RAW_STRING  r#"'[^']*'"#
 
         // r"~/[a-zA-Z0-9:.,_=/-]*"
         HOME_PATH               => Tok::Nada ( lex::Nada ( <&'input str> ) ),
-        // r#""[^"]*""#
-        DOUBLE_QUOTE_RAW_STRING => Tok::Nada ( lex::Nada ( <&'input str> ) ),
-        // r#"'[^']*'"#
-        SINGLE_QUOTE_RAW_STRING => Tok::Nada ( lex::Nada ( <&'input str> ) ),
         // r"#.*"
         DOC_COMMENT             => Tok::Nada ( lex::Nada ( <&'input str> ) ),
         // r"[a-zA-Z0-9:.,_=+/-]*"

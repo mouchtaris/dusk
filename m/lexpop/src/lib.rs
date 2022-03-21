@@ -1,5 +1,11 @@
 pub const VERSION: &str = "0.0.1";
 
+pub mod lex;
+
+pub fn as_fn<P: Prop>(mut prop: P) -> impl FnMut(Range) -> Option<usize> {
+    move |r| prop.prop(r)
+}
+
 pub fn fnr<F>(mut f: F) -> impl FnMut(Range) -> Option<usize>
 where
     F: FnMut(&char) -> bool,
@@ -225,89 +231,7 @@ macro_rules! lexpop {
 
 #[cfg(test)]
 mod __ {
-    use super::{CharDeco, Prop};
-    lexpop![fat, {
-        let mut h = 0;
-        let mut state = 0;
-        let mut j = 0;
-        move |r| {
-            let ret = match (state, r) {
-                // 0: Init
-                (0, &['r', ..]) => {
-                    h = 0;
-                    state = 1;
-                    Some(0)
-                }
-                // 1: Reading hashes
-                (1, &['#', ..]) => {
-                    h += 1;
-                    Some(0)
-                }
-                (1, &['"', ..]) => {
-                    state = 2;
-                    j = h;
-                    Some(0)
-                }
-                // 2: Reading content
-                (2, &['"', ..]) if h == 0 => {
-                    // Completely done, no hashes to read
-
-                    // The extra commit is only r" and "
-                    Some(2 + 1)
-                }
-                (2, &['"', ..]) => {
-                    state = 3;
-                    Some(0)
-                }
-                (2, _) => Some(1),
-                // 3: Reading closing hashes
-                (3, &['#', ..]) if j > 1 => {
-                    // One less closing hash
-                    j -= 1;
-                    Some(0)
-                }
-                (3, &['#', ..]) if j == 1 => {
-                    // Totally closed
-                    // Commit:
-                    //  1 r
-                    //  h opening #
-                    //  1 opening "
-                    //  h closing #
-                    //  1 closing "
-                    Some(1 + h + 1 + 1 + h)
-                }
-                (3, &['"', ..]) => {
-                    // Not closing yet
-
-                    // Commit skipped stuff
-                    // 1        false closing "
-                    // (h - j)  false closing #
-                    let n = 1 + (h - j);
-
-                    // Commit this as content and continue trying to close
-                    j = h;
-                    Some(n)
-                }
-                (3, _) => {
-                    // Not closing yet
-
-                    // Commit skipped stuff
-                    // 1        false closing "
-                    // (h - j)  false closing #
-                    // 1        non-special character consumed just now
-                    let n = 1 + (h - j) + 1;
-
-                    // Back to reading content
-                    state = 2;
-                    j = h;
-
-                    Some(n)
-                }
-                other => panic!("{}:{} {:?}", h, j, other),
-            };
-            ret
-        }
-    }];
+    use super::{lex::fat, CharDeco, Prop};
     #[test]
     fn complex_prop0() {
         let wat = fat().match_range::<6, _>("r".chars());
@@ -373,6 +297,20 @@ mod __ {
         let s = || r####"r###"""#"##"###"####.chars();
         let wat = fat().match_range::<6, _>(s());
         assert_eq!(wat, s().count());
+    }
+    #[test]
+    fn complex_prop12() {
+        let sv = r####"r#"Kitty"#"####;
+        let s = || sv.chars();
+        let wat = fat().match_range::<6, _>(s());
+        assert_eq!(&sv[0..wat], r##"r#"Kitty"#"##);
+    }
+    #[test]
+    fn complex_prop13() {
+        let sv = r####"r#"K"#  "####;
+        let s = || sv.chars();
+        let wat = fat().match_range::<6, _>(s());
+        assert_eq!(&sv[0..wat], r##"r#"K"#"##);
     }
 
     lexpop![nat, |r| match r {

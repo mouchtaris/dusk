@@ -2,7 +2,7 @@ pub const VERSION: &str = "0.0.1";
 use {
     ::show::Show,
     collection::Map,
-    error::{soft_todo, te, temg},
+    error::{ltrace, soft_todo, te, temg},
     std::io,
     vm::Instr as i,
 };

@@ -2,7 +2,7 @@ pub const CREATE_JOB: u8 = 0x10;
 
 use {
     super::{Result, Vm},
-    error::{ldebug, soft_todo, te, temg},
+    error::{ldebug, te, temg},
 };
 
 pub fn call(vm: &mut Vm, id: u8) -> Result<()> {
@@ -73,7 +73,6 @@ mod handlers {
                 _ => panic!(),
             }
 
-            soft_todo!();
             Ok(())
         };
     }
