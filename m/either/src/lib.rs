@@ -96,6 +96,26 @@ macro_rules! either {
                 }
             }
         }
+
+        impl
+            < 'a, $( $($alt_lt),* )? >
+        std::convert::From< &'a $name
+            $(< $($alt_lt),* >)?
+        >
+        for Option< &'a $alt
+            $(< $($alt_lt),* >)?
+            >
+        {
+            fn from(a: &'a $name
+                $(< $($alt_lt),* >)?
+            ) -> Self
+            {
+                match a {
+                    $name::$alt(v) => Some(v),
+                    _ => None
+                }
+            }
+        }
         )*
     };
 }

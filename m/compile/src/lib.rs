@@ -2,7 +2,7 @@ pub const VERSION: &str = "0.0.1";
 use {
     ::show::Show,
     collection::Map,
-    error::{soft_todo, te, terr},
+    error::{soft_todo, te, temg},
     std::io,
     vm::Instr as i,
 };
@@ -73,6 +73,16 @@ impl Compiler {
     {
         let instr = te!(self.icode.instructions.get_mut(instr_id));
         block(instr)
+    }
+    fn backpatch_with(&mut self, instr_id: usize, val: usize) -> Result<()> {
+        self.backpatch(instr_id, |i| {
+            Ok(*match i {
+                i::PushNat(v) => v,
+                i::Allocate { size } => size,
+                i::Jump { addr } => addr,
+                other => temg!("Not a single usize value instruction, {:?}", other),
+            } = val)
+        })
     }
 
     /// Add the given string as a literal and emit to load it into `cmp.retval`

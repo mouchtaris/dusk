@@ -62,7 +62,9 @@ where
 {
     fn compile(self, nodes: &Vec<N>) -> Result<Self> {
         let mut cmp = self;
-        for node in nodes {
+        let len = nodes.len();
+        for i in 0..len {
+            let node = &nodes[len - 1 - i];
             cmp = te!(cmp.compile(node));
         }
         Ok(cmp)

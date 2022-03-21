@@ -107,3 +107,11 @@ impl ValueTypeInfo for Natural {
         "Natural"
     }
 }
+impl<T> ValueTypeInfo for Option<T>
+where
+    T: ValueTypeInfo,
+{
+    fn type_info_name() -> &'static str {
+        T::type_info_name()
+    }
+}

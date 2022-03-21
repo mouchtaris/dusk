@@ -99,17 +99,17 @@ extern {
         "!"                 => Tok::Kwd     (lex::Kwd       ("!"            )   ),
         IDENT               => Tok::Idnt    (lex::Idnt      (<&'input str>  )   ),
         IDENT_NO_EQ         => Tok::IdntNe  (lex::IdntNe    (<&'input str>  )   ),
+        ABS_PATH            => Tok::AbsPath (lex::AbsPath   (<&'input str>  )   ),
+        REL_PATH            => Tok::RelPath (lex::RelPath   (<&'input str>  )   ),
 
         // IDENT            r"[a-zA-Z_][a-zA-Z0-9:.,_=/-]*"
         // IDENT_NO_EQ      r"[a-zA-Z_][a-zA-Z0-9:.,_/-]*"
+        // ABS_PATH         r"/[a-zA-Z0-9:.,_=/-]*"
+        // REL_PATH         r"\./[a-zA-Z0-9:.,_=/-]*"
 
 
         // r"--[a-zA-Z0-9:.,_=/-]*"
         LONG_OPT                => Tok::Nada ( lex::Nada ( <&'input str> ) ),
-        // r"\./[a-zA-Z0-9:.,_=/-]*"
-        REL_PATH                => Tok::Nada ( lex::Nada ( <&'input str> ) ),
-        // r"/[a-zA-Z0-9:.,_=/-]*"
-        ABS_PATH                => Tok::Nada ( lex::Nada ( <&'input str> ) ),
         // r"~/[a-zA-Z0-9:.,_=/-]*"
         HOME_PATH               => Tok::Nada ( lex::Nada ( <&'input str> ) ),
         // r#""[^"]*""#

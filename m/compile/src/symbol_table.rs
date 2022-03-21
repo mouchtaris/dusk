@@ -17,6 +17,18 @@ pub trait SymbolTableExt
 where
     Self: AsRef<SymbolTable> + AsMut<SymbolTable>,
 {
+    fn new_address<S: Into<String>>(&mut self, name: S, addr: usize) -> SymInfo {
+        let scope_id = self.scope_id();
+        let scope = self.scope_mut();
+        let sinfo = SymInfo {
+            scope_id,
+            typ: SymType::Address(sym::Address { addr }),
+        };
+        let name = name.into();
+        scope.insert(name, sinfo.clone());
+        sinfo
+    }
+
     fn new_local(&mut self, name: String) -> SymInfo {
         let scope_id = self.scope_id();
         let scope = self.scope_mut();
@@ -36,7 +48,8 @@ where
         let name = format!("t:{}:{}:{}", self.scope_id(), self.scope().len(), desc);
         self.new_local(name)
     }
-    fn lookup<S, U>(&self, name: S) -> Option<&SymInfo>
+
+    fn lookup<S>(&self, name: S) -> Option<&SymInfo>
     where
         S: Borrow<str>,
     {
@@ -49,6 +62,12 @@ where
             }
         }
         None
+    }
+    fn lookup_addr<S>(&self, name: S) -> Option<&sym::Address>
+    where
+        S: Borrow<str>,
+    {
+        self.lookup(name).and_then(|i| i.as_addr_ref())
     }
 
     fn enter_scope(&mut self) {

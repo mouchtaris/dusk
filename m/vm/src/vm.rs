@@ -1,5 +1,7 @@
 use {
-    super::{ltrace, te, Deq, ICode, Instr, Result, StringInfo, TryFrom, Value, ValueTypeInfo},
+    super::{
+        ltrace, soft_todo, te, Deq, ICode, Instr, Result, StringInfo, TryFrom, Value, ValueTypeInfo,
+    },
     std::{borrow::Borrow, fmt, io, mem},
 };
 
@@ -26,70 +28,151 @@ impl Vm {
         self.instr_ptr = 0;
     }
 
-    fn argp_next(&mut self) -> usize {
-        let argp = self.arg_ptr;
-        self.arg_ptr += 1;
-        argp
+    fn stackp_next(&mut self) -> usize {
+        let stackp = self.stack_ptr;
+        self.stack_ptr += 1;
+        stackp
     }
 
-    /// Increase frame pointer
     fn frame_addr(&self, offset: usize) -> usize {
         self.frame_ptr + offset
     }
 
-    /// Set a value to offset from stack-frame-pointer
+    fn arg_addr(&self, argn: usize) -> usize {
+        // -n for stack-frame info: retaddr etc
+        // -1 because fp points 1 beyond last
+        self.frame_ptr - 1 - self.call_stack_data().len() - argn
+    }
+
+    fn call_stack_data(&self) -> [usize; 2] {
+        [self.frame_ptr, self.instr_ptr]
+    }
+    pub fn ret_instr_addr(&self) -> usize {
+        *self.stack_get(self.frame_ptr - 1).unwrap()
+    }
+    pub fn ret_fp_addr(&self) -> usize {
+        *self.stack_get(self.frame_ptr - 2).unwrap()
+    }
+    pub fn prepare_call(&mut self) {
+        let vm = self;
+
+        let frame = vm.call_stack_data();
+        vm.allocate(frame.len());
+        frame.iter().for_each(|&v| vm.push_val(v));
+        ltrace!("save stack [fp, rti]: {:?}", frame);
+
+        vm.frame_ptr = vm.stack_ptr;
+    }
+    pub fn return_from_call(&mut self, dealloc_size: usize) {
+        let vm = self;
+        let ret_instr = vm.ret_instr_addr();
+        let ret_fp = vm.ret_fp_addr();
+
+        ltrace!("return to fp[{}] inst[{}]", ret_fp, ret_instr);
+
+        vm.dealloc(dealloc_size + vm.call_stack_data().len());
+        vm.frame_ptr = ret_fp;
+
+        vm.jump(ret_instr);
+    }
+
+    pub fn stack_get_val(&self, addr: usize) -> &Value {
+        &self.stack[addr]
+    }
+    pub fn stack_get_val_mut(&mut self, addr: usize) -> &mut Value {
+        if addr < self.stack.len() {
+            self.stack.get_mut(addr).unwrap()
+        } else {
+            eprintln!("== vm ==");
+            self.write_to(Ok(std::io::stderr())).unwrap_or(());
+            panic!("invalid stack access {}[{}]", self.stack.len(), addr);
+        }
+    }
+    pub fn stack_take_val(&mut self, addr: usize) -> Value {
+        mem::take(self.stack_get_val_mut(addr))
+    }
+    pub fn stack_set<V: Into<Value>>(&mut self, addr: usize, val: V) {
+        let cell = self.stack_get_val_mut(addr);
+        *cell = val.into();
+    }
+    pub fn stack_get<T>(&self, addr: usize) -> Result<&T>
+    where
+        for<'r> &'r T: TryFrom<&'r Value, Error = &'r Value> + ValueTypeInfo,
+    {
+        self.stack_get_val(addr).try_ref()
+    }
+    pub fn stack_get_mut<T>(&mut self, addr: usize) -> Result<&mut T>
+    where
+        for<'r> &'r mut T: TryFrom<&'r mut Value, Error = &'r mut Value> + ValueTypeInfo,
+    {
+        self.stack_get_val_mut(addr).try_mut()
+    }
+    pub fn stack_take<T>(&mut self, addr: usize) -> Result<T>
+    where
+        T: TryFrom<Value, Error = Value> + ValueTypeInfo,
+    {
+        self.stack_take_val(addr).try_into()
+    }
+
+    pub fn frame_get_val(&self, offset: usize) -> &Value {
+        self.stack_get_val(self.frame_addr(offset))
+    }
+    pub fn frame_get_val_mut(&mut self, offset: usize) -> &mut Value {
+        self.stack_get_val_mut(self.frame_addr(offset))
+    }
+    pub fn frame_take_val(&mut self, offset: usize) -> Value {
+        self.stack_take_val(self.frame_addr(offset))
+    }
     pub fn frame_set<V>(&mut self, offset: usize, v: V)
     where
         V: Into<Value> + ValueTypeInfo,
     {
-        let addr = self.frame_addr(offset);
-        let value = v.into();
-        ltrace!("frame[{}] = {:?}", addr, value);
-        *self.stack.get_mut(addr).unwrap() = value;
+        self.stack_set(self.frame_addr(offset), v)
     }
-
-    pub fn frame_take_value(&mut self, offset: usize) -> Result<Value> {
-        let addr = self.frame_addr(offset);
-        let r = mem::take(te!(self.stack.get_mut(addr)));
-        ltrace!("Reading stack {}: {:?}", addr, r);
-        Ok(r)
+    pub fn frame_get<T>(&self, offset: usize) -> Result<&T>
+    where
+        for<'s> &'s T: TryFrom<&'s Value, Error = &'s Value> + ValueTypeInfo,
+    {
+        self.frame_get_val(offset).try_ref()
     }
-
+    pub fn frame_get_mut<T>(&mut self, offset: usize) -> Result<&mut T>
+    where
+        for<'s> &'s mut T: TryFrom<&'s mut Value, Error = &'s mut Value> + ValueTypeInfo,
+    {
+        self.frame_get_val_mut(offset).try_mut()
+    }
     pub fn frame_take<T>(&mut self, offset: usize) -> Result<T>
     where
         T: TryFrom<Value, Error = Value> + ValueTypeInfo + fmt::Debug,
     {
-        te!(self.frame_take_value(offset)).try_into()
+        self.frame_take_val(offset).try_into()
     }
 
-    pub fn frame_mut<T>(&mut self, offset: usize) -> Result<&mut T>
-    where
-        for<'s> &'s mut T: TryFrom<&'s mut Value, Error = &'s mut Value> + fmt::Debug,
-        T: ValueTypeInfo,
-    {
-        let addr = self.frame_addr(offset);
-        let r = te!(self.stack.get_mut(addr)).try_mut();
-        ltrace!("Reading mut stack {}: {:?}", addr, r);
-        r
+    pub fn arg_get_val(&self, argn: usize) -> &Value {
+        self.stack_get_val(self.arg_addr(argn))
     }
-
-    pub fn frame<T>(&self, offset: usize) -> Result<&T>
+    pub fn arg_get_val_mut(&mut self, argn: usize) -> &mut Value {
+        self.stack_get_val_mut(self.arg_addr(argn))
+    }
+    pub fn arg_get<T>(&self, argn: usize) -> Result<&T>
     where
-        for<'s> &'s T: TryFrom<&'s Value, Error = &'s Value> + fmt::Debug,
-        T: ValueTypeInfo,
+        for<'s> &'s T: TryFrom<&'s Value, Error = &'s Value> + ValueTypeInfo,
     {
-        let addr = self.frame_addr(offset);
-        let r = te!(self.stack.get(addr)).try_ref();
-        ltrace!("Reading mut stack {}: {:?}", addr, r);
-        r
+        self.arg_get_val(argn).try_ref()
+    }
+    pub fn arg_get_mut<T>(&mut self, argn: usize) -> Result<&mut T>
+    where
+        for<'s> &'s mut T: TryFrom<&'s mut Value, Error = &'s mut Value> + ValueTypeInfo,
+    {
+        self.arg_get_val_mut(argn).try_mut()
     }
 
     pub fn push_val<T>(&mut self, src: T)
     where
         T: ValueTypeInfo + Into<Value>,
     {
-        let addr = self.argp_next();
-        self.frame_set(addr, src);
+        let addr = self.stackp_next();
+        self.stack_set(addr, src);
     }
 
     pub fn push_null(&mut self) {
@@ -103,9 +186,14 @@ impl Vm {
 
     /// Grow the stack by `size`
     pub fn allocate(&mut self, size: usize) {
+        ltrace!("alloc: {}", size);
         self.stack
             .resize_with(self.stack.len() + size, <_>::default);
-        self.stack_ptr += size;
+    }
+
+    pub fn dealloc(&mut self, size: usize) {
+        self.stack.shrink_to(size);
+        self.stack_ptr -= size;
     }
 
     pub fn load_icode(mut self, icode: &ICode) -> Result<Self> {
@@ -126,7 +214,9 @@ impl Vm {
         Ok(self)
     }
 
+    /// Set the next instr_ptr to be executed
     pub fn jump(&mut self, addr: usize) {
+        ltrace!("[jump] {}", addr);
         self.instr_ptr = addr;
     }
 
@@ -156,10 +246,10 @@ impl Vm {
     {
         o.and_then(|mut o| {
             Ok({
-                writeln!(o, "=== BIN_PATH ===")?;
-                for path in &self.bin_path {
-                    writeln!(o, "> {}", path)?;
-                }
+                //writeln!(o, "=== BIN_PATH ===")?;
+                //for path in &self.bin_path {
+                //    writeln!(o, "> {}", path)?;
+                //}
                 writeln!(o, "=== STRING TABLE ===")?;
                 let mut i = 0;
                 for string in &self.string_table {
@@ -174,6 +264,9 @@ impl Vm {
                 }
                 writeln!(o, "=== STATE ===")?;
                 writeln!(o, "- frame pointer    : {}", self.frame_ptr)?;
+                writeln!(o, "- arg   pointer    : {}", self.arg_ptr)?;
+                writeln!(o, "- stack pointer    : {}", self.stack_ptr)?;
+                writeln!(o, "- instr pointer    : {}", self.instr_ptr)?;
             })
         })
     }

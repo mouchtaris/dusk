@@ -17,19 +17,29 @@ macro_rules! either {
     };
 }
 macro_rules! name {
-    ($($name:ident ( $($var:ident),* ) ),*) => {
+    ($($name:ident $( ( $($var:ident),* ) )? ),*) => {
         $(
         #[derive(Debug, Clone, Eq, PartialEq)]
-        pub struct $name<'i>($(pub $var<'i>),*);
+        pub struct $name<'i>(pub T<'i> $(, $(pub $var<'i>),* )? );
         )*
     };
 }
+macro_rules! tokens {
+    ($($name:ident),*) => {
+        name![$($name),*];
+        either![Tok($($name),*)];
+    }
+}
 
 type T<'i> = &'i str;
-name![Kwd(T), Op(T), Nada(T), Whsp(T), Idnt(T), IdntNe(T)];
-
-either![Tok(Whsp, Nada, Kwd, Op, Idnt, IdntNe)];
-
+tokens![Whsp, Nada, Kwd, Idnt, IdntNe, AbsPath, RelPath];
+lexpop![abspath, one_and_any(exact("/"), ident())];
+lexpop![relpath, one_and_any(exact("./"), ident())];
+lexpop![ident, one_and_any(fn_(ident_init), fn_(ident_rest))];
+lexpop![
+    ident_no_eq,
+    one_and_any(fn_(ident_init), fn_(ident_rest_no_eq))
+];
 lexpop![whsp, fn_(char::is_whitespace)];
 lexpop![
     kwd,
@@ -59,12 +69,6 @@ lexpop![
         )
     )
 ];
-lexpop![ident, one_and_any(fn_(ident_init), fn_(ident_rest))];
-lexpop![
-    ident_no_eq,
-    one_and_any(fn_(ident_init), fn_(ident_rest_no_eq))
-];
-lexpop![op, exact("$")];
 
 pub const TOK_NADA: Tok<'static> = Tok::Nada(Nada(""));
 
@@ -138,7 +142,9 @@ impl<'i> Iterator for LexState<'i> {
         let ws = self.mtch(whsp(), Whsp);
         ltrace!("ws: {:?}", ws);
 
-        let iok = ident_or_kwd(self).or_else(|| self.mtch(kwd(), Kwd));
+        let iok = ident_or_kwd(self)
+            .or_else(|| self.mtch(kwd(), Kwd))
+            .or_else(|| self.mtch(abspath(), AbsPath));
 
         let r = iok;
         ltrace!("rt: -> {:?}", r);
@@ -193,11 +199,12 @@ impl<'i> AsRef<str> for Tok<'i> {
     fn as_ref(&self) -> &str {
         use Tok as t;
         match self {
-            t::IdntNe(IdntNe(s))
+            t::Nada(Nada(s))
+            | t::AbsPath(AbsPath(s))
+            | t::RelPath(RelPath(s))
+            | t::IdntNe(IdntNe(s))
             | t::Idnt(Idnt(s))
             | t::Whsp(Whsp(s))
-            | t::Op(Op(s))
-            | t::Nada(Nada(s))
             | t::Kwd(Kwd(s)) => s,
         }
     }

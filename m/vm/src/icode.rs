@@ -26,6 +26,7 @@ pub enum Instr {
     Allocate { size: usize },
     Jump { addr: usize },
 
+    Return(usize),
     PushNull,
     PushStr(usize),
     PushNat(usize),
@@ -76,26 +77,15 @@ impl Instr {
                 let proc = ProcessBuilder::new(path);
                 vm.frame_set(dst, proc);
             }
-            &Self::CompleteProcessJob { jobid } => match te!(vm.frame_take_value(jobid)) {
-                Value::ProcessBuilder(mut cmd) => {
-                    ltrace!("Spawning child");
-                    use std::process::{Child, ExitStatus};
-                    let mut child: Child = te!(cmd.spawn());
-                    let status: ExitStatus = te!(child.wait());
-                    if !status.success() {
-                        temg!("Subprocess failed: {:?}", status)
-                    }
-                }
-                other => temg!("{:?}", other),
-            },
+            &Self::CompleteProcessJob { .. } => panic!(),
             &Self::JobSetCwd { jobid, cwdid } => {
                 let cwd: String = te!(vm.frame_take(cwdid));
-                let proc: &mut ProcessBuilder = te!(vm.frame_mut(jobid));
+                let proc: &mut ProcessBuilder = te!(vm.frame_get_mut(jobid));
                 proc.current_dir(cwd);
             }
             &Self::JobPushArg { jobid, argid } => {
                 let cwd: String = te!(vm.frame_take(argid));
-                let proc: &mut ProcessBuilder = te!(vm.frame_mut(jobid));
+                let proc: &mut ProcessBuilder = te!(vm.frame_get_mut(jobid));
                 proc.arg(cwd);
             }
             &Self::PushNull => vm.push_null(),
@@ -104,6 +94,9 @@ impl Instr {
             &Self::SetNatural { value, dst } => vm.frame_set(dst, value),
             &Self::Jump { addr } => vm.jump(addr),
             &Self::SysCall(id) => te!(crate::syscall::call(&mut vm, id)),
+            &Self::Return(frame_size) => {
+                vm.return_from_call(frame_size);
+            }
         }
         Ok(vm)
     }

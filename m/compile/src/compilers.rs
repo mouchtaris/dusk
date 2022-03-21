@@ -20,7 +20,7 @@ pub trait Compilers<'i> {
         |mut cmp, item| match item {
             ast::Item::Invocation(invc) => {
                 cmp = te!(cmp.compile(invc));
-                cmp.emit1(i::SysCall(vm::syscall::CREATE_PROCESS_JOB));
+                cmp.emit1(i::SysCall(vm::syscall::CREATE_JOB));
                 Ok(cmp)
             }
             ast::Item::LetStmt(ast::LetStmt((_name, body))) => {
@@ -29,22 +29,25 @@ pub trait Compilers<'i> {
                 Ok(cmp)
             }
             ast::Item::DefStmt(ast::DefStmt((name, body))) => {
-                cmp.enter_scope();
                 cmp.emit1(i::Jump { addr: 0 });
                 let jump_instr = cmp.instr_id();
 
+                cmp.emit1(i::Allocate { size: 0 });
+                let alloc_instr = cmp.instr_id();
+
+                cmp.enter_scope();
                 cmp = te!(cmp.compile(body));
+                let stack_frame_size = cmp.stack_frame_size();
                 cmp.exit_scope();
 
-                let jump_target = cmp.instr_id() + 1;
-                te!(cmp.backpatch(jump_instr, |i| {
-                    Ok(match i {
-                        i::Jump { addr } => *addr = jump_target,
-                        _ => terr!("not a jump instr"),
-                    })
-                }));
+                cmp.emit1(i::Return(stack_frame_size));
 
-                let _ = name;
+                let jump_target = cmp.instr_id() + 1;
+                te!(cmp.backpatch_with(jump_instr, jump_target));
+                te!(cmp.backpatch_with(alloc_instr, stack_frame_size));
+
+                cmp.new_address(*name, jump_instr + 1);
+
                 soft_todo!();
                 Ok(cmp)
             }
@@ -63,7 +66,7 @@ pub trait Compilers<'i> {
             }
 
             let frame_size = cmp.stack_frame_size();
-            te!(cmp.backpatch(alloc_instr, |i| Ok(te!(i.allocate_size(frame_size)))));
+            te!(cmp.backpatch_with(alloc_instr, frame_size));
 
             cmp.exit_scope();
 
@@ -80,27 +83,27 @@ pub trait Compilers<'i> {
             envs,
             args,
         ))| {
-            cmp = te!(cmp.compile(invocation_target));
-            // job_type
-            cmp.new_local_tmp("process-job-type");
-            cmp.emit1(i::PushNat(cmp.retval));
-
-            cmp = te!(cmp.compile(cwd_opt));
-            // if let Some(path) = cwd_opt {
-            //     cmp.retval = cmp.new_tmp_var();
-            //     te!(cmp.path_to_string(path));
-
-            //     let cwdid = cmp.retval.id;
-            //     cmp.emit1(i::JobSetCwd { jobid, cwdid });
-            // }
-
             soft_todo!();
             let _ = redirections;
+
             soft_todo!();
             let _ = envs;
 
-            let cmp = te!(cmp.compile(args));
+            cmp = te!(cmp.compile(args));
+            cmp.new_local_tmp("argc");
+            cmp.emit1(i::PushNat(args.len()));
 
+            cmp = te!(cmp.compile(cwd_opt));
+
+            cmp = te!(cmp.compile(invocation_target));
+            let job_type = cmp.retval;
+
+            // job_type
+            cmp.new_local_tmp("process-job-type");
+            let job_type_iaddr = cmp.instr_id() + 1;
+            cmp.emit1(i::PushNat(0xdeadfeeb));
+
+            te!(cmp.backpatch_with(job_type_iaddr, job_type));
             Ok(cmp)
         }
     }
@@ -142,17 +145,27 @@ pub trait Compilers<'i> {
             use ast::InvocationTargetSystemName as SysName;
             use ast::InvocationTargetSystemPath as SysPath;
 
-            cmp = te!(match &invocation_target {
-                &TLocal(Local((_id,))) => todo!(),
+            cmp = match invocation_target {
+                &TLocal(Local((id,))) => {
+                    let addr = te!(cmp.lookup_addr(id)).addr;
+
+                    cmp.new_local_tmp("fun_invc_trg_addr");
+                    cmp.emit1(i::PushNat(addr));
+
+                    cmp.retval = FUNCTION_JOB_TYPE;
+                    cmp
+                }
                 &TSysName(SysName((id,))) => {
+                    cmp = te!(cmp.compile_text(id));
                     cmp.retval = PROCESS_JOB_TYPE;
-                    cmp.compile_text(id)
+                    cmp
                 }
                 TSysPath(SysPath((path,))) => {
+                    cmp = te!(cmp.compile(path));
                     cmp.retval = PROCESS_JOB_TYPE;
-                    cmp.compile(path)
+                    cmp
                 }
-            });
+            };
 
             Ok(cmp)
         }
@@ -163,3 +176,4 @@ pub struct CompilersImpl;
 impl<'i> Compilers<'i> for CompilersImpl {}
 
 pub const PROCESS_JOB_TYPE: usize = 0x00;
+pub const FUNCTION_JOB_TYPE: usize = 0x01;
