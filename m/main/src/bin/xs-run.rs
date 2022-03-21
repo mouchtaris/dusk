@@ -1,7 +1,11 @@
-use {::error::te, std::fs};
+use {
+    ::error::te,
+    std::{fs, io},
+};
 
 error::Error! {
     Vm = vm::Error
+    Io = io::Error
 }
 
 fn main() -> Result<()> {
@@ -19,7 +23,7 @@ fn main() -> Result<()> {
     te!(vm.init_bin_path_from_path_env());
     vm = te!(vm.load_icode(&icode));
 
-    #[cfg(debug)]
+    #[cfg(not(release))]
     te!(vm.write_to(fs::File::create("./_.vm.txt")));
 
     let _ = vm;

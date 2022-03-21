@@ -61,22 +61,28 @@ lexpop![
 lexpop![
     kwd,
     either(
-        exact("="),
+        exact("{"),
         either(
-            exact("$"),
+            exact("}"),
             either(
-                exact("\""),
+                exact("="),
                 either(
-                    exact(";"),
+                    exact("$"),
                     either(
-                        exact("@"),
+                        exact("\""),
                         either(
-                            exact("<"),
+                            exact(";"),
                             either(
-                                exact(">"),
+                                exact("@"),
                                 either(
-                                    exact("!"),
-                                    either(exact("let"), either(exact("def"), exact("if")))
+                                    exact("<"),
+                                    either(
+                                        exact(">"),
+                                        either(
+                                            exact("!"),
+                                            either(exact("let"), either(exact("def"), exact("if")))
+                                        )
+                                    )
                                 )
                             )
                         )

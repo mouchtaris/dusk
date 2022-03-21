@@ -19,8 +19,6 @@ macro_rules! compile {
     }
 }
 compile![
-    BoxBody,
-    cmps::box_body(),
     Item,
     cmps::item(),
     Module,
@@ -36,7 +34,11 @@ compile![
     Opt,
     cmps::invocation_option(),
     String,
-    cmps::string()
+    cmps::string(),
+    Block,
+    cmps::block(),
+    Body,
+    cmps::body()
 ];
 
 impl<C, N> Compile<Option<N>> for C
@@ -67,6 +69,18 @@ where
             let node = &nodes[len - 1 - i];
             cmp = te!(cmp.compile(node));
         }
+        Ok(cmp)
+    }
+}
+
+impl<C, N> Compile<Box<N>> for C
+where
+    C: Compile<N>,
+{
+    fn compile(self, node: &Box<N>) -> Result<Self> {
+        let mut cmp = self;
+        let node = node.as_ref();
+        cmp = te!(cmp.compile(node));
         Ok(cmp)
     }
 }

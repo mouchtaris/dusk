@@ -1,2 +1,2 @@
-#
-!ls;
+def t0 = !echo t0;
+t0;

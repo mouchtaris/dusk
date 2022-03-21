@@ -25,7 +25,8 @@ pub enum Instr {
     Allocate { size: usize },
     Jump { addr: usize },
 
-    Return(usize),
+    Return,
+    Dealloc(usize),
     PushNull,
     PushStr(usize),
     PushNat(usize),
@@ -93,9 +94,8 @@ impl Instr {
             &Self::SetNatural { value, dst } => vm.frame_set(dst, value),
             &Self::Jump { addr } => vm.jump(addr),
             &Self::SysCall(id) => te!(crate::syscall::call(&mut vm, id)),
-            &Self::Return(frame_size) => {
-                vm.return_from_call(frame_size);
-            }
+            &Self::Return => vm.return_from_call(),
+            &Self::Dealloc(size) => vm.dealloc(size),
         }
         Ok(vm)
     }
@@ -145,11 +145,12 @@ impl ICode {
                 let (code, arg0) = match *instr {
                     Instr::Allocate { size } => (0x00, size),
                     Instr::Jump { addr } => (0x01, addr),
-                    Instr::Return(frame_size) => (0x02, frame_size),
+                    Instr::Return => (0x02, 0x00),
                     Instr::PushNull => (0x03, 0x00),
                     Instr::PushStr(strid) => (0x04, strid),
                     Instr::PushNat(val) => (0x05, val),
                     Instr::SysCall(id) => (0x06, id as usize),
+                    Instr::Dealloc(size) => (0x07, size),
                     _ => panic!(),
                 };
                 let code = usize::to_le_bytes(code);
@@ -199,11 +200,12 @@ impl ICode {
                 let instr = match code {
                     0x00 => Instr::Allocate { size: val },
                     0x01 => Instr::Jump { addr: val },
-                    0x02 => Instr::Return(val),
+                    0x02 => Instr::Return,
                     0x03 => Instr::PushNull,
                     0x04 => Instr::PushStr(val),
                     0x05 => Instr::PushNat(val),
                     0x06 => Instr::SysCall(val as u8),
+                    0x07 => Instr::Dealloc(val),
                     _ => panic!(),
                 };
                 icode.instructions.push_back(instr);

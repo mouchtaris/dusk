@@ -3,7 +3,7 @@ grammar<'input>;
 use super::{Error, lex::Tok};
 
 pub Module: ast::Module<'input> =
-    Item* => (<>,).into()
+    Item* => (ast::Body::Block(ast::Block((<>,))),).into()
 ;
 
 Item: ast::Item<'input> = {
@@ -62,7 +62,8 @@ Variable: ast::Variable<'input> = {
 }
 
 Body: ast::Body<'input> = {
-    <Item> => <>.into(),
+    Item => ast::Block((vec![<>],)).into(),
+    "{" <Item*> "}" => ast::Block((<>,)).into(),
 }
 
 
@@ -97,6 +98,8 @@ extern {
         "<"                 => Tok::Kwd     (lex::Kwd       ("<"            )   ),
         ">"                 => Tok::Kwd     (lex::Kwd       (">"            )   ),
         "!"                 => Tok::Kwd     (lex::Kwd       ("!"            )   ),
+        "{"                 => Tok::Kwd     (lex::Kwd       ("{"            )   ),
+        "}"                 => Tok::Kwd     (lex::Kwd       ("}"            )   ),
         IDENT               => Tok::Idnt    (lex::Idnt      (<&'input str>  )   ),
         IDENT_NO_EQ         => Tok::IdntNe  (lex::IdntNe    (<&'input str>  )   ),
         ABS_PATH            => Tok::AbsPath (lex::AbsPath   (<&'input str>  )   ),

@@ -86,7 +86,7 @@ where
     /// Current scope id
     fn scope_id(&self) -> usize {
         let sym_table = self.as_ref();
-        sym_table.scope_stack.last().unwrap().to_owned()
+        sym_table.scope_stack.last().cloned().unwrap_or(0)
     }
 
     fn next_scope_id(&mut self) -> usize {

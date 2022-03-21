@@ -63,11 +63,12 @@ mod handlers {
                     if !status.success() {
                         temg!("Subprocess failed: {:?}", status)
                     }
+
+                    vm.return_from_call();
                 }
                 1 => {
                     let &target: &usize = te!(target.try_ref());
                     vm.jump(target);
-                    soft_todo!();
                 }
                 _ => panic!(),
             }

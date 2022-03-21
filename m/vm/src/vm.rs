@@ -29,6 +29,7 @@ impl Vm {
     fn stackp_next(&mut self) -> usize {
         let stackp = self.stack_ptr;
         self.stack_ptr += 1;
+        ltrace!("stackp++ {}", stackp);
         stackp
     }
 
@@ -61,14 +62,13 @@ impl Vm {
 
         vm.frame_ptr = vm.stack_ptr;
     }
-    pub fn return_from_call(&mut self, dealloc_size: usize) {
+    pub fn return_from_call(&mut self) {
         let vm = self;
         let ret_instr = vm.ret_instr_addr();
         let ret_fp = vm.ret_fp_addr();
+        ltrace!("return fp[{}] inst[{}]", ret_fp, ret_instr);
 
-        ltrace!("return to fp[{}] inst[{}]", ret_fp, ret_instr);
-
-        vm.dealloc(dealloc_size + vm.call_stack_data().len());
+        vm.dealloc(vm.call_stack_data().len());
         vm.frame_ptr = ret_fp;
 
         vm.jump(ret_instr);
@@ -192,6 +192,7 @@ impl Vm {
     pub fn dealloc(&mut self, size: usize) {
         self.stack.shrink_to(size);
         self.stack_ptr -= size;
+        ltrace!("stackp - {} = {}", size, self.stack_ptr);
     }
 
     pub fn load_icode(mut self, icode: &ICode) -> Result<Self> {

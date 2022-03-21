@@ -9,7 +9,9 @@ const _RESET: &str = "\x1b[m";
 
 impl<K: fmt::Debug> fmt::Debug for Error<K> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        for &(file, line) in &self.trace {
+        for (file, line, comments) in &self.trace {
+            let file = *file;
+            let line = *line;
             let context_message = "";
             let show = "";
             writeln!(
@@ -24,6 +26,15 @@ impl<K: fmt::Debug> fmt::Debug for Error<K> {
                 explain = context_message,
                 show = show,
             )?;
+            for comment in comments {
+                writeln!(
+                    f,
+                    "    {GREY}[Comment]{RS} {CMNT}",
+                    GREY = _GREY,
+                    CMNT = comment,
+                    RS = _RESET,
+                )?;
+            }
         }
         write!(f, "{:?}", self.kind)?;
         Ok(())

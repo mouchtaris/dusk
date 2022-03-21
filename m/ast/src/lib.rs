@@ -3,7 +3,7 @@ pub const VERSION: &str = "0.0.1";
 macro_rules! either {
     ($name:ident $(, $alt:ident)*) => {
         ::either::either! {
-            #[derive(Debug)]
+            #[derive(Debug, Clone)]
             pub $name <'i>
             $(, $alt <'i> )*
         }
@@ -12,7 +12,7 @@ macro_rules! either {
 macro_rules! name {
     ($name:ident $(, $t:ident)*) => {
         ::either::name! {
-            #[derive(Debug)]
+            #[derive(Debug, Clone)]
             pub $name <'i> = (
                 $($t <'i> , )*
             )
@@ -24,9 +24,9 @@ macro_rules! name {
     };
 }
 
-name![Module, AnyItem];
+name![Module, Body];
 
-either![Body, Item];
+either![Body, Block];
 either![Item, Invocation, LetStmt, DefStmt, Empty];
 either![
     InvocationTarget,
@@ -40,6 +40,7 @@ either![Path, AbsPath, RelPath, HomePath];
 either![Opt, ShortOpt, LongOpt];
 either![Redirect, Path, Variable];
 
+name![Block, AnyItem];
 name![LetStmt, Ident, BoxBody];
 name![DefStmt, Ident, BoxBody];
 name![RedirectInput, Redirect];

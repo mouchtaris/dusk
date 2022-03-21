@@ -28,7 +28,7 @@ fn main() -> Result<()> {
     let mut cmp = compile::Compiler::default();
     cmp.init();
     cmp = te!(cmp.compile(&module_ast));
-    #[cfg(debug)]
+    #[cfg(not(release))]
     {
         use show::Show;
         te!(cmp.write_to(fs::File::create("_.compiler.txt")));

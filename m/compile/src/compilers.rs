@@ -11,16 +11,10 @@ pub trait Compilers<'i> {
             | P::RelPath(ast::RelPath(p)) => cmp.compile_text(&p.0),
         }
     }
-    fn box_body() -> E<BoxBody<'i>> {
-        |cmp, body| match body.as_ref() {
-            ast::Body::Item(item) => cmp.compile(item),
-        }
-    }
     fn item() -> E<Item<'i>> {
         |mut cmp, item| match item {
             ast::Item::Invocation(invc) => {
                 cmp = te!(cmp.compile(invc));
-                cmp.emit1(i::SysCall(vm::syscall::CREATE_JOB));
                 Ok(cmp)
             }
             ast::Item::LetStmt(ast::LetStmt((_name, body))) => {
@@ -32,19 +26,12 @@ pub trait Compilers<'i> {
                 cmp.emit1(i::Jump { addr: 0 });
                 let jump_instr = cmp.instr_id();
 
-                cmp.emit1(i::Allocate { size: 0 });
-                let alloc_instr = cmp.instr_id();
-
-                cmp.enter_scope();
                 cmp = te!(cmp.compile(body));
-                let stack_frame_size = cmp.stack_frame_size();
-                cmp.exit_scope();
 
-                cmp.emit1(i::Return(stack_frame_size));
+                cmp.emit1(i::Return);
 
                 let jump_target = cmp.instr_id() + 1;
                 te!(cmp.backpatch_with(jump_instr, jump_target));
-                te!(cmp.backpatch_with(alloc_instr, stack_frame_size));
 
                 cmp.new_address(*name, jump_instr + 1);
 
@@ -54,8 +41,8 @@ pub trait Compilers<'i> {
             ast::Item::Empty(_) => Ok(cmp),
         }
     }
-    fn module() -> E<Module<'i>> {
-        |mut cmp, ast::Module((items,))| {
+    fn block() -> E<Block<'i>> {
+        |mut cmp, ast::Block((items,))| {
             cmp.enter_scope();
 
             cmp.emit1(i::Allocate { size: 0 });
@@ -66,12 +53,21 @@ pub trait Compilers<'i> {
             }
 
             let frame_size = cmp.stack_frame_size();
+            cmp.emit1(i::Dealloc(frame_size));
             te!(cmp.backpatch_with(alloc_instr, frame_size));
 
             cmp.exit_scope();
 
             Ok(cmp)
         }
+    }
+    fn body() -> E<Body<'i>> {
+        |cmp, body| match body {
+            ast::Body::Block(block) => cmp.compile(block),
+        }
+    }
+    fn module() -> E<Module<'i>> {
+        |cmp, ast::Module((body,))| cmp.compile(body)
     }
     fn invocation() -> E<Invocation<'i>> {
         |mut cmp: Compiler,
@@ -95,15 +91,14 @@ pub trait Compilers<'i> {
 
             cmp = te!(cmp.compile(cwd_opt));
 
+            // job_type
             cmp = te!(cmp.compile(invocation_target));
             let job_type = cmp.retval;
-
-            // job_type
+            cmp.emit1(i::PushNat(job_type));
             cmp.new_local_tmp("process-job-type");
-            let job_type_iaddr = cmp.instr_id() + 1;
-            cmp.emit1(i::PushNat(0xdeadfeeb));
 
-            te!(cmp.backpatch_with(job_type_iaddr, job_type));
+            cmp.emit1(i::SysCall(vm::syscall::CREATE_JOB));
+
             Ok(cmp)
         }
     }
@@ -151,7 +146,7 @@ pub trait Compilers<'i> {
 
             cmp = match invocation_target {
                 &TLocal(Local((id,))) => {
-                    let addr = te!(cmp.lookup_addr(id)).addr;
+                    let addr = te!(cmp.lookup_addr(id), "Missing variable: {}", id).addr;
 
                     cmp.new_local_tmp("fun_invc_trg_addr");
                     cmp.emit1(i::PushNat(addr));

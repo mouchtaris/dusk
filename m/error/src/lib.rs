@@ -4,7 +4,9 @@ pub type FileTrace = &'static str;
 
 pub type LineTrace = u32;
 
-pub type Frame = (FileTrace, LineTrace);
+pub type Comments = Vec<String>;
+
+pub type Frame = (FileTrace, LineTrace, Comments);
 
 pub type Trace = Vec<Frame>;
 
@@ -48,9 +50,16 @@ macro_rules! soft_todo {
 
 #[macro_export]
 macro_rules! te {
+    ($e:expr , $fmt:literal $(, $fmtargs:tt)*) => {
+        $crate::IntoResult::into_result($e).map_err(|mut e| {
+            e.trace.push((file!(), line!(), vec!()));
+            e.comment(format!($fmt $(, $fmtargs)*));
+            e
+        })?
+    };
     ($e:expr) => {
         $crate::IntoResult::into_result($e).map_err(|mut e| {
-            e.trace.push((file!(), line!()));
+            e.trace.push((file!(), line!(), vec!()));
             e
         })?
     };
@@ -121,5 +130,16 @@ macro_rules! error_kind {
 impl<T, K> IntoResult<K, T> for std::result::Result<T, Error<K>> {
     fn into_result(self) -> Result<T, K> {
         self
+    }
+}
+
+impl<K> Error<K> {
+    pub fn comment<S>(&mut self, msg: S)
+    where
+        S: Into<String>,
+    {
+        if let Some((_, _, comments)) = self.trace.first_mut() {
+            comments.push(msg.into())
+        }
     }
 }
