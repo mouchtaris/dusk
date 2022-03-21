@@ -32,15 +32,32 @@ macro_rules! tokens {
 }
 
 type T<'i> = &'i str;
-tokens![Whsp, Nada, Kwd, Idnt, IdntNe, AbsPath, RelPath];
-lexpop![abspath, one_and_any(exact("/"), ident())];
-lexpop![relpath, one_and_any(exact("./"), ident())];
-lexpop![ident, one_and_any(fn_(ident_init), fn_(ident_rest))];
+tokens![
+    Whsp,
+    Nada,
+    Kwd,
+    Idnt,
+    IdntNe,
+    AbsPath,
+    RelPath,
+    LongOpt,
+    ShortOpt,
+    LineComment
+];
+lexpop![longopt, one_and_any(exact("--"), ident)];
+lexpop![shortopt, one_and_any(exact("-"), ident)];
+lexpop![abspath, one_and_any(exact("/"), ident)];
+lexpop![relpath, one_and_any(exact("./"), ident)];
+lexpop![ident, one_and_any(fn_(ident_init), || fn_(ident_rest))];
 lexpop![
     ident_no_eq,
-    one_and_any(fn_(ident_init), fn_(ident_rest_no_eq))
+    one_and_any(fn_(ident_init), || fn_(ident_rest_no_eq))
 ];
 lexpop![whsp, fn_(char::is_whitespace)];
+lexpop![
+    linecomment,
+    one_and_any(fn_(eq('#')), || fn_(not(eq('\n'))))
+];
 lexpop![
     kwd,
     either(
@@ -139,12 +156,18 @@ impl<'i> Iterator for LexState<'i> {
             return None;
         }
 
-        let ws = self.mtch(whsp(), Whsp);
-        ltrace!("ws: {:?}", ws);
+        // Eat up comments and whitespace
+        self.mtch(whsp(), Whsp);
+        self.mtch(linecomment(), LineComment);
+        self.mtch(whsp(), Whsp);
 
-        let iok = ident_or_kwd(self)
+        let iok = None
+            .or_else(|| self.mtch(abspath(), AbsPath))
+            .or_else(|| self.mtch(longopt(), LongOpt))
+            .or_else(|| self.mtch(shortopt(), ShortOpt))
+            .or_else(|| ident_or_kwd(self))
             .or_else(|| self.mtch(kwd(), Kwd))
-            .or_else(|| self.mtch(abspath(), AbsPath));
+            .or_else(|| None);
 
         let r = iok;
         ltrace!("rt: -> {:?}", r);
@@ -195,11 +218,24 @@ fn ident_rest_no_eq(c: char) -> bool {
     ident_init(c) || c.is_digit(10) || ":.,_/-".find(c).is_some()
 }
 
+fn eq(c: char) -> impl Fn(char) -> bool {
+    move |x| c == x
+}
+fn not<A, P>(mut pred: P) -> impl FnMut(A) -> bool
+where
+    P: FnMut(A) -> bool,
+{
+    move |x| !pred(x)
+}
+
 impl<'i> AsRef<str> for Tok<'i> {
     fn as_ref(&self) -> &str {
         use Tok as t;
         match self {
             t::Nada(Nada(s))
+            | t::LineComment(LineComment(s))
+            | t::LongOpt(LongOpt(s))
+            | t::ShortOpt(ShortOpt(s))
             | t::AbsPath(AbsPath(s))
             | t::RelPath(RelPath(s))
             | t::IdntNe(IdntNe(s))

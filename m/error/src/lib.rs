@@ -59,14 +59,14 @@ macro_rules! te {
 #[macro_export]
 macro_rules! terr {
     ($e:expr) => {
-        te!(Err($e))
+        $crate::te!(Err($e))
     };
 }
 
 #[macro_export]
 macro_rules! temg {
     ($l:literal $($a:tt)*) => {
-        te!(Err(format!($l $($a)*)))
+        $crate::te!(Err(format!($l $($a)*)))
     };
 }
 

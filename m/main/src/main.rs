@@ -30,11 +30,16 @@ fn main() -> Result<()> {
     use show::Show;
     te!(cmp.write_to(fs::File::create("_.compiler.txt")));
 
+    // Dump and load icode for fun and test
+    let mut buffer = Vec::<u8>::new();
+    te!(cmp.icode.write_to(Ok(&mut buffer)));
+    let icode = te!(vm::ICode::load_from(Ok(buffer.as_slice())));
+
     let mut vm = vm::Vm::default();
     vm.reset();
     // vm.init_bin_path_system();
     te!(vm.init_bin_path_from_path_env());
-    vm = te!(vm.load_icode(&cmp.icode));
+    vm = te!(vm.load_icode(&icode));
     te!(vm.write_to(fs::File::create("./_.vm.txt")));
 
     Ok(())

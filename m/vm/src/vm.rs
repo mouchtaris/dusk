@@ -1,7 +1,5 @@
 use {
-    super::{
-        ltrace, soft_todo, te, Deq, ICode, Instr, Result, StringInfo, TryFrom, Value, ValueTypeInfo,
-    },
+    super::{ltrace, te, Deq, ICode, Instr, Result, StringInfo, TryFrom, Value, ValueTypeInfo},
     std::{borrow::Borrow, fmt, io, mem},
 };
 

@@ -2,6 +2,10 @@
 name = 'lex'
 version = '0.0.1'
 edition = '2018'
+[dependencies.collection]
+version = '0.0.1'
+path = '../collection'
+
 [dependencies.either]
 version = '0.0.1'
 path = '../either'

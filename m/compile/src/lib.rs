@@ -17,10 +17,10 @@ mod compile;
 mod compilers;
 mod emit;
 mod show;
-mod symbol_info;
+pub mod symbol_info;
 mod symbol_table;
-use {
-    compile::{Compile, CompileEv},
+pub use {
+    crate::compile::{Compile, CompileEv},
     compilers::{Compilers, CompilersImpl as cmps},
     emit::EmitExt,
     symbol_info as sym,
@@ -56,25 +56,48 @@ impl Compiler {
     }
 
     /// Return the last instruction id
-    fn instr_id(&self) -> usize {
+    pub fn instr_id(&self) -> usize {
         self.icode.instructions.len() - 1
     }
 
     /// ### Example
     ///
+    ///     # use compile::Result;
+    ///     # fn main() -> Result<()> {
+    ///     use vm::Instr as i;
+    ///     use compile::{Compiler, EmitExt};
+    ///     use ::error::{te, temg};
+    ///
+    ///     let mut cmp = Compiler::default();
+    ///     cmp.emit1(i::Allocate { size: 0 });
+    ///     let instr_alloc = cmp.instr_id();
+    ///
+    ///     assert_eq!(
+    ///         &cmp.icode.instructions[instr_alloc],
+    ///         &i::Allocate { size: 0 }
+    ///     );
+    ///
     ///     te!(cmp.backpatch(instr_alloc, |i| match i {
-    ///         i::Allocate { size } => Ok(*size = frame_size),
-    ///         _ => terr!("not an allocate instr"),
+    ///         i::Allocate { size } => Ok(*size = 4),
+    ///         _ => temg!("not an allocate instr"),
     ///     }));
     ///
-    fn backpatch<B>(&mut self, instr_id: usize, block: B) -> Result<()>
+    ///     assert_eq!(
+    ///         &cmp.icode.instructions[instr_alloc],
+    ///         &i::Allocate { size: 4 }
+    ///     );
+    ///
+    ///     # Ok(())
+    ///     # }
+    ///
+    pub fn backpatch<B>(&mut self, instr_id: usize, block: B) -> Result<()>
     where
         B: FnOnce(&mut i) -> Result<()>,
     {
         let instr = te!(self.icode.instructions.get_mut(instr_id));
         block(instr)
     }
-    fn backpatch_with(&mut self, instr_id: usize, val: usize) -> Result<()> {
+    pub fn backpatch_with(&mut self, instr_id: usize, val: usize) -> Result<()> {
         self.backpatch(instr_id, |i| {
             Ok(*match i {
                 i::PushNat(v) => v,

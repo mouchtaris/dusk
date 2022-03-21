@@ -369,6 +369,7 @@ checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
 name = "lex"
 version = "0.0.1"
 dependencies = [
+ "collection",
  "either 0.0.1",
  "error",
  "lexpop",
@@ -970,6 +971,8 @@ dependencies = [
  "either 0.0.1",
  "error",
  "log",
+ "serde",
+ "serde_cbor",
  "show",
 ]
 

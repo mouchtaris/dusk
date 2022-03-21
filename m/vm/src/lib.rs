@@ -22,6 +22,7 @@ error::Error! {
     Message = String
     Var = std::env::VarError
     Io = io::Error
+    Utf8Error = std::string::FromUtf8Error
 }
 use error::{ldebug, ltrace, soft_todo};
-use error::{te, temg, terr};
+use error::{te, terr};

@@ -77,14 +77,22 @@ where
     }
 }
 
-pub fn one_and_any<A: Prop, B: Prop>(mut a: A, mut b: B) -> impl FnMut(Range) -> Option<usize> {
+pub fn one_and_any<A, C, B>(mut a: A, mut make_b: C) -> impl FnMut(Range) -> Option<usize>
+where
+    A: Prop,
+    B: Prop,
+    C: FnMut() -> B,
+{
     let mut s = 0;
+    let mut b = make_b();
+    use collection::OptionInspect;
     move |r| match s {
-        0 => {
-            s = 1;
-            a.prop(r)
-        }
-        _ => b.prop(r),
+        0 => a.prop(r).inspct(|_| s = 1),
+        1 => a.prop(r).or_else(|| b.prop(r).inspct(|_| s = 2)),
+        _ => b.prop(r).or_else(|| {
+            b = make_b();
+            b.prop(r)
+        }),
     }
 }
 

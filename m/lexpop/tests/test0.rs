@@ -30,15 +30,48 @@ fn test_one_and_any() {
 
     let a = || fn_(char::is_whitespace);
     let b = || fnr(char::is_ascii_punctuation);
-    let m = || one_and_any(b(), a());
+    let m = || one_and_any(b(), a);
     let m = |s| m().match_str::<N, _>(s);
 
     assert_eq!(m(""), 0);
+    assert_eq!(m("a"), 0);
+    assert_eq!(m(" "), 0);
     assert_eq!(m("."), 1);
     assert_eq!(m("/"), 1);
-    assert_eq!(m("//"), 1);
+    assert_eq!(m("//"), 2);
     assert_eq!(m("/ "), 2);
     assert_eq!(m("/  "), 3);
+}
+
+#[test]
+fn test_one_and_any2() {
+    const N: usize = 1;
+
+    let a = || exact("one");
+    let m = |s| a().match_str::<N, _>(s);
+    assert_eq!(m(""), 0);
+    assert_eq!(m("o"), 0);
+    assert_eq!(m("on"), 0);
+    assert_eq!(m("one"), 3);
+
+    let b = || exact("tw");
+    let m = |s| b().match_str::<N, _>(s);
+    assert_eq!(m(""), 0);
+    assert_eq!(m("t"), 0);
+    assert_eq!(m("tw"), 2);
+
+    let m = || one_and_any(b(), a);
+    let m = |s| m().match_str::<N, _>(s);
+
+    assert_eq!(m(""), 0);
+    assert_eq!(m("t"), 0);
+    assert_eq!(m("tw"), 2);
+    assert_eq!(m("two"), 2);
+    assert_eq!(m("twon"), 2);
+    assert_eq!(m("twone"), 5);
+    assert_eq!(m("twoneo"), 5);
+    assert_eq!(m("twoneon"), 5);
+    assert_eq!(m("twoneone"), 8);
 }
 
 #[test]

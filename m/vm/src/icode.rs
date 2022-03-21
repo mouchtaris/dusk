@@ -1,8 +1,7 @@
+use std::io;
+
 use {
-    super::{
-        ldebug, ltrace, soft_todo, te, temg, terr, value, BorrowMut, Deq, Entry, Map, Result,
-        Value, Vm,
-    },
+    super::{ldebug, ltrace, soft_todo, te, terr, value, BorrowMut, Deq, Entry, Map, Result, Vm},
     value::ProcessBuilder,
 };
 
@@ -122,5 +121,94 @@ impl StringInfo {
             Entry::Occupied(occ) => Ok(occ.get().clone()),
             Entry::Vacant(vac) => Ok(vac.insert(StringInfo { id }).to_owned()),
         }
+    }
+}
+impl ICode {
+    pub fn write_to<O>(&self, out: io::Result<O>) -> io::Result<()>
+    where
+        O: io::Write,
+    {
+        let ilen = usize::to_le_bytes(self.instructions.len());
+        let slen = usize::to_le_bytes(self.strings.len());
+        out.and_then(|mut out| {
+            out.write_all(&slen)?;
+            for (sval, info) in &self.strings {
+                let s = sval.as_bytes();
+                let slen = usize::to_le_bytes(s.len());
+                out.write_all(&slen)?;
+                out.write_all(s)?;
+                let strid = usize::to_le_bytes(info.id);
+                out.write_all(&strid)?;
+            }
+            out.write_all(&ilen)?;
+            for instr in &self.instructions {
+                let (code, arg0) = match *instr {
+                    Instr::Allocate { size } => (0x00, size),
+                    Instr::Jump { addr } => (0x01, addr),
+                    Instr::Return(frame_size) => (0x02, frame_size),
+                    Instr::PushNull => (0x03, 0x00),
+                    Instr::PushStr(strid) => (0x04, strid),
+                    Instr::PushNat(val) => (0x05, val),
+                    Instr::SysCall(id) => (0x06, id as usize),
+                    _ => panic!(),
+                };
+                let code = usize::to_le_bytes(code);
+                let arg = usize::to_le_bytes(arg0);
+                out.write_all(&code)?;
+                out.write_all(&arg)?;
+            }
+            Ok(())
+        })
+    }
+    pub fn load_from<I>(inp: io::Result<I>) -> Result<Self>
+    where
+        I: io::Read,
+    {
+        let mut usize_buf = usize::to_le_bytes(0usize);
+        let mut icode = ICode::default();
+        let mut byte_buf = Vec::new();
+
+        let inp = Ok(te!(inp));
+        inp.and_then(|mut inp| {
+            te!(inp.read_exact(&mut usize_buf));
+            let slen = usize::from_le_bytes(usize_buf);
+            icode.strings.reserve(slen);
+            for _ in 0..slen {
+                te!(inp.read_exact(&mut usize_buf));
+                let slen = usize::from_le_bytes(usize_buf);
+
+                byte_buf.resize(slen, 0x00);
+                te!(inp.read_exact(&mut byte_buf));
+
+                te!(inp.read_exact(&mut usize_buf));
+                let strid = usize::from_le_bytes(usize_buf);
+
+                let s = te!(String::from_utf8(byte_buf.clone()));
+                let info = StringInfo { id: strid };
+                icode.strings.insert(s, info);
+            }
+
+            te!(inp.read_exact(&mut usize_buf));
+            let ilen = usize::from_le_bytes(usize_buf);
+            icode.instructions.reserve(ilen);
+            for _ in 0..ilen {
+                te!(inp.read_exact(&mut usize_buf));
+                let code = usize::from_le_bytes(usize_buf);
+                te!(inp.read_exact(&mut usize_buf));
+                let val = usize::from_le_bytes(usize_buf);
+                let instr = match code {
+                    0x00 => Instr::Allocate { size: val },
+                    0x01 => Instr::Jump { addr: val },
+                    0x02 => Instr::Return(val),
+                    0x03 => Instr::PushNull,
+                    0x04 => Instr::PushStr(val),
+                    0x05 => Instr::PushNat(val),
+                    0x06 => Instr::SysCall(val as u8),
+                    _ => panic!(),
+                };
+                icode.instructions.push_back(instr);
+            }
+            Ok(icode)
+        })
     }
 }

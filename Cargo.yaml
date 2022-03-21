@@ -20,6 +20,7 @@ module:
       - lexpop
       - either
       - error
+      - collection
     dep_crate:
       - log
   ast:
@@ -35,6 +36,8 @@ module:
       - show
     dep_crate:
       - log
+      - serde
+      - serde_cbor
   parse:
     dep_mod:
       - ast

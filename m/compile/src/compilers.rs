@@ -76,7 +76,7 @@ pub trait Compilers<'i> {
     fn invocation() -> E<Invocation<'i>> {
         |mut cmp: Compiler,
          ast::Invocation((
-            doc_comment_opt,
+            _doc_comment_opt,
             invocation_target,
             cwd_opt,
             redirections,
@@ -128,6 +128,10 @@ pub trait Compilers<'i> {
                 A::Opt(opt) => cmp.compile(opt),
                 A::String(s) => cmp.compile(s),
                 A::Ident(id) => cmp.compile_text(id),
+                A::Variable(ast::Variable((_name,))) => {
+                    todo!()
+                }
+                A::Path(path) => cmp.compile(path),
                 other => panic!("{:?}", other),
             }
         }

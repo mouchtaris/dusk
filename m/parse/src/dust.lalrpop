@@ -1,6 +1,6 @@
 // vim: et ts=4 sw=4
 grammar<'input>;
-use super::{Error, lex::{self, Tok, TOK_NADA}};
+use super::{Error, lex::Tok};
 
 pub Module: ast::Module<'input> =
     Item* => (<>,).into()
@@ -101,15 +101,16 @@ extern {
         IDENT_NO_EQ         => Tok::IdntNe  (lex::IdntNe    (<&'input str>  )   ),
         ABS_PATH            => Tok::AbsPath (lex::AbsPath   (<&'input str>  )   ),
         REL_PATH            => Tok::RelPath (lex::RelPath   (<&'input str>  )   ),
+        LONG_OPT            => Tok::LongOpt (lex::LongOpt   (<&'input str>  )   ),
+        SHORT_OPT           => Tok::ShortOpt(lex::ShortOpt  (<&'input str>  )   ),
 
         // IDENT            r"[a-zA-Z_][a-zA-Z0-9:.,_=/-]*"
         // IDENT_NO_EQ      r"[a-zA-Z_][a-zA-Z0-9:.,_/-]*"
         // ABS_PATH         r"/[a-zA-Z0-9:.,_=/-]*"
         // REL_PATH         r"\./[a-zA-Z0-9:.,_=/-]*"
+        // LONG_OPT         r"--[a-zA-Z0-9:.,_=/-]*"
+        // SHORT_OPT        r"-[a-zA-Z0-9:.,_=/-]*"
 
-
-        // r"--[a-zA-Z0-9:.,_=/-]*"
-        LONG_OPT                => Tok::Nada ( lex::Nada ( <&'input str> ) ),
         // r"~/[a-zA-Z0-9:.,_=/-]*"
         HOME_PATH               => Tok::Nada ( lex::Nada ( <&'input str> ) ),
         // r#""[^"]*""#
@@ -118,8 +119,6 @@ extern {
         SINGLE_QUOTE_RAW_STRING => Tok::Nada ( lex::Nada ( <&'input str> ) ),
         // r"#.*"
         DOC_COMMENT             => Tok::Nada ( lex::Nada ( <&'input str> ) ),
-        // r"-[a-zA-Z0-9:.,_=/-]*"
-        SHORT_OPT               => Tok::Nada ( lex::Nada ( <&'input str> ) ),
         // r"[a-zA-Z0-9:.,_=+/-]*"
         WORD                    => Tok::Nada ( lex::Nada ( <&'input str> ) ),
     }
