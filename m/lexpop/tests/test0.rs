@@ -72,6 +72,8 @@ fn test_one_and_any2() {
     assert_eq!(m("twoneo"), 5);
     assert_eq!(m("twoneon"), 5);
     assert_eq!(m("twoneone"), 8);
+
+    assert_eq!(m("tone"), 0);
 }
 
 #[test]

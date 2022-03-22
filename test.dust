@@ -1,0 +1,3 @@
+let maria = r"MARIA";
+!echo $maria;
+!echo $maria --salamadri ;

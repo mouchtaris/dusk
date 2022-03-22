@@ -93,7 +93,10 @@ where
     let mut b = make_b();
     use collection::OptionInspect;
     move |r| match s {
-        0 => a.prop(r).inspct(|_| s = 1),
+        0 => a.prop(r).inspct(|&c| match c {
+            c if c > 0 => s = 1,
+            _ => (),
+        }),
         1 => a.prop(r).or_else(|| b.prop(r).inspct(|_| s = 2)),
         _ => b.prop(r).or_else(|| {
             b = make_b();
