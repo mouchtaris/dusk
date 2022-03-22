@@ -1,1 +1,4 @@
-!echo Hello r"Kitty" uo  are locaosl ;
+def b = !echo OPEN $args CLOSE;
+def a = b NEPO $args ESOL;
+a one two;
+

@@ -133,12 +133,17 @@ pub trait Compilers<'i> {
     }
 
     fn invocation_arg() -> E<InvocationArg<'i>> {
-        |cmp, invocation_argument| {
+        |mut cmp, invocation_argument| {
             use ast::InvocationArg as A;
             match invocation_argument {
                 A::Opt(opt) => cmp.compile(opt),
                 A::String(s) => cmp.compile(s),
                 A::Ident(id) => cmp.compile_text(id),
+                A::Variable(ast::Variable(("args",))) => {
+                    cmp.new_local_tmp("args_for_callee");
+                    cmp.emit1(i::PushArgs);
+                    Ok(cmp)
+                }
                 A::Variable(ast::Variable((_name,))) => {
                     todo!()
                 }

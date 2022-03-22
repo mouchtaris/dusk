@@ -30,6 +30,7 @@ pub enum Instr {
     PushNull,
     PushStr(usize),
     PushNat(usize),
+    PushArgs,
 
     SysCall(u8),
 
@@ -43,8 +44,8 @@ pub enum Instr {
 }
 
 impl Instr {
-    pub fn operate_on(&self, mut vm: Vm) -> Result<Vm> {
-        ltrace!("Instr {:?}", self);
+    pub fn operate_on(&self, vm: &mut Vm) -> Result<()> {
+        ltrace!("Instr {} {:?}", vm.instr_addr() - 1, self);
         match self {
             Self::Init => {}
             &Self::Allocate { size } => {
@@ -93,11 +94,12 @@ impl Instr {
             &Self::PushStr(id) => vm.push_str(id),
             &Self::SetNatural { value, dst } => vm.frame_set(dst, value),
             &Self::Jump { addr } => vm.jump(addr),
-            &Self::SysCall(id) => te!(crate::syscall::call(&mut vm, id)),
+            &Self::SysCall(id) => te!(crate::syscall::call(vm, id)),
             &Self::Return => vm.return_from_call(),
             &Self::Dealloc(size) => vm.dealloc(size),
+            &Self::PushArgs => vm.push_args(),
         }
-        Ok(vm)
+        Ok(())
     }
 
     pub fn allocate_size(&mut self, size: usize) -> Result<()> {
@@ -151,6 +153,7 @@ impl ICode {
                     Instr::PushNat(val) => (0x05, val),
                     Instr::SysCall(id) => (0x06, id as usize),
                     Instr::Dealloc(size) => (0x07, size),
+                    Instr::PushArgs => (0x08, 0x00),
                     _ => panic!(),
                 };
                 let code = usize::to_le_bytes(code);
@@ -206,6 +209,7 @@ impl ICode {
                     0x05 => Instr::PushNat(val),
                     0x06 => Instr::SysCall(val as u8),
                     0x07 => Instr::Dealloc(val),
+                    0x08 => Instr::PushArgs,
                     _ => panic!(),
                 };
                 icode.instructions.push_back(instr);

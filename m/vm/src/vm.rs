@@ -1,5 +1,7 @@
 use {
-    super::{ltrace, te, Deq, ICode, Instr, Result, StringInfo, TryFrom, Value, ValueTypeInfo},
+    super::{
+        ltrace, te, value, Deq, ICode, Instr, Result, StringInfo, TryFrom, Value, ValueTypeInfo,
+    },
     std::{borrow::Borrow, fmt, io, mem},
 };
 
@@ -26,6 +28,11 @@ impl Vm {
         self.instr_ptr = 0;
     }
 
+    /// The current instruction address pointer
+    pub fn instr_addr(&self) -> usize {
+        self.instr_ptr
+    }
+
     fn stackp_next(&mut self) -> usize {
         let stackp = self.stack_ptr;
         self.stack_ptr += 1;
@@ -37,7 +44,7 @@ impl Vm {
         self.frame_ptr + offset
     }
 
-    fn arg_addr(&self, argn: usize) -> usize {
+    pub fn arg_addr(&self, argn: usize) -> usize {
         // -n for stack-frame info: retaddr etc
         // -1 because fp points 1 beyond last
         self.frame_ptr - 1 - self.call_stack_data().len() - argn
@@ -182,6 +189,12 @@ impl Vm {
         self.push_val(src);
     }
 
+    pub fn push_args(&mut self) {
+        self.push_val(value::Array {
+            ptr: self.arg_addr(3),
+        });
+    }
+
     /// Grow the stack by `size`
     pub fn allocate(&mut self, size: usize) {
         ltrace!("alloc: {}", size);
@@ -208,7 +221,11 @@ impl Vm {
         while self.instr_ptr < icode.len() {
             let instruction = &icode[self.instr_ptr];
             self.instr_ptr += 1;
-            self = te!(instruction.borrow().operate_on(self));
+            let r = instruction.borrow().operate_on(&mut self);
+            if r.is_err() {
+                te!(self.write_to(Ok(std::io::stderr())));
+            }
+            te!(r);
         }
         Ok(self)
     }

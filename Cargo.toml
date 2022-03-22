@@ -1,6 +1,7 @@
 [workspace]
 members = [
     './m/ast',
+    './m/buf',
     './m/collection',
     './m/compile',
     './m/either',
@@ -14,6 +15,9 @@ members = [
 ]
 [patch.crates-io.ast]
 path = './m/ast'
+
+[patch.crates-io.buf]
+path = './m/buf'
 
 [patch.crates-io.collection]
 path = './m/collection'

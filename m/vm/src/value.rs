@@ -6,12 +6,17 @@ either::either![
         Null,
         String,
         ProcessBuilder,
-        Natural
+        Natural,
+        Array
 ];
 
 pub type Null = ();
 pub use std::process::Command as ProcessBuilder;
 pub type Natural = usize;
+#[derive(Debug)]
+pub struct Array {
+    pub ptr: usize,
+}
 
 impl Default for Value {
     fn default() -> Self {
@@ -26,6 +31,7 @@ impl Value {
             Value::String(_) => String::type_info_name(),
             Value::ProcessBuilder(_) => ProcessBuilder::type_info_name(),
             Value::Natural(_) => Natural::type_info_name(),
+            Value::Array(_) => Array::type_info_name(),
         }
     }
 
@@ -113,5 +119,10 @@ where
 {
     fn type_info_name() -> &'static str {
         T::type_info_name()
+    }
+}
+impl ValueTypeInfo for Array {
+    fn type_info_name() -> &'static str {
+        "Array"
     }
 }

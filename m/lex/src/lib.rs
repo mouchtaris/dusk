@@ -2,7 +2,7 @@ pub const VERSION: &str = "0.0.1";
 
 use {
     ::error::ltrace,
-    ::lexpop::{as_fn, either, exact, fn_, lexpop, one_and_any},
+    ::lexpop::{either, exact, fn_, lexpop, one_and_any},
 };
 
 macro_rules! either {
