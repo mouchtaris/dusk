@@ -17,9 +17,9 @@ pub trait Compilers<'i> {
                 cmp = te!(cmp.compile(invc));
                 Ok(cmp)
             }
-            ast::Item::LetStmt(ast::LetStmt((_name, body))) => {
-                cmp = te!(cmp.compile(body));
-                soft_todo!();
+            ast::Item::LetStmt(ast::LetStmt((_name, expr))) => {
+                cmp = te!(cmp.compile(expr));
+                eprintln!("RETVAL: {:?}", cmp.retval);
                 Ok(cmp)
             }
             ast::Item::DefStmt(ast::DefStmt((name, body))) => {
@@ -38,6 +38,12 @@ pub trait Compilers<'i> {
                 Ok(cmp)
             }
             ast::Item::Empty(_) => Ok(cmp),
+        }
+    }
+    fn expr() -> E<Expr<'i>> {
+        |cmp, expr| match expr {
+            ast::Expr::String(s) => cmp.compile(s),
+            ast::Expr::Invocation(invc) => cmp.compile(invc),
         }
     }
     fn block() -> E<Block<'i>> {
@@ -90,7 +96,7 @@ pub trait Compilers<'i> {
 
             // job_type
             cmp = te!(cmp.compile(invocation_target));
-            let job_type = cmp.retval;
+            let job_type = cmp.retval.val();
             cmp.emit1(i::PushNat(job_type));
             cmp.new_local_tmp("process-job-type");
 
@@ -172,17 +178,17 @@ pub trait Compilers<'i> {
                     cmp.new_local_tmp("fun_invc_trg_addr");
                     cmp.emit1(i::PushNat(addr));
 
-                    cmp.retval = FUNCTION_JOB_TYPE;
+                    cmp.retval = SymInfo::just(FUNCTION_JOB_TYPE);
                     cmp
                 }
                 &TSysName(SysName((id,))) => {
                     cmp = te!(cmp.compile_text(id));
-                    cmp.retval = PROCESS_JOB_TYPE;
+                    cmp.retval = SymInfo::just(PROCESS_JOB_TYPE);
                     cmp
                 }
                 TSysPath(SysPath((path,))) => {
                     cmp = te!(cmp.compile(path));
-                    cmp.retval = PROCESS_JOB_TYPE;
+                    cmp.retval = SymInfo::just(PROCESS_JOB_TYPE);
                     cmp
                 }
             };

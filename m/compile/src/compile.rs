@@ -38,7 +38,9 @@ compile![
     Block,
     cmps::block(),
     Body,
-    cmps::body()
+    cmps::body(),
+    Expr,
+    cmps::expr()
 ];
 
 impl<C, N> Compile<Option<N>> for C

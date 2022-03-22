@@ -9,9 +9,15 @@ pub Module: ast::Module<'input> =
 Item: ast::Item<'input> = {
     <Invocation> ";" => <>.into(),
     ";" => ast::Item::Empty(<_>::default()),
-    "let" <Ident> "=" <Box<Body>> => ast::Item::LetStmt((<>,).into()),
+    "let" <Ident> "=" <Expr> => ast::Item::LetStmt((<>,).into()),
     "def" <Ident> "=" <Box<Body>> => ast::Item::DefStmt((<>,).into()),
 }
+
+Expr: ast::Expr<'input> = {
+    <String> ";" => <>.into(),
+    <Invocation> ";" => <>.into(),
+}
+
 Invocation: ast::Invocation<'input> = {
     DocComment*
     InvocationTarget

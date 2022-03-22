@@ -25,8 +25,8 @@ fn main() -> Result<()> {
     log::trace!("AST: {:#?}", module_ast);
 
     log::debug!("Compiling {}", input_path);
-    let mut cmp = compile::Compiler::default();
-    cmp.init();
+    let mut cmp = compile::Compiler::new();
+    te!(cmp.init());
     cmp = te!(cmp.compile(&module_ast));
     #[cfg(not(release))]
     {

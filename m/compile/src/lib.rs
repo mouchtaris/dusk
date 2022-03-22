@@ -24,19 +24,26 @@ pub use {
     compilers::{Compilers, CompilersImpl as cmps},
     emit::EmitExt,
     symbol_info as sym,
-    symbol_table::{SymbolTable, SymbolTableExt},
+    symbol_table::{SymInfo, SymbolTable, SymbolTableExt},
 };
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct Compiler {
     pub icode: vm::ICode,
     sym_table: SymbolTable,
-    /// For arbitrary use between compilations
-    retval: usize,
+    /// For returning symbol info between node visitings
+    retval: SymInfo,
 }
 
 impl Compiler {
-    pub fn init(&mut self) {}
+    pub fn new() -> Self {
+        Self {
+            icode: <_>::default(),
+            sym_table: <_>::default(),
+            retval: SymInfo::just(0),
+        }
+    }
+    pub fn init(&mut self) -> Result<()> { Ok(()) }
 
     pub fn compile<N>(self, node: &N) -> Result<Self>
     where
@@ -118,9 +125,7 @@ impl Compiler {
         let text = text.as_ref();
         let strid = te!(cmp.add_string(text));
 
-        cmp.retval = te!(cmp
-            .new_local_tmp(format_args!("literal-text-{}", strid))
-            .fp_off());
+        cmp.retval = cmp.new_local_tmp(format_args!("literal-text-{}", strid));
 
         cmp.emit([i::PushStr(strid)]);
 

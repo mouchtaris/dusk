@@ -24,8 +24,8 @@ fn main() -> Result<()> {
     let module_ast = te!(parse::parse(&sample_text));
     log::trace!("AST: {:#?}", module_ast);
 
-    let mut cmp = compile::Compiler::default();
-    cmp.init();
+    let mut cmp = compile::Compiler::new();
+    te!(cmp.init());
     cmp = te!(cmp.compile(&module_ast));
     use show::Show;
     te!(cmp.write_to(fs::File::create("_.compiler.txt")));

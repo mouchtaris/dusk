@@ -1,5 +1,5 @@
 use {
-    super::{sym, Map},
+    super::{sym, temg, Map, Result},
     std::{borrow::Borrow, fmt},
 };
 
@@ -49,21 +49,22 @@ where
         self.new_local(name)
     }
 
-    fn lookup<S>(&self, name: S) -> Option<&SymInfo>
+    fn lookup<S>(&self, name: S) -> Result<&SymInfo>
     where
         S: Borrow<str>,
     {
+        let name = name.borrow();
         let sym_table = self.as_ref();
         for &scope_id in &sym_table.scope_stack {
             let scope = &sym_table.scopes[scope_id];
-            match scope.get(name.borrow()) {
-                sinfo @ Some(_) => return sinfo,
+            match scope.get(name) {
+                Some(sinfo) => return Ok(sinfo),
                 _ => (),
             }
         }
-        None
+        temg!("Symbol not found: {}", name)
     }
-    fn lookup_addr<S>(&self, name: S) -> Option<&sym::Address>
+    fn lookup_addr<S>(&self, name: S) -> Result<&sym::Address>
     where
         S: Borrow<str>,
     {
