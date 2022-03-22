@@ -219,9 +219,12 @@ impl Vm {
     }
 
     pub fn dealloc(&mut self, size: usize) {
-        self.stack.shrink_to(size);
-        self.stack_ptr -= size;
-        ltrace!("stackp - {} = {}", size, self.stack_ptr);
+        let Self {
+            stack, stack_ptr, ..
+        } = self;
+        stack.truncate(stack.len() - size);
+        *stack_ptr -= size;
+        ltrace!("[{}] stackp - {} = {}", stack.len(), size, stack_ptr);
     }
 
     pub fn load_icode(mut self, icode: &ICode) -> Result<Self> {
