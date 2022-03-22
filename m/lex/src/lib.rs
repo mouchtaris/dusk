@@ -2,7 +2,7 @@ pub const VERSION: &str = "0.0.1";
 
 use {
     ::error::ltrace,
-    ::lexpop::{either, exact, fn_, lexpop, one_and_any},
+    ::lexpop::{any, as_fn, either, exact, fn_, lexpop, one_and_any},
 };
 
 macro_rules! either {
@@ -167,8 +167,13 @@ impl<'i> Iterator for LexState<'i> {
 
         // Eat up comments and whitespace
         self.mtch(whsp(), Whsp);
-        self.mtch(linecomment(), LineComment);
-        self.mtch(whsp(), Whsp);
+        loop {
+            let lc = self.mtch(any(|| as_fn(linecomment())), LineComment);
+            self.mtch(whsp(), Whsp);
+            if lc.is_none() {
+                break;
+            }
+        }
 
         let iok = None
             .or_else(|| self.mtch(abspath(), AbsPath))

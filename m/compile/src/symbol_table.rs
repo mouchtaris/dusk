@@ -1,12 +1,12 @@
 use {
-    super::{sym, temg, Map, Result},
+    super::{sym, temg, Deq, Map, Result},
     std::{borrow::Borrow, fmt},
 };
 
 #[derive(Debug, Default)]
 pub struct SymbolTable {
     pub(crate) scopes: Vec<Scope>,
-    pub(crate) scope_stack: Vec<usize>,
+    pub(crate) scope_stack: Deq<usize>,
 }
 
 pub type Scope = Map<String, SymInfo>;
@@ -92,18 +92,18 @@ where
         sym_table.scopes.push(<_>::default());
 
         let id = sym_table.scopes.len() - 1;
-        sym_table.scope_stack.push(id);
+        sym_table.scope_stack.push_front(id);
     }
 
     fn exit_scope(&mut self) {
         let sym_table = self.as_mut();
-        sym_table.scope_stack.pop();
+        sym_table.scope_stack.pop_front();
     }
 
     /// Current scope id
     fn scope_id(&self) -> usize {
         let sym_table = self.as_ref();
-        sym_table.scope_stack.last().cloned().unwrap_or(0)
+        sym_table.scope_stack.front().cloned().unwrap_or(0)
     }
 
     fn next_scope_id(&mut self) -> usize {

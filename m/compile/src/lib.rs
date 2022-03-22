@@ -2,7 +2,7 @@ pub const VERSION: &str = "0.0.1";
 use {
     ::show::Show,
     buf::MemTake,
-    collection::Map,
+    collection::{Deq, Map},
     error::{te, temg},
     std::io,
     vm::Instr as i,

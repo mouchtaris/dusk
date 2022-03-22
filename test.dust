@@ -1,3 +1,23 @@
-let maria = r"MARIA";
-!echo $maria;
-!echo $maria --salamadri ;
+## def main-0 = {
+## 	let maria = r"MARIA";
+## 	!echo $maria;
+## 	!echo $maria --salamadri ;
+## }
+## main-0;
+## 
+## let drugs = r"Gotta someif";
+## def main-1 = {
+## 	!echo $args;
+## }
+## main-1 $drugs;
+## 
+## # main-1 $main-0;
+
+def main-2 = {
+	let drogs = r"Local sstore";
+	!echo $drogs;
+	!ls ;
+	let drugs = r"m";
+	let r1 = !lsd --tree $drugs;
+}
+main-2;

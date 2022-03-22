@@ -83,6 +83,14 @@ where
     }
 }
 
+pub fn any<C, B>(mut make_b: C) -> impl FnMut(Range) -> Option<usize>
+where
+    B: Prop,
+    C: FnMut() -> B,
+{
+    one_and_any(make_b(), make_b)
+}
+
 pub fn one_and_any<A, C, B>(mut a: A, mut make_b: C) -> impl FnMut(Range) -> Option<usize>
 where
     A: Prop,

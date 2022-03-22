@@ -27,7 +27,7 @@ impl Info {
         let Self { typ, .. } = self;
         match typ {
             Typ::Local(a) => Ok(a),
-            _ => temg!("Not a local symbol"),
+            _ => temg!("Not a local variable symbol"),
         }
     }
     pub fn fp_off(&self) -> Result<usize> {

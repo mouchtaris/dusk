@@ -152,7 +152,15 @@ pub trait Compilers<'i> {
                 }
                 &A::Variable(ast::Variable((name,))) => {
                     let sinfo = te!(cmp.lookup(name));
-                    let sinfo = te!(sinfo.as_local_ref());
+                    if sinfo.scope_id != cmp.scope_id() {
+                        temg!(
+                            "{} is in different scope {} than {}",
+                            name,
+                            sinfo.scope_id,
+                            cmp.scope_id()
+                        )
+                    }
+                    let sinfo = te!(sinfo.as_local_ref(), "{}", name);
                     let fp_off = sinfo.fp_off;
                     cmp.new_local_tmp(format!("copy {}", name));
                     cmp.emit1(i::PushLocal(fp_off));
