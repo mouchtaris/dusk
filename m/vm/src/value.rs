@@ -1,19 +1,17 @@
 use super::{te, Borrow, Result, TryFrom};
 
 either::either![
-    #[derive(Debug)]
+    #[derive(Debug, Clone)]
     pub Value,
         Null,
         String,
-        ProcessBuilder,
         Natural,
         Array
 ];
 
 pub type Null = ();
-pub use std::process::Command as ProcessBuilder;
 pub type Natural = usize;
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Array {
     pub ptr: usize,
 }
@@ -29,7 +27,6 @@ impl Value {
         match self {
             Value::Null(_) => Null::type_info_name(),
             Value::String(_) => String::type_info_name(),
-            Value::ProcessBuilder(_) => ProcessBuilder::type_info_name(),
             Value::Natural(_) => Natural::type_info_name(),
             Value::Array(_) => Array::type_info_name(),
         }
@@ -98,11 +95,6 @@ impl ValueTypeInfo for String {
         "String"
     }
 }
-impl ValueTypeInfo for ProcessBuilder {
-    fn type_info_name() -> &'static str {
-        "ProcessBuilder"
-    }
-}
 impl ValueTypeInfo for Null {
     fn type_info_name() -> &'static str {
         "Null"
@@ -124,5 +116,10 @@ where
 impl ValueTypeInfo for Array {
     fn type_info_name() -> &'static str {
         "Array"
+    }
+}
+impl ValueTypeInfo for Value {
+    fn type_info_name() -> &'static str {
+        "Value(*)"
     }
 }

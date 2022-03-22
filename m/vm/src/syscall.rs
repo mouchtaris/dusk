@@ -27,7 +27,7 @@ fn expand_arg(vm: &mut Vm, mut sbuf: buf::StringBuf, arg_addr: usize) -> Result<
                 sbuf = te!(expand_arg(vm, sbuf, ptr - i));
             }
         }
-        other => panic!("{:?}", other),
+        other => temg!("Cannot expand arg@{}: {:?}", arg_addr, other),
     }
     Ok(sbuf)
 }
@@ -46,27 +46,26 @@ mod handlers {
     pub mod create_job {
         use super::*;
         pub const H: Handler = |vm| {
-            let sbuf = te!(expand_args(vm, <_>::default()));
-
-            let job_type: &usize = te!(vm.arg_get(0));
-            let target = vm.arg_get_val(1);
-            let cwd = vm.arg_get_val(2);
+            let &job_type: &usize = te!(vm.arg_get(0));
+            let target: Value = vm.arg_take_val(1);
+            let cwd: Value = vm.arg_take_val(2);
             let &nargs: &usize = te!(vm.arg_get(3));
-            let args = sbuf.seg_vec_in(<_>::default());
             ldebug!(
                 "[create_job]
     job_type    : {job_type:?}
     target      : {target:?}
     cwd         : {cwd:?}
     nargs       : {nargs:?}
-    args        : {args:?}
 ",
                 target = target,
                 job_type = job_type,
                 cwd = cwd,
                 nargs = nargs,
-                args = args,
             );
+
+            let sbuf = te!(expand_args(vm, <_>::default()));
+            let args = sbuf.seg_vec_in(<_>::default());
+            ldebug!("args: {args:?}", args = args);
 
             match job_type {
                 0 => {

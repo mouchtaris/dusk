@@ -58,6 +58,8 @@ module:
       - collection
       - show
       - lexpop
+      - either
+      - buf
     dep_crate:
       - log
   main:

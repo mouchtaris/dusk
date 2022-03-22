@@ -115,7 +115,9 @@ name = "compile"
 version = "0.0.1"
 dependencies = [
  "ast",
+ "buf",
  "collection",
+ "either 0.0.1",
  "error",
  "lexpop",
  "log",

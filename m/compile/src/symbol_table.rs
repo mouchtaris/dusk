@@ -32,10 +32,13 @@ where
     fn new_local(&mut self, name: String) -> SymInfo {
         let scope_id = self.scope_id();
         let scope = self.scope_mut();
-        let fp_off = scope.len();
+        let local_var = sym::Local {
+            fp_off: scope_stack_size(&scope),
+            is_alias: false,
+        };
         let sinfo = SymInfo {
             scope_id,
-            typ: SymType::Local(sym::Local { fp_off }),
+            typ: SymType::Local(local_var),
         };
         scope.insert(name, sinfo.clone());
         sinfo
@@ -47,6 +50,19 @@ where
     {
         let name = format!("t:{}:{}:{}", self.scope_id(), self.scope().len(), desc);
         self.new_local(name)
+    }
+
+    fn alias_name<S: Into<String>>(&mut self, new_name: S, info: &SymInfo) {
+        let st = self.as_mut();
+        let scope = &mut st.scopes[info.scope_id];
+
+        let new_name = new_name.into();
+        let mut info = info.clone();
+        match &mut info.typ {
+            SymType::Local(sym::Local { is_alias, .. }) => *is_alias = true,
+            _ => (),
+        }
+        scope.insert(new_name, info);
     }
 
     fn lookup<S>(&self, name: S) -> Result<&SymInfo>
@@ -109,12 +125,15 @@ where
 
     fn stack_frame_size(&self) -> usize {
         let sym_table = self.as_ref();
-        sym_table
-            .scope()
-            .iter()
-            .filter_map(|(_, info)| info.as_local_ref().ok())
-            .count()
+        scope_stack_size(sym_table.scope())
     }
+}
+
+pub fn scope_stack_size(scope: &Scope) -> usize {
+    scope
+        .iter()
+        .filter_map(|(_, info)| info.as_local_ref().ok().filter(|i| !i.is_alias))
+        .count()
 }
 
 impl SymbolTableExt for SymbolTable {}

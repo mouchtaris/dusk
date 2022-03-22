@@ -6,9 +6,17 @@ edition = '2018'
 version = '0.0.1'
 path = '../ast'
 
+[dependencies.buf]
+version = '0.0.1'
+path = '../buf'
+
 [dependencies.collection]
 version = '0.0.1'
 path = '../collection'
+
+[dependencies.either]
+version = '0.0.1'
+path = '../either'
 
 [dependencies.error]
 version = '0.0.1'

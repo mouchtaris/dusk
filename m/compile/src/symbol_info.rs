@@ -6,14 +6,16 @@ pub struct Info {
     pub scope_id: usize,
 }
 
-#[derive(Debug, Clone)]
-pub enum Typ {
-    Local(Local),
-    Address(Address),
-}
+either::either![
+    #[derive(Debug, Clone)]
+    pub Typ,
+        Local,
+        Address
+];
 #[derive(Debug, Clone)]
 pub struct Local {
     pub fp_off: usize,
+    pub is_alias: bool,
 }
 #[derive(Debug, Clone)]
 pub struct Address {
@@ -44,12 +46,26 @@ impl Info {
     pub fn val(&self) -> usize {
         match self.typ {
             Typ::Address(Address { addr: v }) => v,
-            Typ::Local(Local { fp_off: v }) => v,
+            Typ::Local(Local { fp_off: v, .. }) => v,
         }
     }
     pub fn just(val: usize) -> Self {
         Self {
-            typ: Typ::Local(Local { fp_off: val }),
+            typ: Typ::Local(Local {
+                fp_off: val,
+                is_alias: true,
+            }),
+            scope_id: 0,
+        }
+    }
+}
+impl Default for Info {
+    fn default() -> Self {
+        Self {
+            typ: Typ::Local(Local {
+                fp_off: 0,
+                is_alias: true,
+            }),
             scope_id: 0,
         }
     }

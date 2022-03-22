@@ -153,6 +153,9 @@ impl Vm {
         self.frame_take_val(offset).try_into()
     }
 
+    pub fn arg_take_val(&mut self, argn: usize) -> Value {
+        self.stack_take_val(self.arg_addr(argn))
+    }
     pub fn arg_get_val(&self, argn: usize) -> &Value {
         self.stack_get_val(self.arg_addr(argn))
     }
@@ -189,10 +192,23 @@ impl Vm {
         self.push_val(src);
     }
 
+    // Pushes an array of all arguments passed to this call
     pub fn push_args(&mut self) {
         self.push_val(value::Array {
             ptr: self.arg_addr(3),
         });
+    }
+
+    // Pushes argument # `fp_off`
+    pub fn push_arg(&mut self, fp_off: usize) {
+        let val = self.stack_get_val(self.arg_addr(fp_off)).to_owned();
+        self.push_val(val);
+    }
+
+    // Pushes local var #
+    pub fn push_local(&mut self, fp_off: usize) {
+        let val = self.frame_get_val(fp_off).to_owned();
+        self.push_val(val);
     }
 
     /// Grow the stack by `size`
@@ -269,13 +285,22 @@ impl Vm {
                 writeln!(o, "=== STRING TABLE ===")?;
                 let mut i = 0;
                 for string in &self.string_table {
-                    writeln!(o, ">[{:4}] {:?}", i, string)?;
+                    writeln!(o, "[{:4}] {:?}", i, string)?;
                     i += 1;
                 }
                 writeln!(o, "=== STACK ===")?;
                 let mut i = 0;
                 for cell in &self.stack {
-                    writeln!(o, ">[{:4}] {:?}", i, cell)?;
+                    let pref = if self.frame_ptr == i {
+                        "fp ->"
+                    } else if self.stack_ptr == i {
+                        "sp ->"
+                    } else if self.arg_ptr == i {
+                        "ap ->"
+                    } else {
+                        ""
+                    };
+                    writeln!(o, "{:5} [{:4}] {:?}", pref, i, cell)?;
                     i += 1;
                 }
                 writeln!(o, "=== STATE ===")?;

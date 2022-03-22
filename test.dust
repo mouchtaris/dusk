@@ -1,8 +1,0 @@
-let poo = r"POO";
-
-def e = !echo $args;
-def a = e A0 $args A1;
-def b = a B0 $args B1;
-def c = b C0 $args C1;
-
-c D0 D1;

@@ -17,9 +17,10 @@ pub trait Compilers<'i> {
                 cmp = te!(cmp.compile(invc));
                 Ok(cmp)
             }
-            ast::Item::LetStmt(ast::LetStmt((_name, expr))) => {
+            ast::Item::LetStmt(ast::LetStmt((name, expr))) => {
                 cmp = te!(cmp.compile(expr));
-                eprintln!("RETVAL: {:?}", cmp.retval);
+                let val_info = cmp.retval.mem_take();
+                cmp.alias_name(*name, &val_info);
                 Ok(cmp)
             }
             ast::Item::DefStmt(ast::DefStmt((name, body))) => {
@@ -133,7 +134,6 @@ pub trait Compilers<'i> {
             } else {
                 s
             };
-            ltrace!("[string] {} -> {}", s, t);
             cmp.compile_text(t)
         }
     }
@@ -150,8 +150,13 @@ pub trait Compilers<'i> {
                     cmp.emit1(i::PushArgs);
                     Ok(cmp)
                 }
-                A::Variable(ast::Variable((_name,))) => {
-                    todo!()
+                &A::Variable(ast::Variable((name,))) => {
+                    let sinfo = te!(cmp.lookup(name));
+                    let sinfo = te!(sinfo.as_local_ref());
+                    let fp_off = sinfo.fp_off;
+                    cmp.new_local_tmp(format!("copy {}", name));
+                    cmp.emit1(i::PushLocal(fp_off));
+                    Ok(cmp)
                 }
                 A::Path(path) => cmp.compile(path),
                 other => panic!("{:?}", other),

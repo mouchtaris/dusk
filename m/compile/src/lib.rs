@@ -1,8 +1,9 @@
 pub const VERSION: &str = "0.0.1";
 use {
     ::show::Show,
+    buf::MemTake,
     collection::Map,
-    error::{ltrace, soft_todo, te, temg},
+    error::{te, temg},
     std::io,
     vm::Instr as i,
 };
@@ -43,7 +44,9 @@ impl Compiler {
             retval: SymInfo::just(0),
         }
     }
-    pub fn init(&mut self) -> Result<()> { Ok(()) }
+    pub fn init(&mut self) -> Result<()> {
+        Ok(())
+    }
 
     pub fn compile<N>(self, node: &N) -> Result<Self>
     where

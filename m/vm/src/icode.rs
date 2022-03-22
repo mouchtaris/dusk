@@ -1,9 +1,6 @@
 use std::io;
 
-use {
-    super::{ldebug, ltrace, soft_todo, te, terr, value, BorrowMut, Deq, Entry, Map, Result, Vm},
-    value::ProcessBuilder,
-};
+use super::{ldebug, ltrace, soft_todo, te, terr, BorrowMut, Deq, Entry, Map, Result, Vm};
 
 fn _use() {
     soft_todo!();
@@ -31,16 +28,14 @@ pub enum Instr {
     PushStr(usize),
     PushNat(usize),
     PushArgs,
+    PushLocal(usize),
 
     SysCall(u8),
 
     Init,
     SetNatural { value: usize, dst: usize },
     FindInBinPath { id: usize, dst: usize },
-    CreateProcessJob { path: usize, dst: usize },
     CompleteProcessJob { jobid: usize },
-    JobSetCwd { jobid: usize, cwdid: usize },
-    JobPushArg { jobid: usize, argid: usize },
 }
 
 impl Instr {
@@ -73,22 +68,7 @@ impl Instr {
                     te!(Err(format!("Did not find {} in BIN_PATH", id)))
                 }
             }
-            &Self::CreateProcessJob { path, dst } => {
-                let path: String = te!(vm.frame_take(path));
-                let proc = ProcessBuilder::new(path);
-                vm.frame_set(dst, proc);
-            }
             &Self::CompleteProcessJob { .. } => panic!(),
-            &Self::JobSetCwd { jobid, cwdid } => {
-                let cwd: String = te!(vm.frame_take(cwdid));
-                let proc: &mut ProcessBuilder = te!(vm.frame_get_mut(jobid));
-                proc.current_dir(cwd);
-            }
-            &Self::JobPushArg { jobid, argid } => {
-                let cwd: String = te!(vm.frame_take(argid));
-                let proc: &mut ProcessBuilder = te!(vm.frame_get_mut(jobid));
-                proc.arg(cwd);
-            }
             &Self::PushNull => vm.push_null(),
             &Self::PushNat(id) => vm.push_val(id),
             &Self::PushStr(id) => vm.push_str(id),
@@ -98,6 +78,7 @@ impl Instr {
             &Self::Return => vm.return_from_call(),
             &Self::Dealloc(size) => vm.dealloc(size),
             &Self::PushArgs => vm.push_args(),
+            &Self::PushLocal(fp_off) => vm.push_local(fp_off),
         }
         Ok(())
     }
@@ -154,6 +135,7 @@ impl ICode {
                     Instr::SysCall(id) => (0x06, id as usize),
                     Instr::Dealloc(size) => (0x07, size),
                     Instr::PushArgs => (0x08, 0x00),
+                    Instr::PushLocal(fp_off) => (0x09, fp_off),
                     _ => panic!(),
                 };
                 let code = usize::to_le_bytes(code);
@@ -210,6 +192,7 @@ impl ICode {
                     0x06 => Instr::SysCall(val as u8),
                     0x07 => Instr::Dealloc(val),
                     0x08 => Instr::PushArgs,
+                    0x09 => Instr::PushLocal(val),
                     _ => panic!(),
                 };
                 icode.instructions.push_back(instr);
