@@ -1,4 +1,7 @@
-use std::ops::Range;
+use std::{
+    fmt::{Display, Write},
+    ops::Range,
+};
 
 #[derive(Default, Debug)]
 pub struct StringBuf {
@@ -10,15 +13,14 @@ impl StringBuf {
     pub fn new() -> Self {
         <_>::default()
     }
-    pub fn add_str<S>(&mut self, s: S) -> &mut Self
+    pub fn add<S>(&mut self, s: S) -> &mut Self
     where
-        S: AsRef<str>,
+        S: Display,
     {
         let Self { buf, seg } = self;
-        let s = s.as_ref();
 
         let a = buf.len();
-        buf.push_str(s);
+        write!(buf, "{}", s).unwrap();
         let b = buf.len();
 
         seg.push(a..b);

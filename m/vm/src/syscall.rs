@@ -19,13 +19,16 @@ fn expand_arg(vm: &mut Vm, mut sbuf: buf::StringBuf, arg_addr: usize) -> Result<
     let arg: &Value = vm.stack_get_val(arg_addr);
     match arg {
         Value::String(arg) => {
-            sbuf.add_str(arg);
+            sbuf.add(arg);
         }
         &Value::Array(value::Array { ptr }) => {
             let &arrlen: &usize = te!(vm.stack_get(ptr));
             for i in 1..=arrlen {
                 sbuf = te!(expand_arg(vm, sbuf, ptr - i));
             }
+        }
+        Value::Natural(n) => {
+            sbuf.add(n);
         }
         other => temg!("Cannot expand arg@{}: {:?}", arg_addr, other),
     }

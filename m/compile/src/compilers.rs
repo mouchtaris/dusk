@@ -44,6 +44,7 @@ pub trait Compilers<'i> {
     fn expr() -> E<Expr<'i>> {
         |cmp, expr| match expr {
             ast::Expr::String(s) => cmp.compile(s),
+            ast::Expr::Natural(n) => cmp.compile(n),
             ast::Expr::Invocation(invc) => cmp.compile(invc),
         }
     }
@@ -116,6 +117,10 @@ pub trait Compilers<'i> {
         }
     }
 
+    fn natural() -> E<Natural<'i>> {
+        |cmp, &ast::Natural((n,))| cmp.compile_natural(n)
+    }
+
     fn string() -> E<String<'i>> {
         |cmp, ast::String((s,))| {
             let t = if s.starts_with('r') {
@@ -167,6 +172,7 @@ pub trait Compilers<'i> {
                     Ok(cmp)
                 }
                 A::Path(path) => cmp.compile(path),
+                A::Natural(n) => cmp.compile(n),
                 other => panic!("{:?}", other),
             }
         }

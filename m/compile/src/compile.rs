@@ -40,7 +40,9 @@ compile![
     Body,
     cmps::body(),
     Expr,
-    cmps::expr()
+    cmps::expr(),
+    Natural,
+    cmps::natural()
 ];
 
 impl<C, N> Compile<Option<N>> for C

@@ -171,6 +171,15 @@ where
     }
 }
 
+impl Prop for char {
+    fn prop(&mut self, range: Range) -> Option<usize> {
+        match range {
+            &[c, ..] if c == *self => Some(1),
+            _ => None,
+        }
+    }
+}
+
 impl<const N: usize, T> Buffer<N, T>
 where
     T: Default + Copy,

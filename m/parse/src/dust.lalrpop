@@ -15,6 +15,7 @@ Item: ast::Item<'input> = {
 
 Expr: ast::Expr<'input> = {
     <String> ";" => <>.into(),
+    <Natural> ";" => <>.into(),
     <Invocation> ";" => <>.into(),
 }
 
@@ -39,6 +40,7 @@ InvocationArg: ast::InvocationArg<'input> = {
     Path => <>.into(),
     String => <>.into(),
     Variable => <>.into(),
+    Natural => <>.into(),
 }
 InvocationCwd: ast::Path<'input> = "@" <Path>;
 InvocationEnv: ast::InvocationEnv<'input> = <IDENT_NO_EQ> "=" <InvocationArg>;
@@ -87,6 +89,7 @@ RelPath: ast::RelPath<'input> = REL_PATH => (<>,).into();
 HomePath: ast::HomePath<'input> = HOME_PATH => (<>,).into();
 LongOpt: ast::LongOpt<'input> = LONG_OPT => (<>,).into();
 ShortOpt: ast::ShortOpt<'input> = SHORT_OPT => (<>,).into();
+Natural: ast::Natural<'input> = NATURAL => (<>,).into();
 
 Box<T>: Box<T> = T => Box::new(<>);
 
@@ -114,6 +117,7 @@ extern {
         SHORT_OPT                   => Tok::ShortOpt    (lex::ShortOpt      (<&'input str>  )   ),
         DOUBLE_QUOTE_RAW_STRING     => Tok::RawString   (lex::RawString     (<&'input str>  )   ),
         SINGLE_QUOTE_RAW_STRING     => Tok::RawString   (lex::RawString     (<&'input str>  )   ),
+        NATURAL                     => Tok::Natural     (lex::Natural       (<&'input str>  )   ),
 
         // IDENT            r"[a-zA-Z_][a-zA-Z0-9:.,_=/-]*"
         // IDENT_NO_EQ      r"[a-zA-Z_][a-zA-Z0-9:.,_/-]*"

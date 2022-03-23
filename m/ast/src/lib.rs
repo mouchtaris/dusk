@@ -27,7 +27,7 @@ macro_rules! name {
 name![Module, Body];
 
 either![Item, Invocation, LetStmt, DefStmt, Empty];
-either![Expr, Invocation, String];
+either![Expr, Invocation, String, Natural];
 either![Body, Block];
 either![
     InvocationTarget,
@@ -35,7 +35,16 @@ either![
     InvocationTargetSystemName,
     InvocationTargetSystemPath
 ];
-either![InvocationArg, Ident, Opt, Path, String, Variable, Word];
+either![
+    InvocationArg,
+    Ident,
+    Opt,
+    Path,
+    String,
+    Variable,
+    Word,
+    Natural
+];
 either![InvocationRedirection, RedirectInput, RedirectOutput];
 either![Path, AbsPath, RelPath, HomePath];
 either![Opt, ShortOpt, LongOpt];
@@ -54,6 +63,7 @@ name![HomePath, Text];
 name![LongOpt, Text];
 name![ShortOpt, Text];
 name![Variable, Text];
+name![Natural, Text];
 name![InvocationTargetLocal, Ident];
 name![InvocationTargetSystemName, Ident];
 name![InvocationTargetSystemPath, Path];

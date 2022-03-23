@@ -12,6 +12,7 @@ error::Error! {
     Msg = &'static str
     Message = String
     Vm = vm::Error
+    ParseInt = std::num::ParseIntError
 }
 
 mod compile;
@@ -132,6 +133,21 @@ impl Compiler {
 
         cmp.emit([i::PushStr(strid)]);
 
+        Ok(cmp)
+    }
+
+    fn compile_natural<S>(self, text: S) -> Result<Self>
+    where
+        S: AsRef<str>,
+    {
+        let mut cmp = self;
+
+        let text = text.as_ref();
+        let nat = te!(text.parse::<usize>());
+
+        cmp.retval = cmp.new_local_tmp(format_args!("literal-nat-{}", nat));
+
+        cmp.emit1(i::PushNat(nat));
         Ok(cmp)
     }
 }

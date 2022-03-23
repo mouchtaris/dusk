@@ -1,11 +1,23 @@
 # vim: et ts=4 sw=4
 def argn = {
-    !jq --args
-        r###"
-            $ARGS
+    !ruby
+        -e r###"
+            n = ARGV[0].to_i
+            args = ARGV[1..]
+            print args[n]
         "###
+        --
         $args
     ;
 }
 
-argn one two three;
+def echo_args =
+    !ruby -e r"p ARGV" -- $args;
+
+argn 0 one two three;
+argn 1 one two three;
+argn 2 one two three;
+
+let n = 12;
+echo_args 0 one 14 two 309234234 three $n $n $n;
+echo_args $n $n;

@@ -43,10 +43,11 @@ tokens![
     LongOpt,
     ShortOpt,
     LineComment,
-    RawString
+    RawString,
+    Natural
 ];
 use lexpop::lex::fat as rawstring;
-//lexpop![rawstring, as_fn(lexpop::lex::fat())];
+lexpop![natural, any(|| fn_(digit))];
 lexpop![longopt, one_and_any(exact("--"), ident)];
 lexpop![shortopt, one_and_any(exact("-"), ident)];
 lexpop![abspath, one_and_any(exact("/"), ident)];
@@ -64,25 +65,25 @@ lexpop![
 lexpop![
     kwd,
     either(
-        exact("{"),
+        '{',
         either(
-            exact("}"),
+            '}',
             either(
-                exact("="),
+                '=',
                 either(
-                    exact("$"),
+                    '$',
                     either(
-                        exact("\""),
+                        '"',
                         either(
-                            exact(";"),
+                            ';',
                             either(
-                                exact("@"),
+                                '@',
                                 either(
-                                    exact("<"),
+                                    '<',
                                     either(
-                                        exact(">"),
+                                        '>',
                                         either(
-                                            exact("!"),
+                                            '!',
                                             either(exact("let"), either(exact("def"), exact("if")))
                                         )
                                     )
@@ -176,6 +177,7 @@ impl<'i> Iterator for LexState<'i> {
         }
 
         let iok = None
+            .or_else(|| self.mtch(natural(), Natural))
             .or_else(|| self.mtch(abspath(), AbsPath))
             .or_else(|| self.mtch(relpath(), RelPath))
             .or_else(|| self.mtch(longopt(), LongOpt))
@@ -222,6 +224,10 @@ impl<'i> LexState<'i> {
     }
 }
 
+fn digit(c: char) -> bool {
+    c.is_ascii_digit()
+}
+
 fn ident_init(c: char) -> bool {
     c.is_alphabetic()
 }
@@ -249,6 +255,7 @@ impl<'i> AsRef<str> for Tok<'i> {
         use Tok as t;
         match self {
             t::Nada(Nada(s))
+            | t::Natural(Natural(s))
             | t::RawString(RawString(s))
             | t::LineComment(LineComment(s))
             | t::LongOpt(LongOpt(s))
