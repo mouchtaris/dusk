@@ -2,13 +2,21 @@ super::lexpop![fat, {
     let mut h = 0;
     let mut state = 0;
     let mut j = 0;
+    let mut nr = 0;
     move |r| {
         let a = r[0];
         let ret = match (state, a) {
             // 0: Init
             (0, 'r') => {
                 h = 0;
+                nr = 1;
                 state = 1;
+                Some(0)
+            }
+            (0, '"') => {
+                h = 0;
+                nr = 0;
+                state = 2;
                 Some(0)
             }
             // 1: Reading hashes
@@ -27,7 +35,7 @@ super::lexpop![fat, {
                 state = 4;
 
                 // The extra commit is only r" and "
-                Some(2 + 1)
+                Some(nr + 1 + 1)
             }
             (2, '"') => {
                 state = 3;

@@ -78,7 +78,7 @@ impl Compiler {
     ///     use compile::{Compiler, EmitExt};
     ///     use ::error::{te, temg};
     ///
-    ///     let mut cmp = Compiler::default();
+    ///     let mut cmp = Compiler::new();
     ///     cmp.emit1(i::Allocate { size: 0 });
     ///     let instr_alloc = cmp.instr_id();
     ///

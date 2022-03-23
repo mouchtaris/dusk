@@ -1,43 +1,11 @@
-def print0 =
-	!jq 
-	r###"
-		$ARGS.positional | join("\u0000")
-	"###
-	-n
-	-e
-	--raw-output
-	--args $args 
-;
-
-def arrnew =
-	print0 $args
-;
-
-def arr_a = arrnew ena oraio aydoni ;
-
-def par = {
-	!echo ;
-	!echo $args;
-	!echo ;
-	!echo ;
+# vim: et ts=4 sw=4
+def argn = {
+    !jq --args
+        r###"
+            $ARGS
+        "###
+        $args
+    ;
 }
-par Hello run;
-par Goodbye run;
 
-def w = !echo $args;
-
-def mod = w r"
-	mod"$args r"{
-	    pub struct Type;
-	";
-def mod_end = w r"
-	}";
-def mod/data = w r"
-	impl Data for Type {
-		type Data ="$args r";
-	}";
-
-mod pop;
-mod/data String;
-mod_end pop;
-
+argn one two three;
