@@ -29,7 +29,7 @@ pub use {
     symbol_table::{SymInfo, SymbolTable, SymbolTableExt},
 };
 
-#[derive(Debug)]
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct Compiler {
     pub icode: vm::ICode,
     sym_table: SymbolTable,

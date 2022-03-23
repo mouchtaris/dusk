@@ -3,7 +3,7 @@ use {
     std::{borrow::Borrow, fmt},
 };
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, serde::Serialize, serde::Deserialize)]
 pub struct SymbolTable {
     pub(crate) scopes: Vec<Scope>,
     pub(crate) scope_stack: Deq<usize>,

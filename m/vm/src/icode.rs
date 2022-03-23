@@ -6,18 +6,32 @@ fn _use() {
     soft_todo!();
 }
 
-#[derive(Default, Debug)]
+#[derive(Default, Debug, serde::Serialize, serde::Deserialize)]
 pub struct ICode {
     pub instructions: Deq<Instr>,
     pub strings: Map<String, StringInfo>,
 }
 
-#[derive(Default, Debug, Copy, Eq, Ord, Hash, PartialEq, PartialOrd, Clone)]
+#[derive(
+    Default,
+    Debug,
+    Copy,
+    Eq,
+    Ord,
+    Hash,
+    PartialEq,
+    PartialOrd,
+    Clone,
+    serde::Serialize,
+    serde::Deserialize,
+)]
 pub struct StringInfo {
     pub id: usize,
 }
 
-#[derive(Debug, Copy, Eq, Ord, Hash, PartialEq, PartialOrd, Clone)]
+#[derive(
+    Debug, Copy, Eq, Ord, Hash, PartialEq, PartialOrd, Clone, serde::Serialize, serde::Deserialize,
+)]
 pub enum Instr {
     Allocate { size: usize },
     Jump { addr: usize },

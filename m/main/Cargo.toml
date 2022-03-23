@@ -76,6 +76,7 @@ version = '*'
 
 [dependencies.serde_cbor]
 version = '*'
+optional = true
 
 [dependencies.serde_json]
 version = '*'
@@ -116,3 +117,6 @@ version = '*'
 [dependencies.vm]
 version = '0.0.1'
 path = '../vm'
+
+[features]
+default = ['serde']

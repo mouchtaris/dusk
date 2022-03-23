@@ -1,11 +1,13 @@
 use {
     ::error::te,
+    main::sd,
     std::{fs, io},
 };
 
 error::Error! {
     Vm = vm::Error
     Io = io::Error
+    Main = main::Error
 }
 
 fn main() -> Result<()> {
@@ -16,7 +18,12 @@ fn main() -> Result<()> {
     let input_path = te!(args.get(1));
 
     log::debug!("Loading {}", input_path);
-    let icode = te!(vm::ICode::load_from(fs::File::open(input_path)));
+    let inp = te!(fs::File::open(input_path), "{}", input_path);
+    //let icode = te!(vm::ICode::load_from());
+    let icode = {
+        let cmp: compile::Compiler = te!(sd::deser(inp));
+        cmp.icode
+    };
 
     let mut vm = vm::Vm::default();
     vm.reset();

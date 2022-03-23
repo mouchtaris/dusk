@@ -33,6 +33,18 @@ version = '*'
 version = '0.0.1'
 path = '../parse'
 
+[dependencies.serde]
+version = '*'
+features = ['derive']
+optional = true
+
+[dependencies.serde_cbor]
+version = '*'
+optional = true
+
+[dependencies.serde_json]
+version = '*'
+
 [dependencies.show]
 version = '0.0.1'
 path = '../show'
@@ -40,3 +52,6 @@ path = '../show'
 [dependencies.vm]
 version = '0.0.1'
 path = '../vm'
+
+[features]
+default = ['serde']

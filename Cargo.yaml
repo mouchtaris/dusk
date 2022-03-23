@@ -7,7 +7,12 @@ module:
   either: {}
   collection: {}
   show: {}
-  buf: {}
+  buf:
+    dep_crate:
+      - serde
+    inline:
+      features:
+        default: ["serde"]
   lexpop:
     dep_mod:
       - either
@@ -40,6 +45,10 @@ module:
       - log
       - serde
       - serde_cbor
+      - serde_json
+    inline:
+      features:
+        default: ["serde"]
   parse:
     dep_mod:
       - ast
@@ -62,6 +71,12 @@ module:
       - buf
     dep_crate:
       - log
+      - serde
+      - serde_cbor
+      - serde_json
+    inline:
+      features:
+        default: ["serde"]
   main:
     dep_mod:
       - error
@@ -96,6 +111,11 @@ module:
       - toml
       - trybuild
       - url
+    inline:
+      features:
+        default:
+          - serde
+          #- serde_cbor
 crate:
   anyhow: "*"
   bincode: "*"
@@ -108,7 +128,7 @@ crate:
   ron: { version: "*", optional: true }
   serde-transcode: "*"
   serde: { version: "*", features: ["derive"], optional: true }
-  serde_cbor: "*"
+  serde_cbor: { version: "*", optional: true }
   serde_json: "*"
   serde_yaml: "*"
   syn: { version: "*", features: ["full", "extra-traits", "visit", "visit-mut"], optional: true }

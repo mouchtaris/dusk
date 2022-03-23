@@ -1,15 +1,6 @@
-use {
-    ::error::te,
-    std::{fs, io},
-};
+use {::error::te, std::fs};
 
-error::Error! {
-    Msg = String
-    Io = io::Error
-    Parse = parse::Error
-    Vm = vm::Error
-    Compile = compile::Error
-}
+use main::{sd, Result};
 
 fn main() -> Result<()> {
     pretty_env_logger::init();
@@ -31,9 +22,8 @@ fn main() -> Result<()> {
     te!(cmp.write_to(fs::File::create("_.compiler.txt")));
 
     // Dump and load icode for fun and test
-    let mut buffer = Vec::<u8>::new();
-    te!(cmp.icode.write_to(Ok(&mut buffer)));
-    let icode = te!(vm::ICode::load_from(Ok(buffer.as_slice())));
+    let icode = te!(sd::copy(&cmp)).icode;
+    te!(cmp.write_to(fs::File::create("_.compiler2.txt")));
 
     let mut vm = vm::Vm::default();
     vm.reset();

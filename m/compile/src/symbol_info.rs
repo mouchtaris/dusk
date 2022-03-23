@@ -1,23 +1,23 @@
 use super::{temg, Result};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Info {
     pub typ: Typ,
     pub scope_id: usize,
 }
 
 either::either![
-    #[derive(Debug, Clone)]
+    #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
     pub Typ,
         Local,
         Address
 ];
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Local {
     pub fp_off: usize,
     pub is_alias: bool,
 }
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Address {
     pub addr: usize,
 }

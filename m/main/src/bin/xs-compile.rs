@@ -1,5 +1,6 @@
 use {
     ::error::te,
+    main::sd,
     std::{fs, io},
 };
 
@@ -7,6 +8,7 @@ error::Error! {
     Io = io::Error
     Parse = parse::Error
     Compile = compile::Error
+    Main = main::Error
 }
 
 fn main() -> Result<()> {
@@ -34,7 +36,8 @@ fn main() -> Result<()> {
         te!(cmp.write_to(fs::File::create("_.compiler.txt")));
     }
 
-    te!(cmp.icode.write_to(fs::File::create(&output_path)));
+    let dst = te!(fs::File::create(&output_path), "{}", output_path);
+    te!(sd::ser(dst, &cmp));
 
     Ok(())
 }
