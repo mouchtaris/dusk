@@ -1,14 +1,16 @@
 use {
     super::{
-        ltrace, te, value, Deq, ICode, Instr, Result, StringInfo, TryFrom, Value, ValueTypeInfo,
+        ltrace, te, temg, value, Deq, ICode, Instr, Result, StringInfo, TryFrom, Value,
+        ValueTypeInfo,
     },
-    std::{borrow::Borrow, fmt, io, mem},
+    std::{borrow::Borrow, fmt, io, mem, process::Child as Subprocess},
 };
 
 #[derive(Default, Debug)]
 pub struct Vm {
     pub bin_path: Deq<String>,
     string_table: Deq<String>,
+    process_table: Deq<Subprocess>,
     stack: Vec<Value>,
     frame_ptr: usize,
     arg_ptr: usize,
@@ -40,14 +42,24 @@ impl Vm {
         stackp
     }
 
-    fn frame_addr(&self, offset: usize) -> usize {
+    pub fn frame_addr(&self, offset: usize) -> usize {
         self.frame_ptr + offset
     }
 
-    pub fn arg_addr(&self, argn: usize) -> usize {
+    pub fn arg_addr(&self, argn: usize) -> Result<usize> {
         // -n for stack-frame info: retaddr etc
         // -1 because fp points 1 beyond last
-        self.frame_ptr - 1 - self.call_stack_data().len() - argn
+        let &Self { frame_ptr, .. } = self;
+        let offset = 1 + self.call_stack_data().len() + argn;
+        if offset > frame_ptr {
+            temg!(
+                "Arg offset too big: fp:{fp} - 1 - stack_data:{sd} - argn:{an}",
+                fp = frame_ptr,
+                sd = self.call_stack_data().len(),
+                an = argn
+            )
+        }
+        Ok(frame_ptr - offset)
     }
 
     fn call_stack_data(&self) -> [usize; 2] {
@@ -153,31 +165,31 @@ impl Vm {
         self.frame_take_val(offset).try_into()
     }
 
-    pub fn arg_take_val(&mut self, argn: usize) -> Value {
-        self.stack_take_val(self.arg_addr(argn))
+    pub fn arg_take_val(&mut self, argn: usize) -> Result<Value> {
+        Ok(self.stack_take_val(te!(self.arg_addr(argn))))
     }
-    pub fn arg_get_val(&self, argn: usize) -> &Value {
-        self.stack_get_val(self.arg_addr(argn))
+    pub fn arg_get_val(&self, argn: usize) -> Result<&Value> {
+        Ok(self.stack_get_val(te!(self.arg_addr(argn))))
     }
-    pub fn arg_get_val_mut(&mut self, argn: usize) -> &mut Value {
-        self.stack_get_val_mut(self.arg_addr(argn))
+    pub fn arg_get_val_mut(&mut self, argn: usize) -> Result<&mut Value> {
+        Ok(self.stack_get_val_mut(te!(self.arg_addr(argn))))
     }
     pub fn arg_get<T>(&self, argn: usize) -> Result<&T>
     where
         for<'s> &'s T: TryFrom<&'s Value, Error = &'s Value> + ValueTypeInfo,
     {
-        self.arg_get_val(argn).try_ref()
+        te!(self.arg_get_val(argn)).try_ref()
     }
     pub fn arg_get_mut<T>(&mut self, argn: usize) -> Result<&mut T>
     where
         for<'s> &'s mut T: TryFrom<&'s mut Value, Error = &'s mut Value> + ValueTypeInfo,
     {
-        self.arg_get_val_mut(argn).try_mut()
+        te!(self.arg_get_val_mut(argn)).try_mut()
     }
 
     pub fn push_val<T>(&mut self, src: T)
     where
-        T: ValueTypeInfo + Into<Value>,
+        T: Into<Value>,
     {
         let addr = self.stackp_next();
         self.stack_set(addr, src);
@@ -193,21 +205,16 @@ impl Vm {
     }
 
     // Pushes an array of all arguments passed to this call
-    pub fn push_args(&mut self) {
+    pub fn push_args(&mut self) -> Result<()> {
         self.push_val(value::Array {
-            ptr: self.arg_addr(3),
+            ptr: te!(self.arg_addr(0)),
         });
-    }
-
-    // Pushes argument # `fp_off`
-    pub fn push_arg(&mut self, fp_off: usize) {
-        let val = self.stack_get_val(self.arg_addr(fp_off)).to_owned();
-        self.push_val(val);
+        Ok(())
     }
 
     // Pushes local var #
     pub fn push_local(&mut self, fp_off: usize) {
-        let val = self.frame_get_val(fp_off).to_owned();
+        let val = self.frame_get_val(fp_off).clone();
         self.push_val(val);
     }
 
@@ -240,11 +247,10 @@ impl Vm {
         while self.instr_ptr < icode.len() {
             let instruction = &icode[self.instr_ptr];
             self.instr_ptr += 1;
-            let r = instruction.borrow().operate_on(&mut self);
-            if r.is_err() {
-                te!(self.write_to(Ok(std::io::stderr())));
-            }
-            te!(r);
+            te!(instruction.borrow().operate_on(&mut self).map_err(|err| {
+                self.write_to(Ok(std::io::stderr())).unwrap_or_default();
+                err
+            }));
         }
         Ok(self)
     }
@@ -323,5 +329,13 @@ impl Vm {
         } else {
             t.resize(id + 1, s);
         }
+    }
+
+    pub fn add_process(&mut self, child: Subprocess) -> usize {
+        let Self {
+            process_table: pt, ..
+        } = self;
+        pt.push_back(child);
+        pt.len()
     }
 }

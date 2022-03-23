@@ -90,19 +90,26 @@ pub trait Compilers<'i> {
             let _ = redirections;
             let _ = envs;
 
-            cmp = te!(cmp.compile(args));
-            cmp.new_local_tmp("argc");
-            cmp.emit1(i::PushNat(args.len()));
-
-            cmp = te!(cmp.compile(cwd_opt));
-
-            // job_type
+            // target
             cmp = te!(cmp.compile(invocation_target));
             let job_type = cmp.retval.val();
-            cmp.emit1(i::PushNat(job_type));
-            cmp.new_local_tmp("process-job-type");
+            let job_target = cmp.retval1.val();
 
-            cmp.emit1(i::SysCall(vm::syscall::CREATE_JOB));
+            // cwd
+            cmp = te!(cmp.compile(cwd_opt));
+
+            // args
+            cmp = te!(cmp.compile(args));
+            cmp.new_local_tmp("argc");
+
+            // argn
+            cmp.emit1(i::PushNat(args.len()));
+
+            match job_type {
+                PROCESS_JOB_TYPE => cmp.emit1(i::SysCall(vm::syscall::CREATE_JOB)),
+                FUNCTION_JOB_TYPE => cmp.emit1(i::Call(job_target)),
+                other => panic!("{:?}", other),
+            }
 
             Ok(cmp)
         }
@@ -194,10 +201,8 @@ pub trait Compilers<'i> {
                 &TLocal(Local((id,))) => {
                     let addr = te!(cmp.lookup_addr(id), "Missing variable: {}", id).addr;
 
-                    cmp.new_local_tmp("fun_invc_trg_addr");
-                    cmp.emit1(i::PushNat(addr));
-
                     cmp.retval = SymInfo::just(FUNCTION_JOB_TYPE);
+                    cmp.retval1 = SymInfo::just(addr);
                     cmp
                 }
                 &TSysName(SysName((id,))) => {

@@ -10,11 +10,7 @@ pub use {
 };
 use {
     collection::{Deq, Entry, Map},
-    std::{
-        borrow::{Borrow, BorrowMut},
-        convert::TryFrom,
-        io,
-    },
+    std::{borrow::BorrowMut, convert::TryFrom, io},
 };
 
 error::Error! {
@@ -25,4 +21,4 @@ error::Error! {
     Utf8Error = std::string::FromUtf8Error
 }
 use error::{ldebug, ltrace, soft_todo};
-use error::{te, terr};
+use error::{te, temg, terr};

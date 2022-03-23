@@ -29,6 +29,7 @@ pub enum Instr {
     PushNat(usize),
     PushArgs,
     PushLocal(usize),
+    Call(usize),
 
     SysCall(u8),
 
@@ -77,8 +78,12 @@ impl Instr {
             &Self::SysCall(id) => te!(crate::syscall::call(vm, id)),
             &Self::Return => vm.return_from_call(),
             &Self::Dealloc(size) => vm.dealloc(size),
-            &Self::PushArgs => vm.push_args(),
+            &Self::PushArgs => te!(vm.push_args()),
             &Self::PushLocal(fp_off) => vm.push_local(fp_off),
+            &Self::Call(addr) => {
+                vm.prepare_call();
+                vm.jump(addr);
+            }
         }
         Ok(())
     }
@@ -136,6 +141,7 @@ impl ICode {
                     Instr::Dealloc(size) => (0x07, size),
                     Instr::PushArgs => (0x08, 0x00),
                     Instr::PushLocal(fp_off) => (0x09, fp_off),
+                    Instr::Call(addr) => (0x0a, addr),
                     _ => panic!(),
                 };
                 let code = usize::to_le_bytes(code);
@@ -193,6 +199,7 @@ impl ICode {
                     0x07 => Instr::Dealloc(val),
                     0x08 => Instr::PushArgs,
                     0x09 => Instr::PushLocal(val),
+                    0x0a => Instr::Call(val),
                     _ => panic!(),
                 };
                 icode.instructions.push_back(instr);

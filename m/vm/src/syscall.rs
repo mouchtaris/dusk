@@ -36,10 +36,11 @@ fn expand_arg(vm: &mut Vm, mut sbuf: buf::StringBuf, arg_addr: usize) -> Result<
 }
 
 fn expand_args(vm: &mut Vm, mut sbuf: buf::StringBuf) -> Result<buf::StringBuf> {
-    let &nargs: &usize = te!(vm.arg_get(3));
+    let &nargs: &usize = te!(vm.arg_get(0));
+    let nargs = nargs; // nargs, target, cwd
 
-    for i in 0..nargs {
-        sbuf = te!(expand_arg(vm, sbuf, vm.arg_addr(4 + i)));
+    for i in 1..=nargs {
+        sbuf = te!(expand_arg(vm, sbuf, te!(vm.arg_addr(i))));
     }
     Ok(sbuf)
 }
@@ -49,56 +50,45 @@ mod handlers {
     pub mod create_job {
         use super::*;
         pub const H: Handler = |vm| {
-            let &job_type: &usize = te!(vm.arg_get(0));
-            let target: Value = vm.arg_take_val(1);
-            let cwd: Value = vm.arg_take_val(2);
-            let &nargs: &usize = te!(vm.arg_get(3));
-            ldebug!(
-                "[create_job]
-    job_type    : {job_type:?}
-    target      : {target:?}
-    cwd         : {cwd:?}
-    nargs       : {nargs:?}
-",
-                target = target,
-                job_type = job_type,
-                cwd = cwd,
-                nargs = nargs,
-            );
-
+            let &nargs: &usize = te!(vm.arg_get(0));
+            let target: Value = te!(vm.arg_take_val(nargs + 2));
+            let cwd: Value = te!(vm.arg_take_val(nargs + 1));
             let sbuf = te!(expand_args(vm, <_>::default()));
             let args = sbuf.seg_vec_in(<_>::default());
-            ldebug!("args: {args:?}", args = args);
+            ldebug!(
+                "[create_job]
+    nargs       : {nargs:?}
+    target      : {target:?}
+    cwd         : {cwd:?}
+    args        : {args:?}
+",
+                target = target,
+                cwd = cwd,
+                nargs = nargs,
+                args = args,
+            );
 
-            match job_type {
-                0 => {
-                    use std::process::{Child, Command, ExitStatus};
+            use std::process::Command;
 
-                    let target: &String = te!(target.try_ref());
-                    let mut cmd: Command = Command::new(target);
+            let target: &String = te!(target.try_ref(), "syscall-target");
+            let mut cmd = Command::new(target);
 
-                    cmd.args(&args);
+            cmd.args(&args);
 
-                    if let Ok(cwd) = cwd.try_ref::<String>() {
-                        cmd.current_dir(cwd);
-                    }
-
-                    let mut child: Child = te!(cmd.spawn());
-
-                    let status: ExitStatus = te!(child.wait());
-
-                    if !status.success() {
-                        temg!("Subprocess failed: {:?}", status)
-                    }
-
-                    vm.return_from_call();
-                }
-                1 => {
-                    let &target: &usize = te!(target.try_ref());
-                    vm.jump(target);
-                }
-                _ => panic!(),
+            if let Ok(cwd) = cwd.try_ref::<String>() {
+                cmd.current_dir(cwd);
             }
+
+            let child = te!(cmd.spawn());
+
+            //let status: ExitStatus = te!(child.wait());
+
+            //if !status.success() {
+            //    temg!("Subprocess failed: {:?}", status)
+            //}
+
+            vm.add_process(child);
+            vm.return_from_call();
 
             Ok(())
         };

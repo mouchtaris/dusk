@@ -35,6 +35,7 @@ pub struct Compiler {
     sym_table: SymbolTable,
     /// For returning symbol info between node visitings
     retval: SymInfo,
+    retval1: SymInfo,
 }
 
 impl Compiler {
@@ -43,6 +44,7 @@ impl Compiler {
             icode: <_>::default(),
             sym_table: <_>::default(),
             retval: SymInfo::just(0),
+            retval1: SymInfo::just(0),
         }
     }
     pub fn init(&mut self) -> Result<()> {
