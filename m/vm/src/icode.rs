@@ -44,6 +44,7 @@ pub enum Instr {
     PushArgs,
     PushLocal(usize),
     Call(usize),
+    CleanUp(usize),
 
     SysCall(u8),
 
@@ -98,6 +99,7 @@ impl Instr {
                 vm.prepare_call();
                 vm.jump(addr);
             }
+            &Self::CleanUp(fp_off) => te!(vm.cleanup(fp_off)),
         }
         Ok(())
     }
@@ -156,6 +158,7 @@ impl ICode {
                     Instr::PushArgs => (0x08, 0x00),
                     Instr::PushLocal(fp_off) => (0x09, fp_off),
                     Instr::Call(addr) => (0x0a, addr),
+                    Instr::CleanUp(fp_off) => (0x0b, fp_off),
                     _ => panic!(),
                 };
                 let code = usize::to_le_bytes(code);
@@ -214,6 +217,7 @@ impl ICode {
                     0x08 => Instr::PushArgs,
                     0x09 => Instr::PushLocal(val),
                     0x0a => Instr::Call(val),
+                    0x0b => Instr::CleanUp(val),
                     _ => panic!(),
                 };
                 icode.instructions.push_back(instr);

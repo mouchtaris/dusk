@@ -26,7 +26,7 @@ macro_rules! name {
 
 name![Module, Body];
 
-either![Item, Invocation, LetStmt, DefStmt, Empty];
+either![Item, Expr, LetStmt, DefStmt, Empty];
 either![Expr, Invocation, String, Natural];
 either![Body, Block];
 either![

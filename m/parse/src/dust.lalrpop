@@ -7,7 +7,7 @@ pub Module: ast::Module<'input> =
 ;
 
 Item: ast::Item<'input> = {
-    <Invocation> ";" => <>.into(),
+    <Expr> => <>.into(),
     ";" => ast::Item::Empty(<_>::default()),
     "let" <Ident> "=" <Expr> => ast::Item::LetStmt((<>,).into()),
     "def" <Ident> "=" <Box<Body>> => ast::Item::DefStmt((<>,).into()),

@@ -19,12 +19,14 @@ mod compile;
 mod compilers;
 mod emit;
 mod show;
+mod static_type;
 pub mod symbol_info;
 mod symbol_table;
 pub use {
     crate::compile::{Compile, CompileEv},
     compilers::{Compilers, CompilersImpl as cmps},
     emit::EmitExt,
+    static_type::Type,
     symbol_info as sym,
     symbol_table::{SymInfo, SymbolTable, SymbolTableExt},
 };
@@ -131,7 +133,9 @@ impl Compiler {
         let text = text.as_ref();
         let strid = te!(cmp.add_string(text));
 
-        cmp.retval = cmp.new_local_tmp(format_args!("literal-text-{}", strid));
+        cmp.retval = cmp
+            .new_local_tmp(format_args!("literal-text-{}", strid))
+            .clone();
 
         cmp.emit([i::PushStr(strid)]);
 
@@ -147,7 +151,9 @@ impl Compiler {
         let text = text.as_ref();
         let nat = te!(text.parse::<usize>());
 
-        cmp.retval = cmp.new_local_tmp(format_args!("literal-nat-{}", nat));
+        cmp.retval = cmp
+            .new_local_tmp(format_args!("literal-nat-{}", nat))
+            .clone();
 
         cmp.emit1(i::PushNat(nat));
         Ok(cmp)

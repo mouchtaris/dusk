@@ -7,6 +7,13 @@ module:
   either: {}
   collection: {}
   show: {}
+  job:
+    dep_mod:
+      - either
+      - collection
+      - error
+    dep_crate:
+      - log
   buf:
     dep_crate:
       - serde

@@ -13,8 +13,9 @@ pub trait Compilers<'i> {
     }
     fn item() -> E<Item<'i>> {
         |mut cmp, item| match item {
-            ast::Item::Invocation(invc) => {
-                cmp = te!(cmp.compile(invc));
+            ast::Item::Expr(e) => {
+                cmp = te!(cmp.compile(e));
+                cmp.emit1(i::CleanUp(te!(cmp.retval.fp_off())));
                 Ok(cmp)
             }
             ast::Item::LetStmt(ast::LetStmt((name, expr))) => {
@@ -86,6 +87,9 @@ pub trait Compilers<'i> {
             envs,
             args,
         ))| {
+            let retval = cmp.new_local_tmp("retval").clone();
+            cmp.emit1(i::PushNull);
+
             // TODO
             let _ = redirections;
             let _ = envs;
@@ -111,6 +115,7 @@ pub trait Compilers<'i> {
                 other => panic!("{:?}", other),
             }
 
+            cmp.retval = retval;
             Ok(cmp)
         }
     }

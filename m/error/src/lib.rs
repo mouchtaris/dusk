@@ -44,7 +44,10 @@ macro_rules! lwarn {
 #[macro_export]
 macro_rules! soft_todo {
     () => {
-        $crate::lwarn!("todo")
+        $crate::soft_todo!("")
+    };
+    ($fmt:literal $(, $arg:expr)*) => {
+        $crate::lwarn!("todo: {}", format_args!($fmt $(, $arg)*))
     };
 }
 

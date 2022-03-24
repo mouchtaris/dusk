@@ -1,6 +1,6 @@
 use {
     super::{
-        ltrace, te, temg, value, Deq, ICode, Instr, Result, StringInfo, TryFrom, Value,
+        ldebug, ltrace, te, temg, value, Deq, ICode, Instr, Result, StringInfo, TryFrom, Value,
         ValueTypeInfo,
     },
     std::{borrow::Borrow, fmt, io, mem, process::Child as Subprocess},
@@ -335,7 +335,31 @@ impl Vm {
         let Self {
             process_table: pt, ..
         } = self;
+        let id = pt.len();
         pt.push_back(child);
-        pt.len()
+        id
+    }
+
+    pub fn cleanup(&mut self, fp_off: usize) -> Result<()> {
+        let vm = self;
+
+        let val = vm.frame_take_val(fp_off);
+        match val {
+            Value::Process(value::Process(proc_id)) => {
+                let proc = te!(vm.process_table.get_mut(proc_id), "Proc {}", proc_id);
+                ldebug!("cleanup::process {:?}", proc);
+                let status = te!(proc.wait());
+
+                if !status.success() {
+                    temg!("Subprocess failed: {:?}", status)
+                }
+                error::soft_todo!();
+            }
+            Value::Null(_) | Value::Natural(_) => {
+                // No cleanup
+            }
+            other => panic!("{:?}", other),
+        }
+        Ok(())
     }
 }

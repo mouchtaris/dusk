@@ -1,5 +1,5 @@
 use {
-    super::{sym, temg, Deq, Map, Result},
+    super::{sym, temg, Deq, Map, Result, Type},
     std::{borrow::Borrow, fmt},
 };
 
@@ -23,28 +23,29 @@ where
         let sinfo = SymInfo {
             scope_id,
             typ: SymType::Address(sym::Address { addr }),
+            static_type: Type::any(),
         };
         let name = name.into();
         scope.insert(name, sinfo.clone());
         sinfo
     }
 
-    fn new_local(&mut self, name: String) -> SymInfo {
+    fn new_local(&mut self, name: String) -> &mut SymInfo {
         let scope_id = self.scope_id();
         let scope = self.scope_mut();
         let local_var = sym::Local {
             fp_off: scope_stack_size(&scope),
             is_alias: false,
         };
-        let sinfo = SymInfo {
+        let mut sinfo = SymInfo {
             scope_id,
             typ: SymType::Local(local_var),
+            static_type: Type::any(),
         };
-        scope.insert(name, sinfo.clone());
-        sinfo
+        scope.entry(name).or_insert(sinfo)
     }
 
-    fn new_local_tmp<D>(&mut self, desc: D) -> SymInfo
+    fn new_local_tmp<D>(&mut self, desc: D) -> &mut SymInfo
     where
         D: fmt::Display,
     {

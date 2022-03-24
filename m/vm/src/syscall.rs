@@ -51,10 +51,10 @@ mod handlers {
         use super::*;
         pub const H: Handler = |vm| {
             let &nargs: &usize = te!(vm.arg_get(0));
-            let target: Value = te!(vm.arg_take_val(nargs + 2));
             let cwd: Value = te!(vm.arg_take_val(nargs + 1));
+            let target: Value = te!(vm.arg_take_val(nargs + 2));
             let sbuf = te!(expand_args(vm, <_>::default()));
-            let args = sbuf.seg_vec_in(<_>::default());
+            let args: Vec<&str> = sbuf.seg_vec_in(<_>::default());
             ldebug!(
                 "[create_job]
     nargs       : {nargs:?}
@@ -81,13 +81,9 @@ mod handlers {
 
             let child = te!(cmd.spawn());
 
-            //let status: ExitStatus = te!(child.wait());
-
-            //if !status.success() {
-            //    temg!("Subprocess failed: {:?}", status)
-            //}
-
-            vm.add_process(child);
+            let proc_id = vm.add_process(child);
+            let retval: &mut Value = te!(vm.arg_get_val_mut(nargs + 3));
+            *retval = value::Process(proc_id).into();
             vm.return_from_call();
 
             Ok(())

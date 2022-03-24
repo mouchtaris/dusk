@@ -1,9 +1,10 @@
-use super::{temg, Result};
+use super::{temg, Result, Type};
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Info {
     pub typ: Typ,
     pub scope_id: usize,
+    pub static_type: Type,
 }
 
 either::either![
@@ -49,14 +50,16 @@ impl Info {
             Typ::Local(Local { fp_off: v, .. }) => v,
         }
     }
-    pub fn just(val: usize) -> Self {
-        Self {
-            typ: Typ::Local(Local {
-                fp_off: val,
-                is_alias: true,
-            }),
-            scope_id: 0,
+    pub fn val_mut(&mut self) -> &mut usize {
+        match &mut self.typ {
+            Typ::Address(Address { addr: v }) => v,
+            Typ::Local(Local { fp_off: v, .. }) => v,
         }
+    }
+    pub fn just(val: usize) -> Self {
+        let mut si = Self::default();
+        *si.val_mut() = val;
+        si
     }
 }
 impl Default for Info {
@@ -67,6 +70,7 @@ impl Default for Info {
                 is_alias: true,
             }),
             scope_id: 0,
+            static_type: Type::any(),
         }
     }
 }
