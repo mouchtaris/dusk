@@ -1,6 +1,6 @@
 use std::io;
 
-use super::{ldebug, ltrace, soft_todo, te, terr, BorrowMut, Deq, Entry, Map, Result, Vm};
+use super::{ldebug, ltrace, soft_todo, te, terr, value, BorrowMut, Deq, Entry, Map, Result, Vm};
 
 fn _use() {
     soft_todo!();
@@ -51,7 +51,6 @@ pub enum Instr {
 
     Init,
     SetNatural { value: usize, dst: usize },
-    FindInBinPath { id: usize, dst: usize },
     CompleteProcessJob { jobid: usize },
 }
 
@@ -63,32 +62,10 @@ impl Instr {
             &Self::Allocate { size } => {
                 vm.allocate(size);
             }
-            &Self::FindInBinPath { id, dst } => {
-                let mut id: String = te!(vm.frame_take(id));
-                ltrace!("[FindInBinPath] {}", id);
-
-                let len = id.len();
-                let mut found = false;
-                for bin_path in &vm.bin_path {
-                    id.insert(0, '/');
-                    id.insert_str(0, bin_path);
-                    if let Ok(_) = std::fs::metadata(&id) {
-                        found = true;
-                        break;
-                    }
-                    id.replace_range(0..id.len() - len, "");
-                }
-                if found {
-                    ldebug!("[FindInBinPath] found {}", id);
-                    vm.frame_set(dst, id);
-                } else {
-                    te!(Err(format!("Did not find {} in BIN_PATH", id)))
-                }
-            }
             &Self::CompleteProcessJob { .. } => panic!(),
             &Self::PushNull => vm.push_null(),
             &Self::PushNat(id) => vm.push_val(id),
-            &Self::PushStr(id) => vm.push_str(id),
+            &Self::PushStr(id) => vm.push_lit_str(id),
             &Self::SetNatural { value, dst } => vm.frame_set(dst, value),
             &Self::Jump { addr } => vm.jump(addr),
             &Self::SysCall(id) => te!(crate::syscall::call(vm, id)),

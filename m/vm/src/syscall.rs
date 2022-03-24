@@ -18,7 +18,8 @@ type Handler = fn(&mut Vm) -> Result<()>;
 fn expand_arg(vm: &mut Vm, mut sbuf: buf::StringBuf, arg_addr: usize) -> Result<buf::StringBuf> {
     let arg: &Value = vm.stack_get_val(arg_addr);
     match arg {
-        Value::String(arg) => {
+        &Value::LitString(value::LitString(strid)) => {
+            let arg: &str = te!(vm.get_string_id(strid));
             sbuf.add(arg);
         }
         &Value::Array(value::Array { ptr }) => {
@@ -55,35 +56,40 @@ mod handlers {
             let target: Value = te!(vm.arg_take_val(nargs + 2));
             let sbuf = te!(expand_args(vm, <_>::default()));
             let args: Vec<&str> = sbuf.seg_vec_in(<_>::default());
+            let vmargs: Result<Vec<&Value>> = (0..=nargs).map(|i| vm.arg_get_val(i)).collect();
+            let vmargs = te!(vmargs);
             ldebug!(
                 "[create_job]
     nargs       : {nargs:?}
     target      : {target:?}
     cwd         : {cwd:?}
+    vmargs      : {vmargs:?}
     args        : {args:?}
 ",
                 target = target,
                 cwd = cwd,
                 nargs = nargs,
+                vmargs = vmargs,
                 args = args,
             );
 
             use std::process::Command;
 
-            let target: &String = te!(target.try_ref(), "syscall-target");
+            let target = te!(vm.val_as_str(&target));
+
             let mut cmd = Command::new(target);
 
             cmd.args(&args);
-
-            if let Ok(cwd) = cwd.try_ref::<String>() {
+            if let Ok(cwd) = vm.val_as_str(&cwd) {
                 cmd.current_dir(cwd);
             }
 
             let child = te!(cmd.spawn());
-
             let proc_id = vm.add_process(child);
+
             let retval: &mut Value = te!(vm.arg_get_val_mut(nargs + 3));
             *retval = value::Process(proc_id).into();
+
             vm.return_from_call();
 
             Ok(())

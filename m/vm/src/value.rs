@@ -17,11 +17,13 @@ macro_rules! name {
     }
 }
 
-either![Value, Null, String, Natural, Array, Process];
+either![Value, Null, LitString, DynString, Natural, Array, Process];
 
 name![Process = usize];
 pub type Null = ();
 pub type Natural = usize;
+name![LitString = usize];
+name![DynString = String];
 
 #[derive(Debug, Clone)]
 pub struct Array {
@@ -38,10 +40,11 @@ impl Value {
     pub fn type_info_name(&self) -> &'static str {
         match self {
             Value::Null(_) => Null::type_info_name(),
-            Value::String(_) => String::type_info_name(),
+            Value::LitString(_) => LitString::type_info_name(),
             Value::Natural(_) => Natural::type_info_name(),
             Value::Array(_) => Array::type_info_name(),
             Value::Process(_) => Process::type_info_name(),
+            Value::DynString(_) => DynString::type_info_name(),
         }
     }
 
@@ -76,7 +79,7 @@ impl Value {
     //    use Value::*;
     //    match self {
     //        Null(v) => Null(v.clone()),
-    //        String(v) => String(v.clone()),
+    //        LitString(v) => LitString(v.clone()),
     //        Natural(v) => Natural(v.clone()),
     //        Array(v) => Array(v.clone()),
     //        Process(v) => Process(v.clone()),
@@ -121,10 +124,11 @@ impl RuntimeTypeInfo for Value {
     fn runtime_type_info_name(&self) -> &str {
         match self {
             Value::Null(_) => "null",
-            Value::String(_) => "string",
+            Value::LitString(_) => "lit-string",
             Value::Natural(_) => "natural",
             Value::Array(_) => "array",
             Value::Process(_) => "process",
+            Value::DynString(_) => "dyn-string",
         }
     }
 }
@@ -145,9 +149,9 @@ where
         T::type_info_name()
     }
 }
-impl ValueTypeInfo for String {
+impl ValueTypeInfo for LitString {
     fn type_info_name() -> &'static str {
-        "String"
+        "LitString"
     }
 }
 impl ValueTypeInfo for Null {
@@ -184,5 +188,10 @@ impl ValueTypeInfo for Array {
 impl ValueTypeInfo for Process {
     fn type_info_name() -> &'static str {
         "Process"
+    }
+}
+impl ValueTypeInfo for DynString {
+    fn type_info_name() -> &'static str {
+        "DynString"
     }
 }

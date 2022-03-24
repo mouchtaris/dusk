@@ -18,6 +18,15 @@ pub struct Vm {
     instr_ptr: usize,
 }
 
+pub struct Stack {
+    mem: Vec<Value>,
+    fp: usize,
+    sp: usize,
+}
+impl Stack {
+    // TODO
+}
+
 impl Vm {
     /// Reset to init state
     pub fn reset(&mut self) {
@@ -199,9 +208,8 @@ impl Vm {
         self.push_val(());
     }
 
-    pub fn push_str(&mut self, strid: usize) {
-        let src = self.string_table[strid].to_owned();
-        self.push_val(src);
+    pub fn push_lit_str(&mut self, strid: usize) {
+        self.push_val(value::LitString(strid));
     }
 
     // Pushes an array of all arguments passed to this call
@@ -321,6 +329,9 @@ impl Vm {
         })
     }
 
+    pub fn get_string_id(&self, id: usize) -> Result<&str> {
+        Ok(te!(self.string_table.get(id), "strid {}", id))
+    }
     fn add_string(&mut self, i: StringInfo, s: String) {
         let t = &mut self.string_table;
         let id = i.id;
@@ -365,9 +376,10 @@ impl Vm {
     pub fn cleanup_collect(&mut self, fp_off: usize) -> Result<()> {
         let vm = self;
 
+        use Value::*;
         let val = vm.frame_take_val(fp_off);
         match val {
-            Value::Process(value::Process(proc_id)) => {
+            Process(value::Process(proc_id)) => {
                 let proc = te!(vm.process_table.get_mut(proc_id), "Proc {}", proc_id);
                 ldebug!("cleanup::process {:?}", proc);
                 let status = te!(proc.wait());
@@ -377,11 +389,30 @@ impl Vm {
                 }
                 error::soft_todo!();
             }
-            Value::Null(_) | Value::Natural(_) => {
-                // No cleanup
+            v @ (LitString(_) | Null(_) | Natural(_)) => {
+                vm.stack_set(vm.frame_addr(fp_off), v);
             }
             other => panic!("{:?}", other),
         }
         Ok(())
+    }
+
+    pub fn val_into_string(&self, val: Value) -> Result<String> {
+        let vm = self;
+
+        Ok(match val {
+            Value::LitString(value::LitString(id)) => te!(vm.get_string_id(id)).to_owned(),
+            Value::DynString(value::DynString(s)) => s,
+            other => error::temg!("Not a string value: {:?}", other),
+        })
+    }
+    pub fn val_as_str<'a>(&'a self, val: &'a Value) -> Result<&'a str> {
+        let vm = self;
+
+        Ok(match val {
+            &Value::LitString(value::LitString(id)) => te!(vm.get_string_id(id)),
+            Value::DynString(value::DynString(s)) => s.as_str(),
+            other => error::temg!("Not a string value: {:?}", other),
+        })
     }
 }
