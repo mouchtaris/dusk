@@ -37,7 +37,12 @@ mod cbor_adapt {
 #[cfg(not(feature = "serde_cbor"))]
 mod cbor_adapt {
     use {super::*, compile::Compiler, vm::ICode};
+
+    #[derive(Debug)]
+    pub struct CborError;
+
     pub type T = Compiler;
+
     pub fn ser<B>(buffer: B, t: &T) -> Result<()>
     where
         B: io::Write,
@@ -60,13 +65,5 @@ mod cbor_adapt {
         let mut buffer = Vec::<u8>::new();
         te!(ser(&mut buffer, src));
         Ok(te!(deser(buffer.as_slice())))
-    }
-
-    #[derive(Debug)]
-    pub struct CborError;
-    pub fn icode(cmp: &Compiler) -> Result<ICode> {
-        let mut buffer: Vec<u8> = <_>::default();
-        te!(cmp.icode.write_to(Ok(&mut buffer)));
-        Ok(te!(vm::ICode::load_from(Ok(buffer.as_slice()))))
     }
 }

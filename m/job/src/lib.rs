@@ -52,8 +52,6 @@ impl Job {
         error::lwarn!("collect");
         match (&mut self.core, &self.cleanup) {
             (Core::Proc(proc), Cleanup::Inherit) => {
-                let stdout = te!(proc.stdout.as_mut());
-                panic!("{:?}", stdout);
                 let status = te!(proc.wait());
 
                 if !status.success() {

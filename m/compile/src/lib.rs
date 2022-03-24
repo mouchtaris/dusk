@@ -160,6 +160,23 @@ impl Compiler {
         cmp.emit1(i::PushNat(nat));
         Ok(cmp)
     }
+
+    fn compile_funcaddr<S>(self, text: S) -> Result<Self>
+    where
+        S: AsRef<str>,
+    {
+        let mut cmp = self;
+
+        let text = text.as_ref();
+        let name = text;
+
+        cmp.retval = cmp.new_local_tmp(format_args!("funcaddr-{}", name)).clone();
+
+        let addr = te!(cmp.lookup_addr(name), "Func not found: {}", name).addr;
+
+        cmp.emit1(i::PushFuncAddr(addr));
+        Ok(cmp)
+    }
 }
 
 impl SymbolTableExt for Compiler {}

@@ -30,7 +30,8 @@ pub trait Compilers<'i> {
 
                 cmp = te!(cmp.compile(body));
 
-                cmp.emit1(i::Return);
+                let &sym::Local { fp_off: retval, .. } = te!(cmp.retval.as_local_ref());
+                cmp.emit1(i::Return(retval));
 
                 let jump_target = cmp.instr_id() + 1;
                 te!(cmp.backpatch_with(jump_instr, jump_target));
@@ -98,7 +99,6 @@ pub trait Compilers<'i> {
             // target
             cmp = te!(cmp.compile(invocation_target));
             let job_type = cmp.retval.val();
-            let job_target = cmp.retval1.val();
 
             // cwd
             cmp = te!(cmp.compile(cwd_opt));
@@ -110,9 +110,10 @@ pub trait Compilers<'i> {
             // argn
             cmp.emit1(i::PushNat(args.len()));
 
+            const NOWHERE: usize = 0xffffffff;
             match job_type {
-                PROCESS_JOB_TYPE => cmp.emit1(i::SysCall(vm::syscall::CREATE_JOB)),
-                FUNCTION_JOB_TYPE => cmp.emit1(i::Call(job_target)),
+                PROCESS_JOB_TYPE => cmp.emit1(i::Spawn(NOWHERE)),
+                FUNCTION_JOB_TYPE => cmp.emit1(i::Call(NOWHERE)),
                 other => panic!("{:?}", other),
             }
 
@@ -205,10 +206,8 @@ pub trait Compilers<'i> {
 
             cmp = match invocation_target {
                 &TLocal(Local((id,))) => {
-                    let addr = te!(cmp.lookup_addr(id), "Missing variable: {}", id).addr;
-
+                    cmp = te!(cmp.compile_funcaddr(id));
                     cmp.retval = SymInfo::just(FUNCTION_JOB_TYPE);
-                    cmp.retval1 = SymInfo::just(addr);
                     cmp
                 }
                 &TSysName(SysName((id,))) => {

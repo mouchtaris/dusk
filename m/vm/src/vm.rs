@@ -39,6 +39,20 @@ impl Vm {
         self.instr_ptr = 0;
     }
 
+    pub fn init(&mut self) {
+        // synthetic call context
+        // - RetVal
+        // - InvocationTarget
+        // - Cwd
+        // - Args + argn
+        self.allocate(4);
+        self.push_null();
+        self.push_null();
+        self.push_null();
+        self.push_val(0);
+        self.prepare_call();
+    }
+
     /// The current instruction address pointer
     pub fn instr_addr(&self) -> usize {
         self.instr_ptr
@@ -90,8 +104,24 @@ impl Vm {
 
         vm.frame_ptr = vm.stack_ptr;
     }
+    pub fn nargs(&self) -> Result<usize> {
+        let vm = self;
+
+        let nargs = te!(vm.arg_get_val(0));
+        let &nargs: &usize = te!(nargs.try_ref());
+        Ok(nargs)
+    }
+    pub fn call_target_func_addr(&self) -> Result<usize> {
+        let vm = self;
+
+        let nargs = te!(vm.nargs());
+        let nargs = te!(vm.arg_get_val(nargs + 2));
+        let &value::FuncAddr(addr) = te!(nargs.try_ref());
+        Ok(addr)
+    }
     pub fn return_from_call(&mut self) {
         let vm = self;
+
         let ret_instr = vm.ret_instr_addr();
         let ret_fp = vm.ret_fp_addr();
         ltrace!("return fp[{}] inst[{}]", ret_fp, ret_instr);

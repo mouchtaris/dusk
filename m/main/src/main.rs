@@ -21,9 +21,16 @@ fn main() -> Result<()> {
     use show::Show;
     te!(cmp.write_to(fs::File::create("_.compiler.txt")));
 
+    let icode = if cfg!(release) {
+        cmp.icode
+    } else {
+        // Try out ser-deser, to catch breaks
+        te!(main::sd::copy(&cmp)).icode
+    };
+
     let mut vm = vm::Vm::default();
-    let icode = &cmp.icode;
     vm.reset();
+    vm.init();
     te!(vm.init_bin_path_from_path_env());
     vm = te!(vm.load_icode(&icode));
     te!(vm.write_to(fs::File::create("./_.vm.txt")));

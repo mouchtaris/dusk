@@ -17,13 +17,14 @@ macro_rules! name {
     }
 }
 
-either![Value, Null, LitString, DynString, Natural, Array, Job];
+either![Value, Null, LitString, DynString, Natural, Array, Job, FuncAddr];
 
 name![Job = usize];
 pub type Null = ();
 pub type Natural = usize;
 name![LitString = usize];
 name![DynString = String];
+name![FuncAddr = usize];
 
 #[derive(Debug, Clone)]
 pub struct Array {
@@ -37,17 +38,6 @@ impl Default for Value {
 }
 
 impl Value {
-    pub fn type_info_name(&self) -> &'static str {
-        match self {
-            Value::Null(_) => Null::type_info_name(),
-            Value::LitString(_) => LitString::type_info_name(),
-            Value::Natural(_) => Natural::type_info_name(),
-            Value::Array(_) => Array::type_info_name(),
-            Value::Job(_) => Job::type_info_name(),
-            Value::DynString(_) => DynString::type_info_name(),
-        }
-    }
-
     pub fn try_into<T>(self) -> Result<T>
     where
         T: TryFrom<Self, Error = Self> + ValueTypeInfo,
@@ -129,6 +119,7 @@ impl RuntimeTypeInfo for Value {
             Value::Array(_) => "array",
             Value::Job(_) => "job",
             Value::DynString(_) => "dyn-string",
+            Value::FuncAddr(_) => "func-addr",
         }
     }
 }
@@ -193,5 +184,10 @@ impl ValueTypeInfo for Job {
 impl ValueTypeInfo for DynString {
     fn type_info_name() -> &'static str {
         "DynString"
+    }
+}
+impl ValueTypeInfo for FuncAddr {
+    fn type_info_name() -> &'static str {
+        "FuncAddr"
     }
 }

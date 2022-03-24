@@ -1,6 +1,6 @@
 use std::io;
 
-use super::{Job, ltrace, soft_todo, te, terr, BorrowMut, Deq, Entry, Map, Result, Vm};
+use super::{ltrace, soft_todo, te, terr, value, BorrowMut, Deq, Entry, Job, Map, Result, Vm};
 
 fn _use() {
     soft_todo!();
@@ -36,18 +36,18 @@ pub enum Instr {
     Allocate { size: usize },
     Jump { addr: usize },
 
-    Return,
+    Return(usize),
     Dealloc(usize),
     PushNull,
     PushStr(usize),
     PushNat(usize),
+    PushFuncAddr(usize),
     PushArgs,
     PushLocal(usize),
     Call(usize),
+    Spawn(usize),
     CleanUp(usize),
     Collect(usize),
-
-    SysCall(u8),
 
     Init,
     SetNatural { value: usize, dst: usize },
@@ -68,13 +68,15 @@ impl Instr {
             &Self::PushStr(id) => vm.push_lit_str(id),
             &Self::SetNatural { value, dst } => vm.frame_set(dst, value),
             &Self::Jump { addr } => vm.jump(addr),
-            &Self::SysCall(id) => te!(crate::syscall::call(vm, id)),
-            &Self::Return => vm.return_from_call(),
+            &Self::Spawn(id) => te!(crate::syscall::spawn(vm, id)),
+            &Self::Return(local_id) => vm.return_from_call(),
             &Self::Dealloc(size) => vm.dealloc(size),
             &Self::PushArgs => te!(vm.push_args()),
             &Self::PushLocal(fp_off) => vm.push_local(fp_off),
-            &Self::Call(addr) => {
+            &Self::PushFuncAddr(addr) => vm.push_val(value::FuncAddr(addr)),
+            &Self::Call(_) => {
                 vm.prepare_call();
+                let addr = te!(vm.call_target_func_addr());
                 vm.jump(addr);
             }
             &Self::CleanUp(fp_off) => te!(vm.cleanup(fp_off, Job::cleanup)),
@@ -128,18 +130,19 @@ impl ICode {
                 let (code, arg0) = match *instr {
                     Instr::Allocate { size } => (0x00, size),
                     Instr::Jump { addr } => (0x01, addr),
-                    Instr::Return => (0x02, 0x00),
+                    Instr::Return(sp_off) => (0x02, sp_off),
                     Instr::PushNull => (0x03, 0x00),
                     Instr::PushStr(strid) => (0x04, strid),
                     Instr::PushNat(val) => (0x05, val),
-                    Instr::SysCall(id) => (0x06, id as usize),
+                    Instr::Spawn(id) => (0x06, id),
                     Instr::Dealloc(size) => (0x07, size),
                     Instr::PushArgs => (0x08, 0x00),
                     Instr::PushLocal(fp_off) => (0x09, fp_off),
                     Instr::Call(addr) => (0x0a, addr),
                     Instr::CleanUp(fp_off) => (0x0b, fp_off),
                     Instr::Collect(fp_off) => (0x0c, fp_off),
-                    _ => panic!(),
+                    Instr::PushFuncAddr(addr) => (0x0d, addr),
+                    other => panic!("{:?}", other),
                 };
                 let code = usize::to_le_bytes(code);
                 let arg = usize::to_le_bytes(arg0);
@@ -188,17 +191,18 @@ impl ICode {
                 let instr = match code {
                     0x00 => Instr::Allocate { size: val },
                     0x01 => Instr::Jump { addr: val },
-                    0x02 => Instr::Return,
+                    0x02 => Instr::Return(val),
                     0x03 => Instr::PushNull,
                     0x04 => Instr::PushStr(val),
                     0x05 => Instr::PushNat(val),
-                    0x06 => Instr::SysCall(val as u8),
+                    0x06 => Instr::Spawn(val),
                     0x07 => Instr::Dealloc(val),
                     0x08 => Instr::PushArgs,
                     0x09 => Instr::PushLocal(val),
                     0x0a => Instr::Call(val),
                     0x0b => Instr::CleanUp(val),
                     0x0c => Instr::Collect(val),
+                    0x0d => Instr::PushFuncAddr(val),
                     _ => panic!(),
                 };
                 icode.instructions.push_back(instr);
