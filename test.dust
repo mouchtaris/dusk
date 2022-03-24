@@ -1,24 +1,24 @@
 def a = {
 	let p = "A";
-	!echo $p $args $p;
+	!echo $p $args $p
 }
 def b = {
 	let p = "B";
-	a $p $args $p;
+	a $p $args $p
 }
 def c = {
 	let p = "C";
-	b $p $args $p;
+	b $p $args $p
 }
 
 def times3 = {
 	c $args;
 	c $args;
-	c $args;
+	c $args
 }
 
 def say-i-am = !echo am;
 
 let an = "an";
 let am = say-i-am;
-times3 Hello, I am $an argument.;
+times3 Hello, I am $an argument.

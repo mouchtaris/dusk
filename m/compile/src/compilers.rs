@@ -50,7 +50,7 @@ pub trait Compilers<'i> {
         }
     }
     fn block() -> E<Block<'i>> {
-        |mut cmp, ast::Block((items,))| {
+        |mut cmp, ast::Block((items, expr))| {
             cmp.enter_scope();
 
             cmp.emit1(i::Allocate { size: 0 });
@@ -59,6 +59,7 @@ pub trait Compilers<'i> {
             for item in items {
                 cmp = te!(cmp.compile(item));
             }
+            cmp = te!(cmp.compile(expr));
 
             let frame_size = cmp.stack_frame_size();
             cmp.emit1(i::Dealloc(frame_size));

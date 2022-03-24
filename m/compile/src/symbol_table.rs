@@ -37,7 +37,7 @@ where
             fp_off: scope_stack_size(&scope),
             is_alias: false,
         };
-        let mut sinfo = SymInfo {
+        let sinfo = SymInfo {
             scope_id,
             typ: SymType::Local(local_var),
             static_type: Type::any(),

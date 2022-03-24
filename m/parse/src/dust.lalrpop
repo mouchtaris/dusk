@@ -3,20 +3,20 @@ grammar<'input>;
 use super::{Error, lex::Tok};
 
 pub Module: ast::Module<'input> =
-    Item* => (ast::Body::Block(ast::Block((<>,))),).into()
+    Block => (<>,).into()
 ;
 
 Item: ast::Item<'input> = {
-    <Expr> => <>.into(),
+    <Expr> ";" => <>.into(),
     ";" => ast::Item::Empty(<_>::default()),
-    "let" <Ident> "=" <Expr> => ast::Item::LetStmt((<>,).into()),
-    "def" <Ident> "=" <Box<Body>> => ast::Item::DefStmt((<>,).into()),
+    "let" <Ident> "=" <Expr> ";" => ast::Item::LetStmt((<>,).into()),
+    "def" <Ident> "=" <Body> => ast::Item::DefStmt((<>,).into()),
 }
 
 Expr: ast::Expr<'input> = {
-    <String> ";" => <>.into(),
-    <Natural> ";" => <>.into(),
-    <Invocation> ";" => <>.into(),
+    <String> => <>.into(),
+    <Natural> => <>.into(),
+    <Invocation> => <>.into(),
 }
 
 Invocation: ast::Invocation<'input> = {
@@ -70,8 +70,12 @@ Variable: ast::Variable<'input> = {
 }
 
 Body: ast::Body<'input> = {
-    Item => ast::Block((vec![<>],)).into(),
-    "{" <Item*> "}" => ast::Block((<>,)).into(),
+    <Expr> ";" => ast::Block((<_>::default(), <>)).into(),
+    "{" <Block> "}" => <>.into(),
+}
+
+Block: ast::Block<'input> = {
+    <Item*> <Expr> => ((<>,)).into(),
 }
 
 

@@ -24,7 +24,7 @@ macro_rules! name {
     };
 }
 
-name![Module, Body];
+name![Module, Block];
 
 either![Item, Expr, LetStmt, DefStmt, Empty];
 either![Expr, Invocation, String, Natural];
@@ -50,9 +50,9 @@ either![Path, AbsPath, RelPath, HomePath];
 either![Opt, ShortOpt, LongOpt];
 either![Redirect, Path, Variable];
 
-name![Block, AnyItem];
+name![Block, AnyItem, Expr];
 name![LetStmt, Ident, Expr];
-name![DefStmt, Ident, BoxBody];
+name![DefStmt, Ident, Body];
 name![RedirectInput, Redirect];
 name![RedirectOutput, Redirect];
 name![String, Text];
