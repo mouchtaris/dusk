@@ -362,4 +362,26 @@ impl Vm {
         }
         Ok(())
     }
+    pub fn cleanup_collect(&mut self, fp_off: usize) -> Result<()> {
+        let vm = self;
+
+        let val = vm.frame_take_val(fp_off);
+        match val {
+            Value::Process(value::Process(proc_id)) => {
+                let proc = te!(vm.process_table.get_mut(proc_id), "Proc {}", proc_id);
+                ldebug!("cleanup::process {:?}", proc);
+                let status = te!(proc.wait());
+
+                if !status.success() {
+                    temg!("Subprocess failed: {:?}", status)
+                }
+                error::soft_todo!();
+            }
+            Value::Null(_) | Value::Natural(_) => {
+                // No cleanup
+            }
+            other => panic!("{:?}", other),
+        }
+        Ok(())
+    }
 }

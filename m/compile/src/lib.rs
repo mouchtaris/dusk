@@ -4,7 +4,7 @@ use {
     buf::MemTake,
     collection::{Deq, Map},
     error::{te, temg},
-    std::io,
+    std::{borrow::BorrowMut, io, num},
     vm::Instr as i,
 };
 
@@ -12,10 +12,11 @@ error::Error! {
     Msg = &'static str
     Message = String
     Vm = vm::Error
-    ParseInt = std::num::ParseIntError
+    ParseInt = num::ParseIntError
 }
 
 mod compile;
+mod compile_util;
 mod compilers;
 mod emit;
 mod show;
@@ -24,6 +25,7 @@ pub mod symbol_info;
 mod symbol_table;
 pub use {
     crate::compile::{Compile, CompileEv},
+    compile_util::CompileUtil,
     compilers::{Compilers, CompilersImpl as cmps},
     emit::EmitExt,
     static_type::Type,

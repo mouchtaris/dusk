@@ -15,13 +15,13 @@ pub trait Compilers<'i> {
         |mut cmp, item| match item {
             ast::Item::Expr(e) => {
                 cmp = te!(cmp.compile(e));
-                cmp.emit1(i::CleanUp(te!(cmp.retval.fp_off())));
+                te!(cmp.emit_cleanup());
                 Ok(cmp)
             }
             ast::Item::LetStmt(ast::LetStmt((name, expr))) => {
                 cmp = te!(cmp.compile(expr));
-                let val_info = cmp.retval.mem_take();
-                cmp.alias_name(*name, &val_info);
+                let retval = te!(cmp.emit_cleanup_collect());
+                cmp.alias_name(*name, &retval);
                 Ok(cmp)
             }
             ast::Item::DefStmt(ast::DefStmt((name, body))) => {
