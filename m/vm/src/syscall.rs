@@ -88,7 +88,7 @@ mod handlers {
             let proc_id = vm.add_process(child);
 
             let retval: &mut Value = te!(vm.arg_get_val_mut(nargs + 3));
-            *retval = value::Process(proc_id).into();
+            *retval = value::Job(proc_id).into();
 
             vm.return_from_call();
 

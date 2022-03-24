@@ -32,6 +32,10 @@ path = '../error'
 version = '*'
 optional = true
 
+[dependencies.job]
+version = '0.0.1'
+path = '../job'
+
 [dependencies.lalrpop-util]
 version = '*'
 

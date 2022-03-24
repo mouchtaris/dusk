@@ -12,6 +12,7 @@ mod vm;
 
 use {
     collection::{Deq, Entry, Map},
+    job::Job,
     std::{borrow::BorrowMut, convert::TryFrom, io},
 };
 
@@ -21,6 +22,7 @@ error::Error! {
     Var = std::env::VarError
     Io = io::Error
     Utf8Error = std::string::FromUtf8Error
+    Job = job::Error
 }
-use error::{ldebug, ltrace, soft_todo};
+use error::{ltrace, soft_todo};
 use error::{te, temg, terr};

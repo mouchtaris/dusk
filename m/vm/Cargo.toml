@@ -22,6 +22,10 @@ path = '../either'
 version = '0.0.1'
 path = '../error'
 
+[dependencies.job]
+version = '0.0.1'
+path = '../job'
+
 [dependencies.log]
 version = '*'
 

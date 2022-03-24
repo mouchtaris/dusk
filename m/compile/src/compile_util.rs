@@ -5,7 +5,7 @@ pub trait CompileUtil: BorrowMut<Compiler> {
         self.borrow_mut()
     }
 
-    fn emit_cleanup2<S>(&mut self, style: S) -> Result<SymInfo>
+    fn emit_cleanup<S>(&mut self, style: S) -> Result<SymInfo>
     where
         S: FnOnce(usize) -> i,
     {
@@ -17,13 +17,6 @@ pub trait CompileUtil: BorrowMut<Compiler> {
         cmp.emit1(style(fp_off));
 
         Ok(retval_info)
-    }
-
-    fn emit_cleanup_collect(&mut self) -> Result<SymInfo> {
-        self.emit_cleanup2(i::CleanUpCollect)
-    }
-    fn emit_cleanup(&mut self) -> Result<SymInfo> {
-        self.emit_cleanup2(i::CleanUp)
     }
 }
 

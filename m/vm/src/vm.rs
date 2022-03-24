@@ -1,16 +1,16 @@
 use {
     super::{
-        ldebug, ltrace, te, temg, value, Deq, ICode, Instr, Result, StringInfo, TryFrom, Value,
+        ltrace, te, temg, value, Deq, ICode, Instr, Job, Result, StringInfo, TryFrom, Value,
         ValueTypeInfo,
     },
-    std::{borrow::Borrow, fmt, io, mem, process::Child as Subprocess},
+    std::{borrow::Borrow, fmt, io, mem, result},
 };
 
 #[derive(Default, Debug)]
 pub struct Vm {
     pub bin_path: Deq<String>,
     string_table: Deq<String>,
-    process_table: Deq<Subprocess>,
+    job_table: Deq<Job>,
     stack: Vec<Value>,
     frame_ptr: usize,
     arg_ptr: usize,
@@ -342,54 +342,35 @@ impl Vm {
         }
     }
 
-    pub fn add_process(&mut self, child: Subprocess) -> usize {
-        let Self {
-            process_table: pt, ..
-        } = self;
-        let id = pt.len();
-        pt.push_back(child);
+    pub fn add_process<C>(&mut self, child: C) -> usize
+    where
+        C: Into<Job>,
+    {
+        let Self { job_table: t, .. } = self;
+        let id = t.len();
+        let job = child.into();
+
+        t.push_back(job);
+
         id
     }
 
-    pub fn cleanup(&mut self, fp_off: usize) -> Result<()> {
+    pub fn cleanup<F, E>(&mut self, fp_off: usize, cln: F) -> Result<()>
+    where
+        F: FnOnce(&mut Job) -> result::Result<(), E>,
+        result::Result<(), E>: error::IntoResult<super::ErrorKind, ()>,
+    {
         let vm = self;
 
         let val = vm.frame_take_val(fp_off);
+        ltrace!("cleanup {:?}", val);
         match val {
-            Value::Process(value::Process(proc_id)) => {
-                let proc = te!(vm.process_table.get_mut(proc_id), "Proc {}", proc_id);
-                ldebug!("cleanup::process {:?}", proc);
-                let status = te!(proc.wait());
-
-                if !status.success() {
-                    temg!("Subprocess failed: {:?}", status)
-                }
-                error::soft_todo!();
+            Value::Job(value::Job(proc_id)) => {
+                let job: &mut Job = te!(vm.job_table.get_mut(proc_id), "Proc {}", proc_id);
+                te!(cln(job));
             }
-            Value::Null(_) | Value::Natural(_) => {
+            v @ (Value::LitString(_) | Value::Null(_) | Value::Natural(_)) => {
                 // No cleanup
-            }
-            other => panic!("{:?}", other),
-        }
-        Ok(())
-    }
-    pub fn cleanup_collect(&mut self, fp_off: usize) -> Result<()> {
-        let vm = self;
-
-        use Value::*;
-        let val = vm.frame_take_val(fp_off);
-        match val {
-            Process(value::Process(proc_id)) => {
-                let proc = te!(vm.process_table.get_mut(proc_id), "Proc {}", proc_id);
-                ldebug!("cleanup::process {:?}", proc);
-                let status = te!(proc.wait());
-
-                if !status.success() {
-                    temg!("Subprocess failed: {:?}", status)
-                }
-                error::soft_todo!();
-            }
-            v @ (LitString(_) | Null(_) | Natural(_)) => {
                 vm.stack_set(vm.frame_addr(fp_off), v);
             }
             other => panic!("{:?}", other),

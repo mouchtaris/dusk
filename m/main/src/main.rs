@@ -1,6 +1,6 @@
 use {::error::te, std::fs};
 
-use main::{sd, Result};
+use main::Result;
 
 fn main() -> Result<()> {
     pretty_env_logger::init();
@@ -21,13 +21,9 @@ fn main() -> Result<()> {
     use show::Show;
     te!(cmp.write_to(fs::File::create("_.compiler.txt")));
 
-    // Dump and load icode for fun and test
-    let icode = te!(sd::copy(&cmp)).icode;
-    te!(cmp.write_to(fs::File::create("_.compiler2.txt")));
-
     let mut vm = vm::Vm::default();
+    let icode = &cmp.icode;
     vm.reset();
-    // vm.init_bin_path_system();
     te!(vm.init_bin_path_from_path_env());
     vm = te!(vm.load_icode(&icode));
     te!(vm.write_to(fs::File::create("./_.vm.txt")));

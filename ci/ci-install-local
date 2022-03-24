@@ -1,0 +1,6 @@
+!cargo build --release --features serde_cbor;
+!cp target/release/main /home/vagrant/.local/bin/xs2;
+!cp target/release/xs-compile /home/vagrant/.local/bin/xs-compile;
+!cp target/release/xs-run /home/vagrant/.local/bin/xs-run;
+!cp target/release/xs-make-self-exec /home/vagrant/.local/bin/xs-make-self-exec;
+0

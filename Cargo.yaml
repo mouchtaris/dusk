@@ -48,6 +48,7 @@ module:
       - either
       - show
       - buf
+      - job
     dep_crate:
       - log
       - serde
@@ -96,6 +97,7 @@ module:
       - lexpop
       - either
       - lex
+      - job
     dep_crate:
       - lalrpop-util
       - anyhow

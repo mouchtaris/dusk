@@ -18,10 +18,18 @@ fn main() -> Result<()> {
     let input_path = te!(args.get(1));
 
     log::debug!("Loading {}", input_path);
-    let inp = te!(fs::File::open(input_path), "{}", input_path);
-    //let icode = te!(vm::ICode::load_from());
-    let icode = {
-        let cmp: compile::Compiler = te!(sd::deser(inp));
+    let inp: Vec<u8> = {
+        let mut inp: Vec<u8> = te!(fs::read(input_path));
+        if inp[0] == b'#' {
+            let len = inp.len();
+            let hashbang_end = inp.iter().cloned().take_while(|&b| b != b'\n').count();
+            inp.copy_within(hashbang_end + 1.., 0);
+            inp.truncate(len - hashbang_end);
+        }
+        inp
+    };
+    let icode: vm::ICode = {
+        let cmp: compile::Compiler = te!(sd::deser(inp.as_slice()));
         cmp.icode
     };
 

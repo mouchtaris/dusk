@@ -17,9 +17,9 @@ macro_rules! name {
     }
 }
 
-either![Value, Null, LitString, DynString, Natural, Array, Process];
+either![Value, Null, LitString, DynString, Natural, Array, Job];
 
-name![Process = usize];
+name![Job = usize];
 pub type Null = ();
 pub type Natural = usize;
 name![LitString = usize];
@@ -43,7 +43,7 @@ impl Value {
             Value::LitString(_) => LitString::type_info_name(),
             Value::Natural(_) => Natural::type_info_name(),
             Value::Array(_) => Array::type_info_name(),
-            Value::Process(_) => Process::type_info_name(),
+            Value::Job(_) => Job::type_info_name(),
             Value::DynString(_) => DynString::type_info_name(),
         }
     }
@@ -82,7 +82,7 @@ impl Value {
     //        LitString(v) => LitString(v.clone()),
     //        Natural(v) => Natural(v.clone()),
     //        Array(v) => Array(v.clone()),
-    //        Process(v) => Process(v.clone()),
+    //        Job(v) => Process(v.clone()),
     //    }
     //}
 }
@@ -127,7 +127,7 @@ impl RuntimeTypeInfo for Value {
             Value::LitString(_) => "lit-string",
             Value::Natural(_) => "natural",
             Value::Array(_) => "array",
-            Value::Process(_) => "process",
+            Value::Job(_) => "job",
             Value::DynString(_) => "dyn-string",
         }
     }
@@ -185,9 +185,9 @@ impl ValueTypeInfo for Array {
         "Array"
     }
 }
-impl ValueTypeInfo for Process {
+impl ValueTypeInfo for Job {
     fn type_info_name() -> &'static str {
-        "Process"
+        "Job"
     }
 }
 impl ValueTypeInfo for DynString {

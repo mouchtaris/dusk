@@ -1,6 +1,6 @@
 use std::io;
 
-use super::{ldebug, ltrace, soft_todo, te, terr, value, BorrowMut, Deq, Entry, Map, Result, Vm};
+use super::{Job, ltrace, soft_todo, te, terr, BorrowMut, Deq, Entry, Map, Result, Vm};
 
 fn _use() {
     soft_todo!();
@@ -45,7 +45,7 @@ pub enum Instr {
     PushLocal(usize),
     Call(usize),
     CleanUp(usize),
-    CleanUpCollect(usize),
+    Collect(usize),
 
     SysCall(u8),
 
@@ -77,8 +77,8 @@ impl Instr {
                 vm.prepare_call();
                 vm.jump(addr);
             }
-            &Self::CleanUp(fp_off) => te!(vm.cleanup(fp_off)),
-            &Self::CleanUpCollect(fp_off) => te!(vm.cleanup_collect(fp_off)),
+            &Self::CleanUp(fp_off) => te!(vm.cleanup(fp_off, Job::cleanup)),
+            &Self::Collect(fp_off) => te!(vm.cleanup(fp_off, Job::collect)),
         }
         Ok(())
     }
@@ -138,7 +138,7 @@ impl ICode {
                     Instr::PushLocal(fp_off) => (0x09, fp_off),
                     Instr::Call(addr) => (0x0a, addr),
                     Instr::CleanUp(fp_off) => (0x0b, fp_off),
-                    Instr::CleanUpCollect(fp_off) => (0x0c, fp_off),
+                    Instr::Collect(fp_off) => (0x0c, fp_off),
                     _ => panic!(),
                 };
                 let code = usize::to_le_bytes(code);
@@ -198,7 +198,7 @@ impl ICode {
                     0x09 => Instr::PushLocal(val),
                     0x0a => Instr::Call(val),
                     0x0b => Instr::CleanUp(val),
-                    0x0c => Instr::CleanUpCollect(val),
+                    0x0c => Instr::Collect(val),
                     _ => panic!(),
                 };
                 icode.instructions.push_back(instr);

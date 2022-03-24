@@ -15,12 +15,12 @@ pub trait Compilers<'i> {
         |mut cmp, item| match item {
             ast::Item::Expr(e) => {
                 cmp = te!(cmp.compile(e));
-                te!(cmp.emit_cleanup());
+                te!(cmp.emit_cleanup(i::CleanUp));
                 Ok(cmp)
             }
             ast::Item::LetStmt(ast::LetStmt((name, expr))) => {
                 cmp = te!(cmp.compile(expr));
-                let retval = te!(cmp.emit_cleanup_collect());
+                let retval = te!(cmp.emit_cleanup(i::Collect));
                 cmp.alias_name(*name, &retval);
                 Ok(cmp)
             }
