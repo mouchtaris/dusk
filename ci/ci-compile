@@ -1,29 +1,33 @@
 #!/bin/env xs2
 # vim: et ts=4 sw=4
 
-!mkdir -p "_.ci";
+let header = "#!/,/xs-run";
+
+!mkdir -p "bin";
 
 let a = "ci/ci-tar";
-let b = "_.ci/ci-tar";
+let b = "bin/ci-tar";
 !xs-compile $a $b;
-!xs-make-self-exec $b;
+!xs-make-self-exec $b $header;
 !chmod 755 $a $b;
 
 let a = "ci/ci-install-local";
-let b = "_.ci/ci-install-local";
+let b = "bin/ci-install-local";
 !xs-compile $a $b;
-!xs-make-self-exec $b;
+!xs-make-self-exec $b $header;
 !chmod 755 $a $b;
 
 let a = "ci/ci-compile";
-let b = "_.ci/ci-compile";
+let b = "bin/ci-compile";
 !xs-compile $a $b;
-!xs-make-self-exec $b;
+!xs-make-self-exec $b $header;
 !chmod 755 $a $b;
 
-!lsd --tree
+!lsd
+    --tree
+    --long
     ci
-    "_.ci"
+    "bin"
 ;
 
 0

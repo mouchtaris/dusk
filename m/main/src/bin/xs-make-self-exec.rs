@@ -8,13 +8,15 @@ error::Error! {
 }
 
 fn main() -> Result<()> {
-    let inp_path: String = te!(env::args().skip(1).next(), "missing input_path");
+    let mut argv = env::args().skip(1);
+    let inp_path: String = te!(argv.next(), "missing input_path");
+    let header: String = te!(argv.next(), "missing header");
 
     let inp: Vec<u8> = te!(std::fs::read(&inp_path), "read {}", inp_path);
     let mut file: fs::File = te!(fs::File::create(&inp_path), "write {}", inp_path);
 
     use io::Write;
-    te!(file.write_all("#!/bin/env xs-run\n".as_bytes()));
+    te!(write!(file, "{}\n", header));
     te!(file.write_all(&inp));
 
     Ok(())
