@@ -36,7 +36,7 @@ mod cbor_adapt {
 
 #[cfg(not(feature = "serde_cbor"))]
 mod cbor_adapt {
-    use {super::*, compile::Compiler, vm::ICode};
+    use {super::*, compile::Compiler};
 
     #[derive(Debug)]
     pub struct CborError;

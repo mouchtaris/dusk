@@ -3,7 +3,7 @@ use {
         ltrace, te, temg, value, Deq, ICode, Instr, Job, Result, StringInfo, TryFrom, Value,
         ValueTypeInfo,
     },
-    std::{borrow::Borrow, fmt, io, mem, result},
+    std::{borrow::Borrow, io, mem, result},
 };
 
 #[derive(Default, Debug)]
@@ -13,7 +13,6 @@ pub struct Vm {
     job_table: Deq<Job>,
     stack: Vec<Value>,
     frame_ptr: usize,
-    arg_ptr: usize,
     stack_ptr: usize,
     instr_ptr: usize,
 }
@@ -34,7 +33,6 @@ impl Vm {
 
         self.frame_ptr = 0;
         self.stack_ptr = 0;
-        self.arg_ptr = 0;
         self.stack.clear();
         self.instr_ptr = 0;
     }
@@ -119,8 +117,23 @@ impl Vm {
         let &value::FuncAddr(addr) = te!(nargs.try_ref());
         Ok(addr)
     }
-    pub fn return_from_call(&mut self) {
+    pub fn ret_cell_addr(&self) -> Result<usize> {
         let vm = self;
+
+        let nargs = te!(vm.nargs());
+        vm.arg_addr(nargs + 3) // -1 exec target -1 cwd -1 ret_cell
+    }
+    pub fn ret_cell_mut(&mut self) -> Result<&mut Value> {
+        let vm = self;
+        let nargs = te!(vm.nargs());
+        Ok(te!(vm.arg_get_val_mut(nargs + 3)))
+    }
+    pub fn return_from_call(&mut self, fp_off: usize) -> Result<()> {
+        let vm = self;
+
+        let retval_src: Value = mem::take(vm.frame_get_val_mut(fp_off));
+        ltrace!("return {:?} to {}", retval_src, te!(vm.ret_cell_addr()));
+        *te!(vm.ret_cell_mut()) = retval_src;
 
         let ret_instr = vm.ret_instr_addr();
         let ret_fp = vm.ret_fp_addr();
@@ -130,6 +143,7 @@ impl Vm {
         vm.frame_ptr = ret_fp;
 
         vm.jump(ret_instr);
+        Ok(())
     }
 
     pub fn stack_get_val(&self, addr: usize) -> &Value {
@@ -143,9 +157,6 @@ impl Vm {
             self.write_to(Ok(std::io::stderr())).unwrap_or(());
             panic!("invalid stack access {}[{}]", self.stack.len(), addr);
         }
-    }
-    pub fn stack_take_val(&mut self, addr: usize) -> Value {
-        mem::take(self.stack_get_val_mut(addr))
     }
     pub fn stack_set<V: Into<Value>>(&mut self, addr: usize, val: V) {
         let cell = self.stack_get_val_mut(addr);
@@ -163,21 +174,12 @@ impl Vm {
     {
         self.stack_get_val_mut(addr).try_mut()
     }
-    pub fn stack_take<T>(&mut self, addr: usize) -> Result<T>
-    where
-        T: TryFrom<Value, Error = Value> + ValueTypeInfo,
-    {
-        self.stack_take_val(addr).try_into()
-    }
 
     pub fn frame_get_val(&self, offset: usize) -> &Value {
         self.stack_get_val(self.frame_addr(offset))
     }
     pub fn frame_get_val_mut(&mut self, offset: usize) -> &mut Value {
         self.stack_get_val_mut(self.frame_addr(offset))
-    }
-    pub fn frame_take_val(&mut self, offset: usize) -> Value {
-        self.stack_take_val(self.frame_addr(offset))
     }
     pub fn frame_set<V>(&mut self, offset: usize, v: V)
     where
@@ -197,16 +199,7 @@ impl Vm {
     {
         self.frame_get_val_mut(offset).try_mut()
     }
-    pub fn frame_take<T>(&mut self, offset: usize) -> Result<T>
-    where
-        T: TryFrom<Value, Error = Value> + ValueTypeInfo + fmt::Debug,
-    {
-        self.frame_take_val(offset).try_into()
-    }
 
-    pub fn arg_take_val(&mut self, argn: usize) -> Result<Value> {
-        Ok(self.stack_take_val(te!(self.arg_addr(argn))))
-    }
     pub fn arg_get_val(&self, argn: usize) -> Result<&Value> {
         Ok(self.stack_get_val(te!(self.arg_addr(argn))))
     }
@@ -342,8 +335,6 @@ impl Vm {
                         "fp ->"
                     } else if self.stack_ptr == i {
                         "sp ->"
-                    } else if self.arg_ptr == i {
-                        "ap ->"
                     } else {
                         ""
                     };
@@ -352,7 +343,6 @@ impl Vm {
                 }
                 writeln!(o, "=== STATE ===")?;
                 writeln!(o, "- frame pointer    : {}", self.frame_ptr)?;
-                writeln!(o, "- arg   pointer    : {}", self.arg_ptr)?;
                 writeln!(o, "- stack pointer    : {}", self.stack_ptr)?;
                 writeln!(o, "- instr pointer    : {}", self.instr_ptr)?;
             })
@@ -372,19 +362,6 @@ impl Vm {
         }
     }
 
-    pub fn add_process<C>(&mut self, child: C) -> usize
-    where
-        C: Into<Job>,
-    {
-        let Self { job_table: t, .. } = self;
-        let id = t.len();
-        let job = child.into();
-
-        t.push_back(job);
-
-        id
-    }
-
     pub fn cleanup<F, E>(&mut self, fp_off: usize, cln: F) -> Result<()>
     where
         F: FnOnce(&mut Job) -> result::Result<(), E>,
@@ -392,16 +369,14 @@ impl Vm {
     {
         let vm = self;
 
-        let val = vm.frame_take_val(fp_off);
-        ltrace!("cleanup {:?}", val);
+        let val = vm.frame_get_val_mut(fp_off);
         match val {
-            Value::Job(value::Job(proc_id)) => {
+            &mut Value::Job(value::Job(proc_id)) => {
                 let job: &mut Job = te!(vm.job_table.get_mut(proc_id), "Proc {}", proc_id);
                 te!(cln(job));
             }
-            v @ (Value::LitString(_) | Value::Null(_) | Value::Natural(_)) => {
+            Value::LitString(_) | Value::Null(_) | Value::Natural(_) => {
                 // No cleanup
-                vm.stack_set(vm.frame_addr(fp_off), v);
             }
             other => panic!("{:?}", other),
         }
@@ -425,5 +400,23 @@ impl Vm {
             Value::DynString(value::DynString(s)) => s.as_str(),
             other => error::temg!("Not a string value: {:?}", other),
         })
+    }
+
+    pub fn add_job<C>(&mut self, child: C) -> usize
+    where
+        C: Into<Job>,
+    {
+        let Self { job_table: t, .. } = self;
+        let id = t.len();
+        let job = child.into();
+
+        t.push_back(job);
+
+        id
+    }
+
+    pub fn get_job_mut(&mut self, jobid: usize) -> Result<&mut Job> {
+        let job = self.job_table.get_mut(jobid);
+        Ok(te!(job, "jobid {}", jobid))
     }
 }

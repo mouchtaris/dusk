@@ -3,14 +3,14 @@ use {
     error::{ldebug, te, temg},
 };
 
-pub fn spawn(vm: &mut Vm, id: usize) -> Result<()> {
+pub fn spawn(vm: &mut Vm) -> Result<()> {
     vm.prepare_call();
 
     let &nargs: &usize = te!(vm.arg_get(0));
-    let cwd: Value = te!(vm.arg_take_val(nargs + 1));
-    let target: Value = te!(vm.arg_take_val(nargs + 2));
     let sbuf = te!(expand_args(vm, <_>::default()));
     let args: Vec<&str> = sbuf.seg_vec_in(<_>::default());
+    let cwd: &Value = te!(vm.arg_get_val(nargs + 1));
+    let target: &Value = te!(vm.arg_get_val(nargs + 2));
     let vmargs: Result<Vec<&Value>> = (0..=nargs).map(|i| vm.arg_get_val(i)).collect();
     let vmargs = te!(vmargs);
     ldebug!(
@@ -37,13 +37,12 @@ pub fn spawn(vm: &mut Vm, id: usize) -> Result<()> {
         cmd.current_dir(cwd);
     }
 
-    let child = te!(cmd.spawn());
-    let proc_id = vm.add_process(child);
+    let job_id = vm.add_job(cmd);
 
-    let retval: &mut Value = te!(vm.arg_get_val_mut(nargs + 3));
-    *retval = value::Job(proc_id).into();
-
-    vm.return_from_call();
+    vm.allocate(1);
+    vm.push_val(value::Job(job_id));
+    te!(vm.return_from_call(0));
+    vm.dealloc(1);
 
     Ok(())
 }
@@ -64,6 +63,11 @@ fn expand_arg(vm: &mut Vm, mut sbuf: buf::StringBuf, arg_addr: usize) -> Result<
         Value::Natural(n) => {
             sbuf.add(n);
         }
+        &Value::Job(value::Job(jobid)) => {
+            let job = te!(vm.get_job_mut(jobid));
+            let s = te!(job.make_string());
+            sbuf.add(s);
+        }
         other => temg!("Cannot expand arg@{}: {:?}", arg_addr, other),
     }
     Ok(sbuf)
@@ -71,7 +75,7 @@ fn expand_arg(vm: &mut Vm, mut sbuf: buf::StringBuf, arg_addr: usize) -> Result<
 
 fn expand_args(vm: &mut Vm, mut sbuf: buf::StringBuf) -> Result<buf::StringBuf> {
     let &nargs: &usize = te!(vm.arg_get(0));
-    let nargs = nargs; // nargs, target, cwd
+    ldebug!("expanding {} args from {}", nargs, te!(vm.arg_addr(1)));
 
     for i in 1..=nargs {
         sbuf = te!(expand_arg(vm, sbuf, te!(vm.arg_addr(i))));

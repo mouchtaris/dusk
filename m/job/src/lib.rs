@@ -2,71 +2,86 @@ pub const VERSION: &str = "0.0.1";
 
 use {
     error::{te, temg},
-    std::{io, process::Child},
+    std::{
+        io, mem,
+        process::{Command, Stdio},
+        string,
+    },
 };
-
-#[derive(Debug)]
-pub struct Job {
-    core: Core,
-    cleanup: Cleanup,
-}
-
-#[derive(Debug)]
-pub enum Core {
-    Proc(Child),
-}
-
-#[derive(Debug)]
-pub enum Cleanup {
-    Inherit,
-}
 
 error::Error! {
     Msg = String
     Io = io::Error
+    Utf8 = string::FromUtf8Error
 }
+
+either::either! {
+    #[derive(Debug)]
+    pub Job,
+        Cmd,
+        Output,
+        String
+}
+pub type Cmd = Command;
+pub type Output = Vec<u8>;
 
 impl Job {
-    pub fn proc(proc: Child) -> Self {
-        Self {
-            core: Core::Proc(proc),
-            cleanup: Cleanup::Inherit,
-        }
-    }
     pub fn cleanup(&mut self) -> Result<()> {
-        error::ldebug!("cleanup");
-        match (&mut self.core, &self.cleanup) {
-            (Core::Proc(proc), Cleanup::Inherit) => {
-                let status = te!(proc.wait());
+        error::ltrace!("cleanup");
+        match self {
+            Self::Cmd(cmd) => {
+                cmd.stderr(Stdio::inherit());
+                cmd.stdout(Stdio::inherit());
+                cmd.stdin(Stdio::null());
 
+                let mut child = te!(cmd.spawn());
+
+                let status = te!(child.wait());
                 if !status.success() {
-                    temg!("Subprocess failed: {:?}", status)
+                    temg!("Subprocess {:?} failed: {:?}", cmd, status)
                 }
-
-                error::soft_todo!();
             }
+            other => panic!("{:?}", other),
         }
         Ok(())
     }
+
     pub fn collect(&mut self) -> Result<()> {
-        error::lwarn!("collect");
-        match (&mut self.core, &self.cleanup) {
-            (Core::Proc(proc), Cleanup::Inherit) => {
-                let status = te!(proc.wait());
+        error::ltrace!("collect");
+        match self {
+            Self::Cmd(cmd) => {
+                cmd.stderr(Stdio::inherit());
+                cmd.stdout(Stdio::piped());
+                cmd.stdin(Stdio::null());
 
+                let child = te!(cmd.spawn());
+
+                let output = child.wait_with_output().unwrap();
+
+                let status = output.status;
                 if !status.success() {
-                    temg!("Subprocess failed: {:?}", status)
+                    temg!("Subprocess {:?} failed: {:?}", cmd, status)
                 }
 
-                error::soft_todo!();
+                *self = output.stdout.into();
             }
+            other => panic!("{:?}", other),
         }
         Ok(())
     }
-}
 
-impl From<Child> for Job {
-    fn from(proc: Child) -> Self {
-        Self::proc(proc)
+    pub fn make_string(&mut self) -> Result<&str> {
+        match self {
+            Self::Output(bytes) => {
+                let bytes = mem::take(bytes);
+                let string = te!(String::from_utf8(bytes));
+                *self = string.into();
+                match &*self {
+                    Self::String(s) => Ok(s.as_str()),
+                    other => panic!("{:?}", other),
+                }
+            }
+            other => panic!("{:?}", other),
+        }
     }
 }
