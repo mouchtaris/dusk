@@ -80,6 +80,8 @@ mkdir "bin";
 compile ci-tar;
 compile ci-install-local;
 compile ci-compile;
+compile ci-test;
+compile ci;
 
 lsd --tree --long ci "bin";
 

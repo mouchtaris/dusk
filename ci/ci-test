@@ -1,21 +1,188 @@
 # vim: et ft=scala ts=4 sw=4
 
-def DOCKER_CONTEXT = "p5001";
+def util/join = !printf "%s" $args;
+
+def DOCKER_CONTEXT = !cat ./etc/ci_docker_context;
+def VOLUME = "dust-ctx-0";
+def BASE = "dust3:base";
+def COPY = "d3c";
+def MEM = "/home/bob";
+
+def Dockerfile = "_.Dockerfile";
+def Dockerfile-cnt =
+  r#" FROM debian as base
+      RUN apt-get update -y && apt-get upgrade -y
+      RUN apt-get install -y curl
+      RUN apt-get install -y gcc
+      RUN apt-get install -y sudo
+
+      RUN useradd -d /home/bob -m -G sudo bob
+      RUN ln -svf /home/bob/bin /,
+      RUN echo "%sudo  ALL=(ALL) NOPASSWD: ALL" | tee -a /etc/sudoers
+      RUN curl -LO 'https://github.com/Peltoche/lsd/releases/download/0.21.0/lsd_0.21.0_amd64.deb'
+      RUN dpkg -i lsd_0.21.0_amd64.deb
+      USER bob
+      WORKDIR /home/bob
+  "#;
 
 def docker = {
     let ctx = DOCKER_CONTEXT;
-    !docker
-        --context $ctx
-        $args
+    !docker --context $ctx $args;
+    0
 }
+
+def build_base = {
+    let Dockerfile = Dockerfile;
+    let Dockerfile-cnt = Dockerfile-cnt;
+
+    !xs-write_file $Dockerfile-cnt $Dockerfile;
+    docker buildx build
+        --tag dust3:base
+        --target base
+        -f $Dockerfile
+        "."
+    ;
+
+    0
+}
+
+def run_mount = {
+    let VOLUME = VOLUME;
+    let MEM = MEM;
+    let BASE = BASE;
+    let mount_spec = !printf "type=volume,source=%s,destination=%s" $VOLUME $MEM;
+
+    docker run --mount $mount_spec $args
+}
+def run = {
+    let BASE = BASE;
+    run_mount --rm $BASE $args
+}
+def run_sh = run sh -x -e -c $args;
 
 def vol = {
-    docker volume $args
+    let VOLUME = VOLUME;
+    docker volume $args --force $VOLUME
+}
+def vol-ls = docker volume list;
+def vol-del = vol rm;
+def vol-new = vol create;
+
+def diag = {
+    run_sh "ls -la . && pwd && id -a && uname -a && date";
+    0
+}
+def init = {
+    run_sh "chown bob:bob $HOME";
+    0
+}
+def touch = {
+    run_sh "touch $1" - $args;
+    0
+}
+def rm = {
+    run_sh "rm $1" - $args;
+    0
+}
+def rustup-dl = {
+    run_sh "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs --output rustup.sh"
+}
+def rustup-init = {
+    run_sh r#"bash rustup.sh -y --verbose "$@" "# - $args
+}
+def remove_cp_docker_container = {
+    let COPY = COPY;
+    docker rm --force $COPY;
+    0
+}
+def ls =
+    run_sh r#"ls "$@""# - $args
+;
+def cp = {
+    let BASE = BASE;
+    let COPY = COPY;
+
+    remove_cp_docker_container;
+
+    run_mount -d --name $COPY $BASE;
+
+    !docker cp $args;
+
+    0
 }
 
-def vol-ls = vol ls;
-def vol-create = vol create $args;
+def upload_release = {
+    cp "_.release.tar" "d3c:/home/bob/_.release.tar";
+    run_sh "mkdir -p src bin; tar -C src -x -v -f _.release.tar --atime-preserve";
+    0
+}
 
-vol-ls;
+def cargo = {
+    let BASE = BASE;
+    run_mount
+        --workdir "/home/bob/src"
+        --rm
+        $BASE
+        sh -x -e -c r#"
+            . $HOME/.cargo/env &&
+            cargo --color always "$@"
+        "# - $args
+}
+def build = cargo build --all-targets;
+
+
+def bootstrap = {
+    let BASE = BASE;
+    run_mount
+        --workdir "/home/bob/src"
+        --rm
+        $BASE
+        sh -x -e -c r#"
+            . $HOME/.cargo/env &&
+            target/debug/main ci/ci-install-local &&
+            which xs2 &&
+            which xs-compile &&
+            which xs-run &&
+            which xs-make-self-exec &&
+            which xs-write_file &&
+            bin/ci-compile &&
+            echo help | bin/ci
+        "# - $args
+    ;
+    0
+}
+
+def release = {
+    upload_release;
+    build;
+    bootstrap;
+    0
+}
+
+def del = {
+    remove_cp_docker_container;
+    vol-del;
+
+    let BASE = BASE;
+    docker image rm --force $BASE;
+
+    0
+}
+
+def new = {
+    build_base;
+    rustup-dl;
+    rustup-init;
+    0
+}
+
+def help = {
+    !sed
+        -r -n -e
+        "s/^def +([^[:space:]]*).*/\1/p"
+        ci/ci-test
+    ;
+    0
+}
 
 0

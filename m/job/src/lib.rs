@@ -34,7 +34,7 @@ impl Job {
                 cmd.stdout(Stdio::inherit());
                 cmd.stdin(Stdio::inherit());
 
-                let mut child = te!(cmd.spawn());
+                let mut child = te!(cmd.spawn(), "Spawn {:?}", cmd);
 
                 let status = te!(child.wait());
                 if !status.success() {
@@ -54,7 +54,7 @@ impl Job {
                 cmd.stdout(Stdio::piped());
                 cmd.stdin(Stdio::inherit());
 
-                let child = te!(cmd.spawn());
+                let child = te!(cmd.spawn(), "Spawn {:?}", cmd);
 
                 let output = child.wait_with_output().unwrap();
 

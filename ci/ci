@@ -1,0 +1,24 @@
+# vim: et ft=ruby ts=4 sw=4
+
+let ci_test = "ci/ci-test";
+
+def p = !printf "%s" $args;
+
+let inp = !cat;
+
+let ci_test = !cat ci/ci-test;
+let cmd = p $ci_test ";" $inp "; 0";
+
+let src = "_.ci.dust";
+let bin = "_.ci.bin";
+
+let wrun = !which xs-run;
+let header = p "#!" $wrun "\n";
+
+!echo run $inp;
+!xs-write_file $cmd $src;
+#!xs2 $src;
+!xs-compile $src $bin;
+!xs-run $bin;
+
+0
