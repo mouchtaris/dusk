@@ -1,14 +1,27 @@
-def copy_to_target = {
-	!cp target/release/xs-compile $args;
-	!cp target/release/xs-run $args;
-	!cp target/release/xs-make-self-exec $args;
+# vim: ft=scala
 
-	0
+def copy_to_target = {
+  !cp target/release/xs-compile $args;
+  !cp target/release/xs-run $args;
+  !cp target/release/xs-make-self-exec $args;
+  0
 }
 
-!cargo build --release;
-!cp target/release/main /home/vagrant/.local/bin/xs2;
-copy_to_target "/home/vagrant/.local/bin/";
+def sudo_copy_to_target = {
+  !sudo cp target/release/xs-compile $args;
+  !sudo cp target/release/xs-run $args;
+  !sudo cp target/release/xs-make-self-exec $args;
+  0
+}
+
+!cargo build --release --features serde_cbor;
+
 copy_to_target "/,/";
+sudo_copy_to_target "/usr/local/bin";
+!cp target/release/main "/,/xs2";
+
+!mkdir -p ./bin/;
+copy_to_target ./bin/;
+!cp target/release/main ./bin/xs2;
 
 0

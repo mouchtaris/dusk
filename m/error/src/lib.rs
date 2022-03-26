@@ -83,6 +83,13 @@ macro_rules! temg {
 }
 
 #[macro_export]
+macro_rules! te_writeln {
+    ($trg:expr, $l:literal $($a:tt)*) => {
+        $crate::te!(writeln!($trg, $l $($a)*))
+    };
+}
+
+#[macro_export]
 macro_rules! Error {
     ($($n:ident = $t:ty)*) => {
         $crate::error_kind! {

@@ -19,7 +19,7 @@ Expr: ast::Expr<'input> = {
     <Invocation> => <>.into(),
 }
 
-Invocation: ast::Invocation<'input> = {
+pub Invocation: ast::Invocation<'input> = {
     DocComment*
     InvocationTarget
     InvocationCwd?

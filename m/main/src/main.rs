@@ -17,7 +17,7 @@ fn main() -> Result<()> {
 
     let mut cmp = compile::Compiler::new();
     te!(cmp.init());
-    cmp = te!(cmp.compile(&module_ast));
+    cmp = te!(cmp.compile(module_ast));
     use show::Show;
     te!(cmp.write_to(fs::File::create("_.compiler.txt")));
 

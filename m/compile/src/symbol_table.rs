@@ -1,5 +1,6 @@
 use {
     super::{sym, temg, Deq, Map, Result, Type},
+    error::ltrace,
     std::{borrow::Borrow, fmt},
 };
 
@@ -72,6 +73,7 @@ where
     {
         let name = name.borrow();
         let sym_table = self.as_ref();
+
         for &scope_id in &sym_table.scope_stack {
             let scope = &sym_table.scopes[scope_id];
             match scope.get(name) {
@@ -94,11 +96,15 @@ where
 
         let id = sym_table.scopes.len() - 1;
         sym_table.scope_stack.push_front(id);
+
+        ltrace!("scope::enter {}", self.scope_id());
     }
 
     fn exit_scope(&mut self) {
         let sym_table = self.as_mut();
         sym_table.scope_stack.pop_front();
+
+        ltrace!("scope::exit {}", self.scope_id());
     }
 
     /// Current scope id

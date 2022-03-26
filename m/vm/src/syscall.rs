@@ -40,7 +40,10 @@ pub fn spawn(vm: &mut Vm) -> Result<()> {
     let job_id = vm.add_job(cmd);
 
     vm.allocate(1);
-    vm.push_val(value::Job(job_id));
+    let val: Value = value::Job(job_id).into();
+    ldebug!("put {:?} to {}", val, vm.stackp());
+    vm.push_val(val);
+    te!(vm.set_ret_val(0));
     te!(vm.return_from_call(0));
     vm.dealloc(1);
 

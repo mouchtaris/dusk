@@ -1,1 +1,2 @@
-!git archive HEAD --format tar --output "_.release.tar"
+!git archive HEAD --format tar --output "_.release.tar";
+0

@@ -4,7 +4,7 @@ use {
     buf::MemTake,
     collection::{Deq, Map},
     error::{te, temg},
-    std::{borrow::BorrowMut, io, num},
+    std::{borrow::BorrowMut, io, mem, num},
     vm::Instr as i,
 };
 
@@ -12,6 +12,7 @@ error::Error! {
     Msg = &'static str
     Message = String
     Vm = vm::Error
+    ParseDust = parse::Error
     ParseInt = num::ParseIntError
 }
 
@@ -19,6 +20,7 @@ mod compile;
 mod compile_util;
 mod compilers;
 mod emit;
+pub mod facade;
 mod show;
 mod static_type;
 pub mod symbol_info;
@@ -52,10 +54,14 @@ impl Compiler {
         }
     }
     pub fn init(&mut self) -> Result<()> {
+        let cmp = self;
+
+        cmp.enter_scope();
+
         Ok(())
     }
 
-    pub fn compile<N>(self, node: &N) -> Result<Self>
+    pub fn compile<N>(self, node: N) -> Result<Self>
     where
         Self: Compile<N>,
     {

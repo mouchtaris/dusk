@@ -71,17 +71,15 @@ impl Job {
     }
 
     pub fn make_string(&mut self) -> Result<&str> {
-        match self {
+        Ok(match self {
             Self::Output(bytes) => {
                 let bytes = mem::take(bytes);
                 let string = te!(String::from_utf8(bytes));
                 *self = string.into();
-                match &*self {
-                    Self::String(s) => Ok(s.as_str()),
-                    other => panic!("{:?}", other),
-                }
+                te!(self.make_string())
             }
+            Self::String(s) => s.as_str(),
             other => panic!("{:?}", other),
-        }
+        })
     }
 }

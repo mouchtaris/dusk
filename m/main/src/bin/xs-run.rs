@@ -45,6 +45,7 @@ fn main() -> Result<()> {
 
     let mut vm = vm::Vm::default();
     vm.reset();
+    vm.init();
     te!(vm.init_bin_path_from_path_env());
     vm = te!(vm.load_icode(&icode));
 

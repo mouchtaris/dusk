@@ -27,7 +27,7 @@ impl Stack {
 }
 
 impl Vm {
-    /// Reset to init state
+    /// Reset to zero state
     pub fn reset(&mut self) {
         self.string_table.clear();
 
@@ -48,7 +48,10 @@ impl Vm {
         self.push_null();
         self.push_null();
         self.push_val(0);
+
+        self.instr_ptr = usize::max_value();
         self.prepare_call();
+        self.instr_ptr = 0;
     }
 
     /// The current instruction address pointer
@@ -56,6 +59,9 @@ impl Vm {
         self.instr_ptr
     }
 
+    pub fn stackp(&self) -> usize {
+        self.stack_ptr
+    }
     fn stackp_next(&mut self) -> usize {
         let stackp = self.stack_ptr;
         self.stack_ptr += 1;
@@ -86,8 +92,16 @@ impl Vm {
     fn call_stack_data(&self) -> [usize; 2] {
         [self.frame_ptr, self.instr_ptr]
     }
-    pub fn ret_instr_addr(&self) -> usize {
-        *self.stack_get(self.frame_ptr - 1).unwrap()
+    pub fn ret_instr_addr(&self) -> Result<usize> {
+        let &Self { frame_ptr, .. } = self;
+        if frame_ptr < 1 {
+            return temg!("cannot read below frame {}", frame_ptr);
+        }
+        Ok(*te!(
+            self.stack_get(self.frame_ptr - 1),
+            "frameptr {}",
+            frame_ptr
+        ))
     }
     pub fn ret_fp_addr(&self) -> usize {
         *self.stack_get(self.frame_ptr - 2).unwrap()
@@ -128,18 +142,23 @@ impl Vm {
         let nargs = te!(vm.nargs());
         Ok(te!(vm.arg_get_val_mut(nargs + 3)))
     }
-    pub fn return_from_call(&mut self, fp_off: usize) -> Result<()> {
+    pub fn set_ret_val(&mut self, fp_off: usize) -> Result<()> {
         let vm = self;
 
         let retval_src: Value = mem::take(vm.frame_get_val_mut(fp_off));
         ltrace!("return {:?} to {}", retval_src, te!(vm.ret_cell_addr()));
         *te!(vm.ret_cell_mut()) = retval_src;
 
-        let ret_instr = vm.ret_instr_addr();
+        Ok(())
+    }
+    pub fn return_from_call(&mut self, frame_size: usize) -> Result<()> {
+        let vm = self;
+
+        let ret_instr = te!(vm.ret_instr_addr());
         let ret_fp = vm.ret_fp_addr();
         ltrace!("return fp[{}] inst[{}]", ret_fp, ret_instr);
 
-        vm.dealloc(vm.call_stack_data().len());
+        vm.dealloc(vm.call_stack_data().len() + frame_size);
         vm.frame_ptr = ret_fp;
 
         vm.jump(ret_instr);
@@ -262,7 +281,12 @@ impl Vm {
         } = self;
         stack.truncate(stack.len() - size);
         *stack_ptr -= size;
-        ltrace!("[{}] stackp - {} = {}", stack.len(), size, stack_ptr);
+        ltrace!(
+            "dealloc: stackp [{}] - {} = {}",
+            stack.len(),
+            size,
+            stack_ptr
+        );
     }
 
     pub fn load_icode(mut self, icode: &ICode) -> Result<Self> {
@@ -312,41 +336,62 @@ impl Vm {
         self.init_bin_path_from_env("PATH")
     }
 
-    pub fn write_to<O>(&self, o: io::Result<O>) -> io::Result<()>
+    pub fn write_to<O>(&self, o: io::Result<O>) -> Result<()>
     where
         O: io::Write,
     {
-        o.and_then(|mut o| {
-            Ok({
-                //writeln!(o, "=== BIN_PATH ===")?;
-                //for path in &self.bin_path {
-                //    writeln!(o, "> {}", path)?;
-                //}
-                writeln!(o, "=== STRING TABLE ===")?;
-                let mut i = 0;
-                for string in &self.string_table {
-                    writeln!(o, "[{:4}] {:?}", i, string)?;
-                    i += 1;
+        let vm = self;
+        let mut o = te!(o);
+
+        use error::te_writeln as w;
+        //w!(o, "=== BIN_PATH ===")?;
+        //for path in &vm.bin_path {
+        //    w!(o, "> {}", path)?;
+        //}
+        w!(o, "=== STRING TABLE ===");
+        let mut i = 0;
+        for string in &vm.string_table {
+            w!(o, "[{:4}] {:?}", i, string);
+            i += 1;
+        }
+        let mut fp = vm.frame_ptr;
+        let mut sp = vm.stack_ptr;
+        let len = vm.stack.len();
+        w!(o, "=== STACK ===");
+        w!(o, "fp({fp}) sp({sp}) l({l})", l = len, sp = sp, fp = fp);
+        for i in 0..len {
+            let i = len - 1 - i;
+
+            let pref = if i < 6 {
+                "(sys)"
+            } else {
+                let nargs: usize = *te!(vm.stack[fp - 3].try_ref());
+                match i {
+                    i if fp == i => "fp",
+                    i if fp - 1 == i => "ret ip",
+                    i if fp - 2 == i => "ret fp",
+                    i if fp - 3 == i => "nargs",
+                    i if fp - 3 - nargs <= i && fp - 3 > i => "arg",
+                    i if fp - 3 - nargs - 1 == i => "cwd",
+                    i if fp - 3 - nargs - 2 == i => "targ",
+                    i if fp - 3 - nargs - 3 == i => {
+                        sp = *te!(vm.stack[fp - 1].try_ref());
+                        fp = *te!(vm.stack[fp - 2].try_ref());
+                        w!(o, "--- frame {} ---", fp);
+                        "retval"
+                    }
+                    i if sp == i => "sp",
+                    _ => "",
                 }
-                writeln!(o, "=== STACK ===")?;
-                let mut i = 0;
-                for cell in &self.stack {
-                    let pref = if self.frame_ptr == i {
-                        "fp ->"
-                    } else if self.stack_ptr == i {
-                        "sp ->"
-                    } else {
-                        ""
-                    };
-                    writeln!(o, "{:5} [{:4}] {:?}", pref, i, cell)?;
-                    i += 1;
-                }
-                writeln!(o, "=== STATE ===")?;
-                writeln!(o, "- frame pointer    : {}", self.frame_ptr)?;
-                writeln!(o, "- stack pointer    : {}", self.stack_ptr)?;
-                writeln!(o, "- instr pointer    : {}", self.instr_ptr)?;
-            })
-        })
+            };
+            let cell = &vm.stack[i];
+            w!(o, "{:10} [{:4}] {:?}", pref, i, cell);
+        }
+        w!(o, "=== STATE ===");
+        w!(o, "- frame pointer    : {}", vm.frame_ptr);
+        w!(o, "- stack pointer    : {}", vm.stack_ptr);
+        w!(o, "- instr pointer    : {}", vm.instr_ptr);
+        Ok(())
     }
 
     pub fn get_string_id(&self, id: usize) -> Result<&str> {
@@ -370,6 +415,7 @@ impl Vm {
         let vm = self;
 
         let val = vm.frame_get_val_mut(fp_off);
+        ltrace!("cleanup {:?}", val);
         match val {
             &mut Value::Job(value::Job(proc_id)) => {
                 let job: &mut Job = te!(vm.job_table.get_mut(proc_id), "Proc {}", proc_id);

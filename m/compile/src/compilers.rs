@@ -21,22 +21,32 @@ pub trait Compilers<'i> {
             ast::Item::LetStmt(ast::LetStmt((name, expr))) => {
                 cmp = te!(cmp.compile(expr));
                 let retval = te!(cmp.emit_cleanup(i::Collect));
-                cmp.alias_name(*name, &retval);
+                cmp.alias_name(name, &retval);
                 Ok(cmp)
             }
             ast::Item::DefStmt(ast::DefStmt((name, body))) => {
                 cmp.emit1(i::Jump { addr: 0 });
                 let jump_instr = cmp.instr_id();
 
-                cmp = te!(cmp.compile(body));
+                cmp.emit1(i::Allocate { size: 0 });
+                let alloc_instr = cmp.instr_id();
 
-                let &sym::Local { fp_off: retval, .. } = te!(cmp.retval.as_local_ref());
-                cmp.emit1(i::Return(retval));
+                cmp.enter_scope();
+                cmp = te!(cmp.compile(body));
+                let frame_size = cmp.stack_frame_size();
+
+                let retval = te!(cmp.retval.fp_off());
+                cmp.emit1(i::SetRetVal(retval));
+
+                cmp.exit_scope();
+
+                te!(cmp.backpatch_with(alloc_instr, frame_size));
+                cmp.emit1(i::Return(frame_size));
 
                 let jump_target = cmp.instr_id() + 1;
                 te!(cmp.backpatch_with(jump_instr, jump_target));
 
-                cmp.new_address(*name, jump_instr + 1);
+                cmp.new_address(name, jump_instr + 1);
 
                 Ok(cmp)
             }
@@ -52,21 +62,10 @@ pub trait Compilers<'i> {
     }
     fn block() -> E<Block<'i>> {
         |mut cmp, ast::Block((items, expr))| {
-            cmp.enter_scope();
-
-            cmp.emit1(i::Allocate { size: 0 });
-            let alloc_instr = cmp.instr_id();
-
             for item in items {
                 cmp = te!(cmp.compile(item));
             }
             cmp = te!(cmp.compile(expr));
-
-            let frame_size = cmp.stack_frame_size();
-            cmp.emit1(i::Dealloc(frame_size));
-            te!(cmp.backpatch_with(alloc_instr, frame_size));
-
-            cmp.exit_scope();
 
             Ok(cmp)
         }
@@ -77,7 +76,27 @@ pub trait Compilers<'i> {
         }
     }
     fn module() -> E<Module<'i>> {
-        |cmp, ast::Module((body,))| cmp.compile(body)
+        |mut cmp, ast::Module((body,))| {
+            // cmp = te!(cmp.compile(body));
+
+            const MAIN: &str = "m___system_main___";
+
+            let body = ast::Body::Block(body);
+            let def_stmt = ast::DefStmt((MAIN, body));
+            let main_func = ast::Item::DefStmt(def_stmt);
+
+            let invc = te!(facade::compile_invocation(MAIN));
+            let invc = ast::Expr::Invocation(invc);
+
+            let program = ast::Block((vec![main_func], invc));
+
+            // Allocate minimal stack for call tmp local variables
+            const CALL_CTX: usize = 5;
+            cmp.emit1(i::Allocate { size: CALL_CTX });
+            cmp = te!(cmp.compile(program));
+            cmp.emit1(i::Return(CALL_CTX));
+            Ok(cmp)
+        }
     }
     fn invocation() -> E<Invocation<'i>> {
         |mut cmp: Compiler,
@@ -87,7 +106,7 @@ pub trait Compilers<'i> {
             cwd_opt,
             redirections,
             envs,
-            args,
+            mut args,
         ))| {
             let retval = cmp.new_local_tmp("retval").clone();
             cmp.emit1(i::PushNull);
@@ -104,11 +123,13 @@ pub trait Compilers<'i> {
             cmp = te!(cmp.compile(cwd_opt));
 
             // args
+            let arg_len = args.len();
+            args.reverse();
             cmp = te!(cmp.compile(args));
             cmp.new_local_tmp("argc");
 
             // argn
-            cmp.emit1(i::PushNat(args.len()));
+            cmp.emit1(i::PushNat(arg_len));
 
             const NOWHERE: usize = 0xffffffff;
             match job_type {
@@ -132,7 +153,7 @@ pub trait Compilers<'i> {
     }
 
     fn natural() -> E<Natural<'i>> {
-        |cmp, &ast::Natural((n,))| cmp.compile_natural(n)
+        |cmp, ast::Natural((n,))| cmp.compile_natural(n)
     }
 
     fn string() -> E<String<'i>> {
@@ -169,7 +190,7 @@ pub trait Compilers<'i> {
                     cmp.emit1(i::PushArgs);
                     Ok(cmp)
                 }
-                &A::Variable(ast::Variable((name,))) => {
+                A::Variable(ast::Variable((name,))) => {
                     let sinfo = te!(cmp.lookup(name));
                     if sinfo.scope_id != cmp.scope_id() {
                         temg!(
@@ -205,12 +226,12 @@ pub trait Compilers<'i> {
             use ast::InvocationTargetSystemPath as SysPath;
 
             cmp = match invocation_target {
-                &TLocal(Local((id,))) => {
+                TLocal(Local((id,))) => {
                     cmp = te!(cmp.compile_funcaddr(id));
                     cmp.retval = SymInfo::just(FUNCTION_JOB_TYPE);
                     cmp
                 }
-                &TSysName(SysName((id,))) => {
+                TSysName(SysName((id,))) => {
                     cmp = te!(cmp.compile_text(id));
                     cmp.retval = SymInfo::just(PROCESS_JOB_TYPE);
                     cmp
