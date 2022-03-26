@@ -53,7 +53,7 @@ macro_rules! soft_todo {
 
 #[macro_export]
 macro_rules! te {
-    ($e:expr , $fmt:literal $(, $fmtargs:tt)*) => {
+    ($e:expr , $fmt:literal $(, $fmtargs:expr)*) => {
         $crate::IntoResult::into_result($e).map_err(|mut e| {
             e.trace.push((file!(), line!(), vec!()));
             e.comment(format!($fmt $(, $fmtargs)*));

@@ -26,7 +26,7 @@ mod static_type;
 pub mod symbol_info;
 mod symbol_table;
 pub use {
-    crate::compile::{Compile, CompileEv},
+    crate::compile::{Compile, CompileEv, EvalEv},
     compile_util::CompileUtil,
     compilers::{Compilers, CompilersImpl as cmps},
     emit::EmitExt,
@@ -35,7 +35,7 @@ pub use {
     symbol_table::{SymInfo, SymbolTable, SymbolTableExt},
 };
 
-#[derive(Debug, serde::Serialize, serde::Deserialize)]
+#[derive(Default, Debug, serde::Serialize, serde::Deserialize)]
 pub struct Compiler {
     pub icode: vm::ICode,
     sym_table: SymbolTable,

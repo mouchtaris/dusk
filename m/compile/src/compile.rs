@@ -1,16 +1,51 @@
-use super::{cmps, i, mem, te, Compiler, Compilers, EmitExt, Result, SymbolTableExt};
+use super::{cmps, i, mem, te, Compiler, Compilers, EmitExt, Result, SymInfo, SymbolTableExt};
 
 pub trait Compile<T>: Sized {
-    fn compile(self, node: T) -> Result<Self>;
+    type RetVal: Default;
+
+    fn compile_eval(self, node: T, rv: &mut Self::RetVal) -> Result<Self>;
+
+    fn eval(self, node: T) -> Result<(Self, Self::RetVal)> {
+        let mut rv = <_>::default();
+        let mut cmp = self;
+
+        cmp = te!(cmp.compile_eval(node, &mut rv));
+
+        Ok((cmp, rv))
+    }
+
+    fn compile(self, node: T) -> Result<Self> {
+        self.compile_eval(node, &mut <_>::default())
+    }
 }
 
 pub type CompileEv<T> = fn(Compiler, T) -> Result<Compiler>;
+pub type EvalEv<T, R> = fn(&mut Compiler, T) -> Result<R>;
 
+pub fn from_compile<T>(cmp: &mut Compiler, cev: CompileEv<T>, node: T) -> Result<SymInfo> {
+    *cmp = te!(cev(mem::take(cmp), node));
+    Ok(cmp.retval.clone())
+}
+macro_rules! eval {
+    ($($t:ident, $rt:ty, $c:expr),*) => {
+        $(
+        impl <'i> Compile<ast::$t<'i>> for Compiler {
+            type RetVal = $rt;
+            fn compile_eval(mut self, node: ast::$t<'i>, retval: &mut $rt) -> Result<Self> {
+                let f: fn(&mut Self, ast::$t<'i>) -> Result<$rt> = $c;
+                *retval = te!(f(&mut self, node));
+                Ok(self)
+            }
+        }
+        )*
+    }
+}
 macro_rules! compile {
     ($($t:ident, $c:expr),*) => {
         $(
         impl <'i> Compile<ast::$t<'i>> for Compiler {
-            fn compile(self, node: ast::$t<'i>) -> Result<Self> {
+            type RetVal = ();
+            fn compile_eval(self, node: ast::$t<'i>, _: &mut ()) -> Result<Self> {
                 let f: fn(Self, ast::$t<'i>) -> Result<Self> = $c;
                 f(self, node)
             }
@@ -40,21 +75,27 @@ compile![
     Body,
     cmps::body(),
     Expr,
-    cmps::expr(),
-    Natural,
-    cmps::natural()
+    cmps::expr()
 ];
+eval![Natural, SymInfo, cmps::natural()];
 
 impl<C, N> Compile<Option<N>> for C
 where
     C: Compile<N> + EmitExt + SymbolTableExt,
 {
-    fn compile(self, node: Option<N>) -> Result<Self> {
+    type RetVal = Option<C::RetVal>;
+    fn compile_eval(self, node: Option<N>, rv: &mut Self::RetVal) -> Result<Self> {
         let mut cmp = self;
 
         match node {
-            Some(n) => cmp.compile(n),
+            Some(node) => {
+                let mut retval = <_>::default();
+                cmp = te!(cmp.compile_eval(node, &mut retval));
+                *rv = Some(retval);
+                Ok(cmp)
+            }
             None => {
+                *rv = None;
                 cmp.new_local_tmp("optional-node-null");
                 cmp.emit1_move(i::PushNull)
             }
@@ -66,10 +107,13 @@ impl<C, N> Compile<Vec<N>> for C
 where
     C: Compile<N>,
 {
-    fn compile(self, nodes: Vec<N>) -> Result<Self> {
+    type RetVal = Vec<C::RetVal>;
+    fn compile_eval(self, nodes: Vec<N>, rv: &mut Self::RetVal) -> Result<Self> {
         let mut cmp = self;
         for node in nodes {
-            cmp = te!(cmp.compile(node));
+            let mut v = <_>::default();
+            cmp = te!(cmp.compile_eval(node, &mut v));
+            rv.push(v);
         }
         Ok(cmp)
     }
@@ -80,10 +124,11 @@ where
     C: Compile<N>,
     N: Default,
 {
-    fn compile(self, mut node: Box<N>) -> Result<Self> {
-        let mut cmp = self;
+    type RetVal = C::RetVal;
+
+    fn compile_eval(self, mut node: Box<N>, rv: &mut Self::RetVal) -> Result<Self> {
+        let cmp = self;
         let node = mem::take(node.as_mut());
-        cmp = te!(cmp.compile(node));
-        Ok(cmp)
+        cmp.compile_eval(node, rv)
     }
 }

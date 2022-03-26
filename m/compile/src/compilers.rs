@@ -2,6 +2,8 @@ use super::CompileEv as E;
 use super::*;
 use ast::*;
 
+type S<T> = EvalEv<T, SymInfo>;
+
 pub trait Compilers<'i> {
     fn path() -> E<Path<'i>> {
         use ast::Path as P;
@@ -32,7 +34,8 @@ pub trait Compilers<'i> {
                 let alloc_instr = cmp.instr_id();
 
                 cmp.enter_scope();
-                cmp = te!(cmp.compile(body));
+                let (mut cmp, _tmps) = te!(cmp.eval(body));
+                //cmp = te!(cmp.compile(body));
                 let frame_size = cmp.stack_frame_size();
 
                 let retval = te!(cmp.retval.fp_off());
@@ -152,8 +155,8 @@ pub trait Compilers<'i> {
         }
     }
 
-    fn natural() -> E<Natural<'i>> {
-        |cmp, ast::Natural((n,))| cmp.compile_natural(n)
+    fn natural() -> S<Natural<'i>> {
+        |cmp, ast::Natural((n,))| compile::from_compile(cmp, Compiler::compile_natural, n)
     }
 
     fn string() -> E<String<'i>> {
