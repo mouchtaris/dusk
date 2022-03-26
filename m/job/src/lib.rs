@@ -32,7 +32,7 @@ impl Job {
             Self::Cmd(cmd) => {
                 cmd.stderr(Stdio::inherit());
                 cmd.stdout(Stdio::inherit());
-                cmd.stdin(Stdio::null());
+                cmd.stdin(Stdio::inherit());
 
                 let mut child = te!(cmd.spawn());
 
@@ -52,7 +52,7 @@ impl Job {
             Self::Cmd(cmd) => {
                 cmd.stderr(Stdio::inherit());
                 cmd.stdout(Stdio::piped());
-                cmd.stdin(Stdio::null());
+                cmd.stdin(Stdio::inherit());
 
                 let child = te!(cmd.spawn());
 

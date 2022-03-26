@@ -10,6 +10,7 @@ Item: ast::Item<'input> = {
     <Expr> ";" => <>.into(),
     ";" => ast::Item::Empty(<_>::default()),
     "let" <Ident> "=" <Expr> ";" => ast::Item::LetStmt((<>,).into()),
+    "val" <Ident> "=" <Expr> ";" => ast::Item::LetStmt((<>,).into()),
     "def" <Ident> "=" <Body> => ast::Item::DefStmt((<>,).into()),
 }
 
@@ -102,6 +103,7 @@ extern {
     type Error = Error;
     enum Tok<'input> {
         "let"                       => Tok::Kwd         (lex::Kwd           ("let"          )   ),
+        "val"                       => Tok::Kwd         (lex::Kwd           ("val"          )   ),
         "def"                       => Tok::Kwd         (lex::Kwd           ("def"          )   ),
         "="                         => Tok::Kwd         (lex::Kwd           ("="            )   ),
         "$"                         => Tok::Kwd         (lex::Kwd           ("$"            )   ),

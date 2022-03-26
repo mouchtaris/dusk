@@ -84,7 +84,13 @@ lexpop![
                                         '>',
                                         either(
                                             '!',
-                                            either(exact("let"), either(exact("def"), exact("if")))
+                                            either(
+                                                exact("val"),
+                                                either(
+                                                    exact("let"),
+                                                    either(exact("def"), exact("if"))
+                                                )
+                                            )
                                         )
                                     )
                                 )

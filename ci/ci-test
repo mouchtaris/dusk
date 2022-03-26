@@ -1,0 +1,21 @@
+# vim: et ft=scala ts=4 sw=4
+
+def DOCKER_CONTEXT = "p5001";
+
+def docker = {
+    let ctx = DOCKER_CONTEXT;
+    !docker
+        --context $ctx
+        $args
+}
+
+def vol = {
+    docker volume $args
+}
+
+def vol-ls = vol ls;
+def vol-create = vol create $args;
+
+vol-ls;
+
+0
