@@ -47,3 +47,4 @@ path = '../show'
 
 [features]
 default = ['serde']
+vm_stack_trace = []

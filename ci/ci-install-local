@@ -4,6 +4,7 @@ def copy_to_target = {
   !cp target/release/xs-compile $args;
   !cp target/release/xs-run $args;
   !cp target/release/xs-make-self-exec $args;
+  !cp target/release/xs-write_file $args;
   0
 }
 
@@ -11,17 +12,19 @@ def sudo_copy_to_target = {
   !sudo cp target/release/xs-compile $args;
   !sudo cp target/release/xs-run $args;
   !sudo cp target/release/xs-make-self-exec $args;
+  !sudo cp target/release/xs-write_file $args;
   0
 }
 
 !cargo build --release --features serde_cbor;
+!mkdir -p ./bin/;
 
 copy_to_target "/,/";
-sudo_copy_to_target "/usr/local/bin";
-!cp target/release/main "/,/xs2";
-
-!mkdir -p ./bin/;
 copy_to_target ./bin/;
+sudo_copy_to_target "/usr/local/bin";
+
+!cp target/release/main "/,/xs2";
+!cp target/release/main /usr/local/bin/xs2;
 !cp target/release/main ./bin/xs2;
 
 0

@@ -302,10 +302,15 @@ impl Vm {
         while self.instr_ptr < icode.len() {
             let instruction = &icode[self.instr_ptr];
             self.instr_ptr += 1;
-            te!(instruction.borrow().operate_on(&mut self).map_err(|err| {
-                self.write_to(Ok(std::io::stderr())).unwrap_or_default();
-                err
-            }));
+            let mut success = instruction.borrow().operate_on(&mut self);
+            #[cfg(feature = "vm_stack_trace")]
+            {
+                if let Err(_) = &success {
+                    self.write_to(Ok(std::io::stderr())).unwrap_or_default();
+                }
+            }
+            success = success; // for compile warning
+            te!(success);
         }
         Ok(self)
     }

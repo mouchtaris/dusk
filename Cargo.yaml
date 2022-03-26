@@ -56,6 +56,7 @@ module:
       - serde_json
     inline:
       features:
+        vm_stack_trace: []
         default: ["serde"]
   parse:
     dep_mod:
