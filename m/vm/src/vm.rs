@@ -119,9 +119,11 @@ impl Vm {
     pub fn nargs(&self) -> Result<usize> {
         let vm = self;
 
-        let nargs = te!(vm.arg_get_val(0));
-        let &nargs: &usize = te!(nargs.try_ref());
+        let &nargs: &usize = te!(vm.arg_get(0));
         Ok(nargs)
+    }
+    pub fn number_inputs(&self) -> Result<usize> {
+        Ok(*te!(self.arg_get(te!(self.nargs()) + 3)))
     }
     pub fn call_target_func_addr(&self) -> Result<usize> {
         let vm = self;
@@ -135,12 +137,13 @@ impl Vm {
         let vm = self;
 
         let nargs = te!(vm.nargs());
-        vm.arg_addr(nargs + 3) // -1 exec target -1 cwd -1 ret_cell
+        let ninps = te!(vm.number_inputs());
+        vm.arg_addr(nargs + 3 + ninps + 1)
     }
     pub fn ret_cell_mut(&mut self) -> Result<&mut Value> {
         let vm = self;
-        let nargs = te!(vm.nargs());
-        Ok(te!(vm.arg_get_val_mut(nargs + 3)))
+        let addr = te!(vm.ret_cell_addr());
+        Ok(vm.stack_get_val_mut(addr))
     }
     pub fn set_ret_val(&mut self, fp_off: usize) -> Result<()> {
         let vm = self;

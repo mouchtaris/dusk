@@ -11,10 +11,11 @@ Item: ast::Item<'input> = {
     ";" => ast::Item::Empty(<_>::default()),
     "let" <Ident> "=" <Expr> ";" => ast::Item::LetStmt((<>,).into()),
     "val" <Ident> "=" <Expr> ";" => ast::Item::LetStmt((<>,).into()),
+    "src" <Ident> "=" <Expr> ";" => ast::Item::SrcStmt((<>,).into()),
     "def" <Ident> "=" <Body> => ast::Item::DefStmt((<>,).into()),
 }
 
-Expr: ast::Expr<'input> = {
+pub Expr: ast::Expr<'input> = {
     <String> => <>.into(),
     <Natural> => <>.into(),
     <Invocation> => <>.into(),
@@ -24,7 +25,8 @@ pub Invocation: ast::Invocation<'input> = {
     DocComment*
     InvocationTarget
     InvocationCwd?
-    InvocationRedirection*
+    InvocationInputRedirection*
+    InvocationOutputRedirection*
     InvocationEnv*
     InvocationArg*
     => (<>).into(),
@@ -46,14 +48,17 @@ InvocationArg: ast::InvocationArg<'input> = {
 InvocationCwd: ast::Path<'input> = "@" <Path>;
 InvocationEnv: ast::InvocationEnv<'input> = <IDENT_NO_EQ> "=" <InvocationArg>;
 
-InvocationRedirection: ast::InvocationRedirection<'input> = {
+InvocationInputRedirection: ast::InvocationInputRedirection<'input> = {
     "<" <Redirect> => ast::RedirectInput((<>,)).into(),
+}
+InvocationOutputRedirection: ast::InvocationOutputRedirection<'input> = {
     ">" <Redirect> => ast::RedirectOutput((<>,)).into(),
 }
 
 Redirect: ast::Redirect<'input> = {
     Path => <>.into(),
     Variable => <>.into(),
+    Dereference => <>.into(),
 }
 
 Opt: ast::Opt<'input> = {
@@ -70,12 +75,16 @@ Variable: ast::Variable<'input> = {
     "$" <Ident> => (<>,).into(),
 }
 
+Dereference: ast::Dereference<'input> = {
+    "*" <Ident> => (<>,).into(),
+}
+
 Body: ast::Body<'input> = {
     <Expr> ";" => ast::Block((<_>::default(), <>)).into(),
     "{" <Block> "}" => <>.into(),
 }
 
-Block: ast::Block<'input> = {
+pub Block: ast::Block<'input> = {
     <Item*> <Expr> => ((<>,)).into(),
 }
 
@@ -105,8 +114,10 @@ extern {
         "let"                       => Tok::Kwd         (lex::Kwd           ("let"          )   ),
         "val"                       => Tok::Kwd         (lex::Kwd           ("val"          )   ),
         "def"                       => Tok::Kwd         (lex::Kwd           ("def"          )   ),
+        "src"                       => Tok::Kwd         (lex::Kwd           ("src"          )   ),
         "="                         => Tok::Kwd         (lex::Kwd           ("="            )   ),
         "$"                         => Tok::Kwd         (lex::Kwd           ("$"            )   ),
+        "*"                         => Tok::Kwd         (lex::Kwd           ("*"            )   ),
         "\""                        => Tok::Kwd         (lex::Kwd           ("\""           )   ),
         ";"                         => Tok::Kwd         (lex::Kwd           (";"            )   ),
         "@"                         => Tok::Kwd         (lex::Kwd           ("@"            )   ),

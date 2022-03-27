@@ -26,6 +26,12 @@ pub trait Compilers<'i> {
                 cmp.alias_name(name, &retval);
                 Ok(cmp)
             }
+            ast::Item::SrcStmt(ast::SrcStmt((name, expr))) => {
+                cmp = te!(cmp.compile(expr));
+                let retval = te!(cmp.emit_cleanup(i::Pipe));
+                cmp.alias_name(name, &retval);
+                Ok(cmp)
+            }
             ast::Item::DefStmt(ast::DefStmt((name, body))) => {
                 cmp.emit1(i::Jump { addr: 0 });
                 let jump_instr = cmp.instr_id();
@@ -88,7 +94,7 @@ pub trait Compilers<'i> {
             let def_stmt = ast::DefStmt((MAIN, body));
             let main_func = ast::Item::DefStmt(def_stmt);
 
-            let invc = te!(facade::compile_invocation(MAIN));
+            let invc = te!(facade::parse_invocation(MAIN));
             let invc = ast::Expr::Invocation(invc);
 
             let program = ast::Block((vec![main_func], invc));
@@ -107,16 +113,23 @@ pub trait Compilers<'i> {
             _doc_comment_opt,
             invocation_target,
             cwd_opt,
-            redirections,
+            input_redirections,
+            output_redirections,
             envs,
             mut args,
         ))| {
             let retval = cmp.new_local_tmp("retval").clone();
             cmp.emit1(i::PushNull);
 
+            // Redirections
+            let len = input_redirections.len();
+            cmp = te!(cmp.compile(input_redirections));
+            cmp.new_local_tmp("inp_redir_len");
+            cmp.emit1(i::PushNat(len));
+
             // TODO
-            let _ = redirections;
             let _ = envs;
+            let _ = output_redirections;
 
             // target
             cmp = te!(cmp.compile(invocation_target));
@@ -143,6 +156,22 @@ pub trait Compilers<'i> {
 
             cmp.retval = retval;
             Ok(cmp)
+        }
+    }
+
+    fn invocation_input_redirection() -> E<RedirectInput<'i>> {
+        |cmp, node| match node {
+            RedirectInput((Redirect::Path(_path),)) => todo!(),
+            RedirectInput((Redirect::Variable(var),)) => cmp.compile(var),
+            RedirectInput((Redirect::Dereference(deref),)) => cmp.compile(deref),
+        }
+    }
+
+    fn invocation_output_redirection() -> E<RedirectOutput<'i>> {
+        |_cmp, node| match node {
+            RedirectOutput((Redirect::Path(_path),)) => todo!(),
+            RedirectOutput((Redirect::Variable(_id),)) => todo!(),
+            RedirectOutput((Redirect::Dereference(_deref),)) => todo!(),
         }
     }
 
@@ -181,6 +210,24 @@ pub trait Compilers<'i> {
         }
     }
 
+    fn variable() -> E<Variable<'i>> {
+        |mut cmp, Variable((name,))| {
+            let fp_off = te!(cmp.lookup_local_var(name)).fp_off;
+            cmp.new_local_tmp(format!("copy {}", name));
+            cmp.emit1(i::PushLocal(fp_off));
+            Ok(cmp)
+        }
+    }
+
+    fn dereference() -> E<Dereference<'i>> {
+        |mut cmp, Dereference((name,))| {
+            let addr = te!(cmp.lookup_addr(name)).addr;
+            cmp.new_local_tmp(format!("copy {}", name));
+            cmp.emit1(i::PushFuncAddr(addr));
+            Ok(cmp)
+        }
+    }
+
     fn invocation_arg() -> E<InvocationArg<'i>> {
         |mut cmp, invocation_argument| {
             use ast::InvocationArg as A;
@@ -193,22 +240,7 @@ pub trait Compilers<'i> {
                     cmp.emit1(i::PushArgs);
                     Ok(cmp)
                 }
-                A::Variable(ast::Variable((name,))) => {
-                    let sinfo = te!(cmp.lookup(name));
-                    if sinfo.scope_id != cmp.scope_id() {
-                        temg!(
-                            "{} is in different scope {} than {}",
-                            name,
-                            sinfo.scope_id,
-                            cmp.scope_id()
-                        )
-                    }
-                    let sinfo = te!(sinfo.as_local_ref(), "{}", name);
-                    let fp_off = sinfo.fp_off;
-                    cmp.new_local_tmp(format!("copy {}", name));
-                    cmp.emit1(i::PushLocal(fp_off));
-                    Ok(cmp)
-                }
+                A::Variable(var) => cmp.compile(var),
                 A::Path(path) => cmp.compile(path),
                 A::Natural(n) => cmp.compile(n),
                 other => panic!("{:?}", other),

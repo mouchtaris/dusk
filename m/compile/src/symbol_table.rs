@@ -89,6 +89,12 @@ where
     {
         self.lookup(name).and_then(|i| i.as_addr_ref())
     }
+    fn lookup_var<S>(&self, name: S) -> Result<&sym::Local>
+    where
+        S: Borrow<str>,
+    {
+        self.lookup(name).and_then(|i| i.as_local_ref())
+    }
 
     fn enter_scope(&mut self) {
         let sym_table = self.as_mut();

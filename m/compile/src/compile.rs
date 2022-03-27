@@ -60,6 +60,10 @@ compile![
     cmps::module(),
     Invocation,
     cmps::invocation(),
+    InvocationInputRedirection,
+    cmps::invocation_input_redirection(),
+    InvocationOutputRedirection,
+    cmps::invocation_output_redirection(),
     InvocationArg,
     cmps::invocation_arg(),
     InvocationTarget,
@@ -75,7 +79,11 @@ compile![
     Body,
     cmps::body(),
     Expr,
-    cmps::expr()
+    cmps::expr(),
+    Variable,
+    cmps::variable(),
+    Dereference,
+    cmps::dereference()
 ];
 eval![Natural, SymInfo, cmps::natural()];
 

@@ -13,7 +13,7 @@ mod vm;
 use {
     collection::{Deq, Entry, Map},
     job::Job,
-    std::{borrow::BorrowMut, convert::TryFrom, io},
+    std::{borrow::BorrowMut, convert::TryFrom, io, mem},
 };
 
 error::Error! {

@@ -4,7 +4,10 @@ use {
     buf::MemTake,
     collection::{Deq, Map},
     error::{te, temg},
-    std::{borrow::BorrowMut, io, mem, num},
+    std::{
+        borrow::{Borrow, BorrowMut},
+        io, mem, num,
+    },
     vm::Instr as i,
 };
 

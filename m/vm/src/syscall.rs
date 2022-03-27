@@ -1,5 +1,5 @@
 use {
-    super::{value, Result, Value, Vm},
+    super::{mem, value, Job, Result, Value, Vm},
     error::{ldebug, te, temg},
 };
 
@@ -11,8 +11,16 @@ pub fn spawn(vm: &mut Vm) -> Result<()> {
     let args: Vec<&str> = sbuf.seg_vec_in(<_>::default());
     let cwd: &Value = te!(vm.arg_get_val(nargs + 1));
     let target: &Value = te!(vm.arg_get_val(nargs + 2));
-    let vmargs: Result<Vec<&Value>> = (0..=nargs).map(|i| vm.arg_get_val(i)).collect();
+    let &inp_redir_n: &usize = te!(vm.arg_get(nargs + 3));
+
+    type RV<'a> = Result<Vec<&'a Value>>;
+    let vmargs: RV = (0..=nargs).map(|i| vm.arg_get_val(i)).collect();
     let vmargs = te!(vmargs);
+    let inp_redirs: RV = (0..inp_redir_n)
+        .map(|i| vm.arg_get_val(nargs + 3 + 1 + i))
+        .collect();
+    let inp_redirs = te!(inp_redirs);
+
     ldebug!(
         "[create_job]
     nargs       : {nargs:?}
@@ -20,24 +28,41 @@ pub fn spawn(vm: &mut Vm) -> Result<()> {
     cwd         : {cwd:?}
     vmargs      : {vmargs:?}
     args        : {args:?}
+    redir       : {redir:?}
 ",
         target = target,
         cwd = cwd,
         nargs = nargs,
         vmargs = vmargs,
         args = args,
+        redir = inp_redirs,
     );
 
-    use std::process::Command;
+    use std::process::{Command, Stdio};
 
     let target: &str = te!(vm.val_as_str(&target));
     let mut cmd = Command::new(target);
+    cmd.stdin(Stdio::null());
     cmd.args(&args);
     if let Ok(cwd) = vm.val_as_str(&cwd) {
         cmd.current_dir(cwd);
     }
 
-    let job_id = vm.add_job(cmd);
+    let mut job: Job = cmd.into();
+    let mut inp_jobs = vec![];
+
+    for redir in inp_redirs {
+        match redir {
+            &Value::Job(value::Job(jobid)) => inp_jobs.push(jobid),
+            other => panic!("{:?}", other),
+        }
+    }
+    for jobid in inp_jobs {
+        let inp_job = mem::take(te!(vm.get_job_mut(jobid)));
+        te!(job.add_input_job(inp_job));
+    }
+
+    let job_id = vm.add_job(job);
 
     vm.allocate(1);
     let val: Value = value::Job(job_id).into();

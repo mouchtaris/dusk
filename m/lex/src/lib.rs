@@ -73,22 +73,28 @@ lexpop![
                 either(
                     '$',
                     either(
-                        '"',
+                        '*',
                         either(
-                            ';',
+                            '"',
                             either(
-                                '@',
+                                ';',
                                 either(
-                                    '<',
+                                    '@',
                                     either(
-                                        '>',
+                                        '<',
                                         either(
-                                            '!',
+                                            '>',
                                             either(
-                                                exact("val"),
+                                                '!',
                                                 either(
-                                                    exact("let"),
-                                                    either(exact("def"), exact("if"))
+                                                    exact("val"),
+                                                    either(
+                                                        exact("let"),
+                                                        either(
+                                                            exact("src"),
+                                                            either(exact("def"), exact("if"))
+                                                        )
+                                                    )
                                                 )
                                             )
                                         )

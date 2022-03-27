@@ -26,7 +26,7 @@ macro_rules! name {
 
 name![Module, Block];
 
-either![Item, Expr, LetStmt, DefStmt, Empty];
+either![Item, Expr, LetStmt, DefStmt, SrcStmt, Empty];
 either![Expr, Invocation, String, Natural];
 either![Body, Block];
 either![
@@ -45,13 +45,13 @@ either![
     Word,
     Natural
 ];
-either![InvocationRedirection, RedirectInput, RedirectOutput];
 either![Path, AbsPath, RelPath, HomePath];
 either![Opt, ShortOpt, LongOpt];
-either![Redirect, Path, Variable];
+either![Redirect, Path, Variable, Dereference];
 
 name![Block, AnyItem, Expr];
 name![LetStmt, Ident, Expr];
+name![SrcStmt, Ident, Expr];
 name![DefStmt, Ident, Body];
 name![RedirectInput, Redirect];
 name![RedirectOutput, Redirect];
@@ -63,6 +63,7 @@ name![HomePath, Text];
 name![LongOpt, Text];
 name![ShortOpt, Text];
 name![Variable, Text];
+name![Dereference, Text];
 name![Natural, Text];
 name![InvocationTargetLocal, Ident];
 name![InvocationTargetSystemName, Ident];
@@ -72,11 +73,14 @@ name![
     AnyDocComment,
     InvocationTarget,
     OptPath,
-    AnyInvocationRedirection,
+    AnyInvocationInputRedirection,
+    AnyInvocationOutputRedirection,
     AnyInvocationEnv,
     AnyInvocationArg
 ];
 
+pub type InvocationInputRedirection<'i> = RedirectInput<'i>;
+pub type InvocationOutputRedirection<'i> = RedirectOutput<'i>;
 pub type InvocationEnv<'i> = (Ident<'i>, InvocationArg<'i>);
 pub type Text<'i> = &'i str;
 pub type Ident<'i> = Text<'i>;
@@ -86,7 +90,8 @@ pub type OptPath<'i> = Option<Path<'i>>;
 pub type AnyDocComment<'i> = Any<DocComment<'i>>;
 pub type AnyInvocationArg<'i> = Any<InvocationArg<'i>>;
 pub type AnyInvocationEnv<'i> = Any<InvocationEnv<'i>>;
-pub type AnyInvocationRedirection<'i> = Any<InvocationRedirection<'i>>;
+pub type AnyInvocationInputRedirection<'i> = Any<InvocationInputRedirection<'i>>;
+pub type AnyInvocationOutputRedirection<'i> = Any<InvocationOutputRedirection<'i>>;
 pub type AnyItem<'i> = Any<Item<'i>>;
 pub type BoxBody<'i> = Box<Body<'i>>;
 pub type Any<T> = Vec<T>;

@@ -48,25 +48,19 @@ pub enum Instr {
     Spawn(usize),
     CleanUp(usize),
     Collect(usize),
-
-    Init,
-    SetNatural { value: usize, dst: usize },
-    CompleteProcessJob { jobid: usize },
+    Pipe(usize),
 }
 
 impl Instr {
     pub fn operate_on(&self, vm: &mut Vm) -> Result<()> {
         ltrace!("Instr {} {:?}", vm.instr_addr() - 1, self);
         match self {
-            Self::Init => {}
             &Self::Allocate { size } => {
                 vm.allocate(size);
             }
-            &Self::CompleteProcessJob { .. } => panic!(),
             &Self::PushNull => vm.push_null(),
             &Self::PushNat(id) => vm.push_val(id),
             &Self::PushStr(id) => vm.push_lit_str(id),
-            &Self::SetNatural { value, dst } => vm.frame_set(dst, value),
             &Self::Jump { addr } => vm.jump(addr),
             &Self::Spawn(_) => te!(crate::syscall::spawn(vm)),
             &Self::Return(frame_size) => te!(vm.return_from_call(frame_size)),
@@ -81,6 +75,7 @@ impl Instr {
             }
             &Self::CleanUp(fp_off) => te!(vm.cleanup(fp_off, Job::cleanup)),
             &Self::Collect(fp_off) => te!(vm.cleanup(fp_off, Job::collect)),
+            &Self::Pipe(fp_off) => te!(vm.cleanup(fp_off, Job::pipe)),
         }
         Ok(())
     }
@@ -142,7 +137,7 @@ impl ICode {
                     Instr::CleanUp(fp_off) => (0x0b, fp_off),
                     Instr::Collect(fp_off) => (0x0c, fp_off),
                     Instr::PushFuncAddr(addr) => (0x0d, addr),
-                    other => panic!("{:?}", other),
+                    Instr::Pipe(addr) => (0x0e, addr),
                 };
                 let code = usize::to_le_bytes(code);
                 let arg = usize::to_le_bytes(arg0);
@@ -203,7 +198,8 @@ impl ICode {
                     0x0b => Instr::CleanUp(val),
                     0x0c => Instr::Collect(val),
                     0x0d => Instr::PushFuncAddr(val),
-                    _ => panic!(),
+                    0x0e => Instr::Pipe(val),
+                    other => panic!("{:?}", other),
                 };
                 icode.instructions.push_back(instr);
             }
