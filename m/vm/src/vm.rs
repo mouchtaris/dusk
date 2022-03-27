@@ -374,15 +374,20 @@ impl Vm {
                 "(sys)"
             } else {
                 let nargs: usize = *te!(vm.stack[fp - 3].try_ref());
+                let n_inp_redir: usize = *te!(vm.stack[fp - 3 - nargs - 3].try_ref());
                 match i {
                     i if fp == i => "fp",
-                    i if fp - 1 == i => "ret ip",
-                    i if fp - 2 == i => "ret fp",
+                    i if fp - 1 == i => "ret instr",
+                    i if fp - 2 == i => "ret frame",
                     i if fp - 3 == i => "nargs",
                     i if fp - 3 - nargs <= i && fp - 3 > i => "arg",
                     i if fp - 3 - nargs - 1 == i => "cwd",
-                    i if fp - 3 - nargs - 2 == i => "targ",
-                    i if fp - 3 - nargs - 3 == i => {
+                    i if fp - 3 - nargs - 2 == i => "target",
+                    i if fp - 3 - nargs - 3 == i => "n inp redr",
+                    i if fp - 3 - nargs - 3 - n_inp_redir <= i && fp - 3 - nargs - 3 > i => {
+                        "inp redr"
+                    }
+                    i if fp - 3 - nargs - 3 - n_inp_redir - 1 == i => {
                         sp = *te!(vm.stack[fp - 1].try_ref());
                         fp = *te!(vm.stack[fp - 2].try_ref());
                         w!(o, "--- frame {} ---", fp);
@@ -415,7 +420,7 @@ impl Vm {
         }
     }
 
-    pub fn cleanup<F, E>(&mut self, fp_off: usize, cln: F) -> Result<()>
+    pub fn cleanup<F, E>(&mut self, fp_off: usize, _cln_name: &str, cln: F) -> Result<()>
     where
         F: FnOnce(&mut Job) -> result::Result<(), E>,
         result::Result<(), E>: error::IntoResult<super::ErrorKind, ()>,
@@ -423,7 +428,6 @@ impl Vm {
         let vm = self;
 
         let val = vm.frame_get_val_mut(fp_off);
-        ltrace!("cleanup {:?}", val);
         match val {
             &mut Value::Job(value::Job(proc_id)) => {
                 let job: &mut Job = te!(vm.job_table.get_mut(proc_id), "Proc {}", proc_id);

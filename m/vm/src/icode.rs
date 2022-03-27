@@ -73,9 +73,9 @@ impl Instr {
                 let addr = te!(vm.call_target_func_addr());
                 vm.jump(addr);
             }
-            &Self::CleanUp(fp_off) => te!(vm.cleanup(fp_off, Job::cleanup)),
-            &Self::Collect(fp_off) => te!(vm.cleanup(fp_off, Job::collect)),
-            &Self::Pipe(fp_off) => te!(vm.cleanup(fp_off, Job::pipe)),
+            &Self::CleanUp(fp_off) => te!(vm.cleanup(fp_off, "", Job::cleanup)),
+            &Self::Collect(fp_off) => te!(vm.cleanup(fp_off, "collect", Job::collect)),
+            &Self::Pipe(fp_off) => te!(vm.cleanup(fp_off, "pipe", Job::pipe)),
         }
         Ok(())
     }
