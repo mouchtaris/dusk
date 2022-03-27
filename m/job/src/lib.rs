@@ -114,7 +114,7 @@ impl Job {
         })
     }
     pub fn make_pipe(&mut self, capture: bool) -> Result<()> {
-        Ok(*self = Job::System(te!(mem::take(self).into_pipe(capture))))
+        Ok(*self = te!(mem::take(self).into_pipe(capture)).into())
     }
 
     pub fn into_buffer(self) -> Result<Buffer> {
@@ -133,7 +133,11 @@ impl Job {
     }
 
     pub fn cleanup(&mut self) -> Result<()> {
-        self.make_pipe(false)
+        ldebug!("cleanup {:?}", self);
+        let job = mem::take(self);
+        let sys = te!(job.into_pipe(false));
+        te!(sys.cleanup());
+        Ok(())
     }
     pub fn collect(&mut self) -> Result<()> {
         self.make_buffer()
@@ -252,10 +256,12 @@ impl Cleanup {
         use Cleanup as C;
         Ok(match self {
             C::Child(mut child, cmd) => {
+                ldebug!("Child wait {:?}", cmd);
                 let status = te!(child.wait());
                 te!(check_exit_status(&cmd, status));
             }
             C::Thread(handle) => {
+                ldebug!("Thread wait {:?}", handle);
                 let thread_result = te!(handle.join());
                 let comp_result = te!(thread_result);
                 comp_result
@@ -332,5 +338,21 @@ impl From<System> for Vec<Cleanup> {
     ) -> Self {
         cleanup.push(Cleanup::Child(child, cmd));
         cleanup
+    }
+}
+
+impl IntoIterator for System {
+    type IntoIter = <Vec<Cleanup> as IntoIterator>::IntoIter;
+    type Item = Cleanup;
+    fn into_iter(self) -> Self::IntoIter {
+        let cleanups: Vec<_> = self.into();
+        cleanups.into_iter()
+    }
+}
+
+impl System {
+    pub fn cleanup(self) -> Result<()> {
+        ldebug!("cleanup {:?}", self);
+        Cleanup::all(self)
     }
 }
