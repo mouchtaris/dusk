@@ -49,16 +49,30 @@ pub fn spawn(vm: &mut Vm) -> Result<()> {
     }
 
     let mut job: Job = cmd.into();
-    let mut inp_jobs = vec![];
+    enum Id {
+        Job,
+        Str,
+    }
+    let mut inp_jobs: Vec<(Id, usize)> = vec![];
 
     for redir in inp_redirs {
-        match redir {
-            &Value::Job(value::Job(jobid)) => inp_jobs.push(jobid),
+        inp_jobs.push(match redir {
+            &Value::Job(value::Job(jobid)) => (Id::Job, jobid),
+            &Value::LitString(value::LitString(strid)) => (Id::Str, strid),
             other => panic!("{:?}", other),
-        }
+        })
     }
-    for jobid in inp_jobs {
-        let inp_job = mem::take(te!(vm.get_job_mut(jobid)));
+    for inp_job in inp_jobs {
+        let inp_job = match inp_job {
+            (Id::Job, jobid) => mem::take(te!(vm.get_job_mut(jobid))),
+            (Id::Str, strid) => {
+                // TODO this command is filler
+                let cmd = Command::new("false");
+                let string = te!(vm.get_string_id(strid)).to_owned();
+                let buffer = job::Buffer::String(cmd, string);
+                Job::Buffer(buffer)
+            }
+        };
         te!(job.add_input_job(inp_job));
     }
 

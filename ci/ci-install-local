@@ -19,14 +19,14 @@ def sudo_copy_to_target = {
   0
 }
 
-!cargo build --color always --release --features serde_cbor;
+!cargo build --color always --release
+  # --features serde_cbor
+  ;
 !mkdir -p ./bin/;
 
-copy_to_target "/,/";
 copy_to_target ./bin/;
 sudo_copy_to_target "/usr/local/bin";
 
-cp target/release/main "/,/xs2";
 cp target/release/main ./bin/xs2;
 sudo_cp target/release/main /usr/local/bin/xs2;
 

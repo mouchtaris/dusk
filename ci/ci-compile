@@ -1,16 +1,13 @@
-#!/,/xs2
-# vim: et ts=4 sw=4
+# vim: et ts=4 sw=4 ft=scala
 
 def p = !printf $args;
 def join = p " %s" $args;
 
-# TODO
-# allow: def teal = "122";
-def teal = p "122";
-def yellow = p "72";
-def blue = p "33";
-def red = p "44";
-def col/0 = p "162";
+def teal = "122";
+def yellow = "72";
+def blue = "33";
+def red = "44";
+def col/0 = "162";
 def banner =
     p "\x1b[38;5;%sm%s\x1b[m%s" $args
 ;

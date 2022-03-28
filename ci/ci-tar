@@ -1,14 +1,34 @@
 # vim: et ft=scala ts=4 sw=4
 
-def TARGET = "_.release.tar";
-let TARGET = TARGET;
+def SOURCE_TAR = "_.source.tar";
+def BIN_TAR = "_.bin.tar";
 
-!git
-    archive HEAD
-    --output $TARGET
-    --format tar
-;
+def make_source_tar = {
+    src TARGET = SOURCE_TAR;
+    !git
+        archive HEAD
+        --output $TARGET
+        --format tar
+    ;
+    0
+}
 
-!lsd --tree --long $TARGET;
+def make_bin_tar = {
+    src TARGET = BIN_TAR;
+    !tar
+        --create
+        --file $TARGET
+        bin/xs-compile
+        bin/xs-run
+        bin/xs2
+    ;
+    0
+}
 
+let SOURCE_TAR = SOURCE_TAR;
+let BIN_TAR = BIN_TAR;
+
+make_source_tar;
+make_bin_tar;
+!lsd --tree --long $SOURCE_TAR $BIN_TAR;
 0

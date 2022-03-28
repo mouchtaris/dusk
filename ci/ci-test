@@ -5,16 +5,18 @@ def util/join = !printf "%s" $args;
 def DOCKER_CONTEXT = !cat ./etc/ci_docker_context;
 def VOLUME = "dust-ctx-0";
 def BASE = "dust3:base";
+def DIST = "dust3:dist";
 def COPY = "d3c";
 def MEM = "/home/bob";
+def DOCKERFILE = "_.dockerfile";
 
-def Dockerfile = "_.Dockerfile";
-def Dockerfile-cnt =
+def Dockerfile =
   r#" FROM debian as base
       RUN apt-get update -y && apt-get upgrade -y
       RUN apt-get install -y curl
       RUN apt-get install -y gcc
       RUN apt-get install -y sudo
+      RUN apt-get install -y git
 
       RUN useradd -d /home/bob -m -G sudo bob
       RUN ln -svf /home/bob/bin /,
@@ -23,6 +25,51 @@ def Dockerfile-cnt =
       RUN dpkg -i lsd_0.21.0_amd64.deb
       USER bob
       WORKDIR /home/bob
+
+
+      FROM base as base-build
+      RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs --output rustup.sh
+      RUN bash rustup.sh -y --verbose
+      RUN $HOME/.cargo/bin/cargo install --bin dev_workspace --git https://gitlab.com/gvz/rs/ --branch main
+
+
+      FROM base-build as deps
+      RUN mkdir -pv release
+      ADD --chown=bob:bob Cargo.yaml release
+      RUN cd release && \
+        $HOME/.cargo/bin/dev_workspace --for-real && \
+        printf '%s\n' '[build-dependencies]' 'lalrpop = "0.19.6"' | tee -a m/parse/Cargo.toml && \
+        $HOME/.cargo/bin/cargo check --release --all-targets && \
+        $HOME/.cargo/bin/cargo build --release --all-targets && \
+        true
+
+      FROM deps as source
+      ADD _.source.tar release/
+      RUN sudo chown -Rv bob:bob release
+
+      FROM source as build
+      RUN cd release && $HOME/.cargo/bin/cargo build --release --bin xs-compile
+      RUN cd release && $HOME/.cargo/bin/cargo build --release --bin xs-run
+      RUN cd release && $HOME/.cargo/bin/cargo build --release --bin xs2
+
+
+      FROM build as install
+      RUN cd release && . $HOME/.cargo/env && target/release/main ci/ci-install-local
+      RUN cd release && xs2 ci/ci-compile
+
+
+      FROM debian as dist
+      RUN apt-get update -y && apt-get upgrade -y
+      RUN apt-get install -y sudo
+      RUN echo "%sudo  ALL=(ALL) NOPASSWD: ALL" | tee -a /etc/sudoers
+      RUN useradd -d /home/bob -m -G sudo bob
+      USER bob
+      WORKDIR /home/bob
+      COPY --from=install /home/bob/release/bin/xs-compile /usr/bin
+      COPY --from=install /home/bob/release/bin/xs-run /usr/bin
+      COPY --from=install /home/bob/release/bin/xs2 /usr/bin
+      COPY --from=install /home/bob/release/bin/xs-make-self-exec /usr/bin
+      COPY --from=install /home/bob/release/bin/xs-write_file /usr/bin
   "#;
 
 def docker = {
@@ -31,19 +78,21 @@ def docker = {
     0
 }
 
-def build_base = {
+def docker_build = {
     let Dockerfile = Dockerfile;
-    let Dockerfile-cnt = Dockerfile-cnt;
+    let DOCKERFILE = DOCKERFILE;
+    let ctx = DOCKER_CONTEXT;
 
-    !xs-write_file $Dockerfile-cnt $Dockerfile;
-    docker buildx build
-        --tag dust3:base
-        --target base
-        -f $Dockerfile
-        "."
-    ;
+    let tag = util/join "dust3:" $args;
 
-    0
+    !xs-write_file $Dockerfile $DOCKERFILE;
+    !docker
+        --context $ctx
+        buildx build
+            --tag $tag
+            --target $args
+            -f $DOCKERFILE
+            "."
 }
 
 def run_mount = {
@@ -117,6 +166,12 @@ def upload_release = {
     0
 }
 
+def download_release = {
+    run_sh "tar -C src -cvf bin.tar bin";
+    cp "d3c:/home/bob/bin.tar" "_.dist.deb.tar";
+    0
+}
+
 def cargo = {
     let BASE = BASE;
     run_mount
@@ -145,7 +200,8 @@ def bootstrap = {
             which xs-run &&
             which xs-make-self-exec &&
             which xs-write_file &&
-            bin/ci-compile &&
+            xs2 ci/ci-compile &&
+            bin/ci-tar &&
             echo help | bin/ci
         "# - $args
     ;
@@ -164,13 +220,14 @@ def del = {
     vol-del;
 
     let BASE = BASE;
-    docker image rm --force $BASE;
+    let DIST = DIST;
+    docker image rm --force $BASE $DIST;
 
     0
 }
 
 def new = {
-    build_base;
+    docker_build base;
     rustup-dl;
     rustup-init;
     0
