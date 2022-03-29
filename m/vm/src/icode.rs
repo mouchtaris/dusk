@@ -36,16 +36,22 @@ pub enum Instr {
     Allocate { size: usize },
     Jump { addr: usize },
 
-    Return(usize),
-    SetRetVal(usize),
     PushNull,
     PushStr(usize),
     PushNat(usize),
     PushFuncAddr(usize),
-    PushArgs,
     PushLocal(usize),
+    PushArgs,
+
+    RetLocal(usize),
+    RetStr(usize),
+    RetNat(usize),
+    RetFuncAddr(usize),
+
     Call(usize),
     Spawn(usize),
+    Return(usize),
+
     CleanUp(usize),
     Collect(usize),
     Pipe(usize),
@@ -64,7 +70,7 @@ impl Instr {
             &Self::Jump { addr } => vm.jump(addr),
             &Self::Spawn(_) => te!(crate::syscall::spawn(vm)),
             &Self::Return(frame_size) => te!(vm.return_from_call(frame_size)),
-            &Self::SetRetVal(src_fp_off) => te!(vm.set_ret_val(src_fp_off)),
+            &Self::RetLocal(fp_off) => te!(vm.set_ret_val_from_local(fp_off)),
             &Self::PushArgs => te!(vm.push_args()),
             &Self::PushLocal(fp_off) => vm.push_local(fp_off),
             &Self::PushFuncAddr(addr) => vm.push_val(value::FuncAddr(addr)),
@@ -76,6 +82,9 @@ impl Instr {
             &Self::CleanUp(fp_off) => te!(vm.cleanup(fp_off, "", Job::cleanup)),
             &Self::Collect(fp_off) => te!(vm.cleanup(fp_off, "collect", Job::collect)),
             &Self::Pipe(fp_off) => te!(vm.cleanup(fp_off, "pipe", Job::pipe)),
+            &Self::RetStr(id) => te!(vm.set_ret_val(value::LitString(id))),
+            &Self::RetNat(val) => te!(vm.set_ret_val(val)),
+            &Self::RetFuncAddr(addr) => te!(vm.set_ret_val(value::FuncAddr(addr))),
         }
         Ok(())
     }
@@ -130,7 +139,7 @@ impl ICode {
                     Instr::PushStr(strid) => (0x04, strid),
                     Instr::PushNat(val) => (0x05, val),
                     Instr::Spawn(id) => (0x06, id),
-                    Instr::SetRetVal(src_fp_off) => (0x07, src_fp_off),
+                    Instr::RetLocal(src_fp_off) => (0x07, src_fp_off),
                     Instr::PushArgs => (0x08, 0x00),
                     Instr::PushLocal(fp_off) => (0x09, fp_off),
                     Instr::Call(addr) => (0x0a, addr),
@@ -138,8 +147,11 @@ impl ICode {
                     Instr::Collect(fp_off) => (0x0c, fp_off),
                     Instr::PushFuncAddr(addr) => (0x0d, addr),
                     Instr::Pipe(addr) => (0x0e, addr),
+                    Instr::RetStr(id) => (0x0f, id),
+                    Instr::RetNat(val) => (0x10, val),
+                    Instr::RetFuncAddr(addr) => (0x11, addr),
                 };
-                let code = usize::to_le_bytes(code);
+                let code = u8::to_le_bytes(code);
                 let arg = usize::to_le_bytes(arg0);
                 out.write_all(&code)?;
                 out.write_all(&arg)?;
@@ -179,8 +191,8 @@ impl ICode {
             let ilen = usize::from_le_bytes(usize_buf);
             icode.instructions.reserve(ilen);
             for _ in 0..ilen {
-                te!(inp.read_exact(&mut usize_buf));
-                let code = usize::from_le_bytes(usize_buf);
+                te!(inp.read_exact(&mut usize_buf[0..1]));
+                let code = u8::from_le_bytes([usize_buf[0]]);
                 te!(inp.read_exact(&mut usize_buf));
                 let val = usize::from_le_bytes(usize_buf);
                 let instr = match code {
@@ -191,7 +203,7 @@ impl ICode {
                     0x04 => Instr::PushStr(val),
                     0x05 => Instr::PushNat(val),
                     0x06 => Instr::Spawn(val),
-                    0x07 => Instr::SetRetVal(val),
+                    0x07 => Instr::RetLocal(val),
                     0x08 => Instr::PushArgs,
                     0x09 => Instr::PushLocal(val),
                     0x0a => Instr::Call(val),
@@ -199,6 +211,9 @@ impl ICode {
                     0x0c => Instr::Collect(val),
                     0x0d => Instr::PushFuncAddr(val),
                     0x0e => Instr::Pipe(val),
+                    0x0f => Instr::RetStr(val),
+                    0x10 => Instr::RetNat(val),
+                    0x11 => Instr::RetFuncAddr(val),
                     other => panic!("{:?}", other),
                 };
                 icode.instructions.push_back(instr);

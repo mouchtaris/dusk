@@ -1,7 +1,6 @@
 pub const VERSION: &str = "0.0.1";
 use {
     ::show::Show,
-    buf::MemTake,
     collection::{Deq, Map},
     error::{te, temg},
     std::{
@@ -29,7 +28,7 @@ mod static_type;
 pub mod symbol_info;
 mod symbol_table;
 pub use {
-    crate::compile::{Compile, CompileEv, EvalEv},
+    crate::compile::{Compile, CompileEv},
     compile_util::CompileUtil,
     compilers::{Compilers, CompilersImpl as cmps},
     emit::EmitExt,
@@ -68,7 +67,10 @@ impl Compiler {
     where
         Self: Compile<N>,
     {
-        Compile::compile(self, node)
+        let mut cmp = self;
+
+        te!(Compile::compile(&mut cmp, node));
+        Ok(cmp)
     }
 
     /// Add the given literal string to the string_table and
@@ -135,56 +137,46 @@ impl Compiler {
     }
 
     /// Add the given string as a literal and emit to load it into `cmp.retval`
-    fn compile_text<S>(self, text: S) -> Result<Self>
+    fn compile_text<S>(&mut self, text: S) -> Result<SymInfo>
     where
         S: AsRef<str>,
     {
-        let mut cmp = self;
+        let cmp = self;
 
         let text = text.as_ref();
         let strid = te!(cmp.add_string(text));
 
-        cmp.retval = cmp
-            .new_local_tmp(format_args!("literal-text-{}", strid))
-            .clone();
-
-        cmp.emit([i::PushStr(strid)]);
-
-        Ok(cmp)
+        Ok(SymInfo::lit_string(strid))
     }
 
-    fn compile_natural<S>(self, text: S) -> Result<Self>
+    fn compile_natural<S>(&mut self, text: S) -> Result<SymInfo>
     where
         S: AsRef<str>,
     {
-        let mut cmp = self;
+        let _cmp = self;
 
         let text = text.as_ref();
         let nat = te!(text.parse::<usize>());
 
-        cmp.retval = cmp
-            .new_local_tmp(format_args!("literal-nat-{}", nat))
-            .clone();
-
-        cmp.emit1(i::PushNat(nat));
-        Ok(cmp)
+        Ok(SymInfo::lit_natural(nat))
     }
 
-    fn compile_funcaddr<S>(self, text: S) -> Result<Self>
+    fn compile_funcaddr<S>(&mut self, text: S) -> Result<SymInfo>
     where
         S: AsRef<str>,
     {
-        let mut cmp = self;
+        let cmp = self;
 
         let text = text.as_ref();
         let name = text;
 
-        cmp.retval = cmp.new_local_tmp(format_args!("funcaddr-{}", name)).clone();
-
-        let addr = te!(cmp.lookup_addr(name), "Func not found: {}", name).addr;
-
-        cmp.emit1(i::PushFuncAddr(addr));
-        Ok(cmp)
+        match te!(cmp.lookup(name)) {
+            sinfo @ SymInfo {
+                typ: sym::Typ::Address(_),
+                ..
+            } => Ok(sinfo.to_owned()),
+            other => temg!("Not a function address {}: {:?}", name, other),
+        }
     }
 }
 

@@ -16,8 +16,8 @@ fn main() -> Result<()> {
 
     let args = std::env::args().collect::<Vec<_>>();
 
-    let input_path = te!(args.get(1));
-    let output_path = te!(args.get(2));
+    let input_path = te!(args.get(1), "Missing input path");
+    let output_path = te!(args.get(2), "Missing output path");
 
     log::info!("Loading {}", input_path);
     let input_text: String = te!(fs::read_to_string(input_path));

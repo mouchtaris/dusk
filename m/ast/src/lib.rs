@@ -1,5 +1,8 @@
 pub const VERSION: &str = "0.0.1";
 
+mod factory;
+pub use factory::*;
+
 macro_rules! either {
     ($name:ident $(, $alt:ident)*) => {
         ::either::either! {

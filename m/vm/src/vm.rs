@@ -145,11 +145,24 @@ impl Vm {
         let addr = te!(vm.ret_cell_addr());
         Ok(vm.stack_get_val_mut(addr))
     }
-    pub fn set_ret_val(&mut self, fp_off: usize) -> Result<()> {
+    pub fn set_ret_val_from_local(&mut self, fp_off: usize) -> Result<()> {
         let vm = self;
 
         let retval_src: Value = mem::take(vm.frame_get_val_mut(fp_off));
-        ltrace!("return {:?} to {}", retval_src, te!(vm.ret_cell_addr()));
+        ltrace!(
+            "return local {:?} to {}",
+            retval_src,
+            te!(vm.ret_cell_addr())
+        );
+        *te!(vm.ret_cell_mut()) = retval_src;
+
+        Ok(())
+    }
+    pub fn set_ret_val<V: Into<Value>>(&mut self, val: V) -> Result<()> {
+        let vm = self;
+
+        let retval_src = val.into();
+        ltrace!("return val {:?} to {}", retval_src, te!(vm.ret_cell_addr()));
         *te!(vm.ret_cell_mut()) = retval_src;
 
         Ok(())
@@ -309,7 +322,7 @@ impl Vm {
             #[cfg(feature = "vm_stack_trace")]
             {
                 if let Err(_) = &success {
-                    self.write_to(Ok(std::io::stderr())).unwrap_or_default();
+                    te!(self.write_to(Ok(std::io::stderr())))
                 }
             }
             success = success; // for compile warning
@@ -366,7 +379,7 @@ impl Vm {
         let mut sp = vm.stack_ptr;
         let len = vm.stack.len();
         w!(o, "=== STACK ===");
-        w!(o, "fp({fp}) sp({sp}) l({l})", l = len, sp = sp, fp = fp);
+        w!(o, "fp({fp}) sp({sp}) len({l})", l = len, sp = sp, fp = fp);
         for i in 0..len {
             let i = len - 1 - i;
 
@@ -433,7 +446,8 @@ impl Vm {
                 let job: &mut Job = te!(vm.job_table.get_mut(proc_id), "Proc {}", proc_id);
                 te!(cln(job));
             }
-            Value::LitString(_) | Value::Null(_) | Value::Natural(_) => {
+            v @ (Value::LitString(_) | Value::Null(_) | Value::Natural(_)) => {
+                ltrace!("No cleanup: {:?}", v);
                 // No cleanup
             }
             other => panic!("{:?}", other),

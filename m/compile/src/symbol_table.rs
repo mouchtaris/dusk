@@ -1,5 +1,5 @@
 use {
-    super::{sym, temg, Deq, Map, Result, Type},
+    super::{sym, te, temg, Deq, Map, Result},
     error::ltrace,
     std::{borrow::Borrow, fmt},
 };
@@ -24,7 +24,6 @@ where
         let sinfo = SymInfo {
             scope_id,
             typ: SymType::Address(sym::Address { addr }),
-            static_type: Type::any(),
         };
         let name = name.into();
         scope.insert(name, sinfo.clone());
@@ -41,9 +40,11 @@ where
         let sinfo = SymInfo {
             scope_id,
             typ: SymType::Local(local_var),
-            static_type: Type::any(),
         };
-        scope.entry(name).or_insert(sinfo)
+        scope
+            .entry(name)
+            .and_modify(|i| *i = sinfo.to_owned())
+            .or_insert(sinfo)
     }
 
     fn new_local_tmp<D>(&mut self, desc: D) -> &mut SymInfo
@@ -52,6 +53,15 @@ where
     {
         let name = format!("t:{}:{}:{}", self.scope_id(), self.scope().len(), desc);
         self.new_local(name)
+    }
+
+    fn new_natural_literal_tmp(&mut self, nat: usize) -> &mut SymInfo {
+        let syminfo = self.new_local_tmp(format_args!("literal-nat-{}", nat));
+        syminfo.typ = sym::Typ::Literal(sym::Literal {
+            id: nat,
+            lit_type: sym::LitType::Natural,
+        });
+        syminfo
     }
 
     fn alias_name<S: Into<String>>(&mut self, new_name: S, info: &SymInfo) {
@@ -83,17 +93,24 @@ where
         }
         temg!("Symbol not found: {}", name)
     }
-    fn lookup_addr<S>(&self, name: S) -> Result<&sym::Address>
-    where
-        S: Borrow<str>,
-    {
-        self.lookup(name).and_then(|i| i.as_addr_ref())
-    }
     fn lookup_var<S>(&self, name: S) -> Result<&sym::Local>
     where
         S: Borrow<str>,
     {
         self.lookup(name).and_then(|i| i.as_local_ref())
+    }
+    fn lookup_name(&self, sinfo: &SymInfo) -> Result<&str> {
+        let sym_table = self.as_ref();
+
+        let scope_id = sinfo.scope_id;
+        let scope = te!(sym_table.scopes.get(scope_id), "Scope id: {:?}", scope_id);
+
+        for (name, info) in scope {
+            if info == sinfo {
+                return Ok(name);
+            }
+        }
+        temg!("Name not found: {:?}", sinfo)
     }
 
     fn enter_scope(&mut self) {

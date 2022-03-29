@@ -1,29 +1,68 @@
-use super::{temg, Result, Type};
+use super::{temg, Result};
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, Eq, PartialEq)]
 pub struct Info {
     pub typ: Typ,
     pub scope_id: usize,
-    pub static_type: Type,
 }
 
 either::either![
-    #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+    #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, Eq, PartialEq)]
     pub Typ,
         Local,
-        Address
+        Address,
+        Literal
 ];
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, Eq, PartialEq)]
 pub struct Local {
     pub fp_off: usize,
     pub is_alias: bool,
 }
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, Eq, PartialEq)]
 pub struct Address {
     pub addr: usize,
 }
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, Eq, PartialEq)]
+pub struct Literal {
+    pub id: usize,
+    pub lit_type: LitType,
+}
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, Eq, PartialEq)]
+pub enum LitType {
+    Natural,
+    String,
+    Null,
+}
 
 impl Info {
+    pub const NULL: Self = Self {
+        scope_id: 0,
+        typ: Typ::Literal(Literal {
+            id: 0,
+            lit_type: LitType::Null,
+        }),
+    };
+
+    pub fn lit_string(id: usize) -> Self {
+        Self {
+            scope_id: 0,
+            typ: Typ::Literal(Literal {
+                id,
+                lit_type: LitType::String,
+            }),
+        }
+    }
+
+    pub fn lit_natural(id: usize) -> Self {
+        Self {
+            scope_id: 0,
+            typ: Typ::Literal(Literal {
+                id,
+                lit_type: LitType::Natural,
+            }),
+        }
+    }
+
     pub fn as_local_ref(&self) -> Result<&Local> {
         let Self { typ, .. } = self;
         match typ {
@@ -46,14 +85,16 @@ impl Info {
     }
     pub fn val(&self) -> usize {
         match self.typ {
-            Typ::Address(Address { addr: v }) => v,
-            Typ::Local(Local { fp_off: v, .. }) => v,
+            Typ::Address(Address { addr: v })
+            | Typ::Local(Local { fp_off: v, .. })
+            | Typ::Literal(Literal { id: v, .. }) => v,
         }
     }
     pub fn val_mut(&mut self) -> &mut usize {
         match &mut self.typ {
-            Typ::Address(Address { addr: v }) => v,
-            Typ::Local(Local { fp_off: v, .. }) => v,
+            Typ::Address(Address { addr: v })
+            | Typ::Local(Local { fp_off: v, .. })
+            | Typ::Literal(Literal { id: v, .. }) => v,
         }
     }
     pub fn just(val: usize) -> Self {
@@ -70,7 +111,6 @@ impl Default for Info {
                 is_alias: true,
             }),
             scope_id: 0,
-            static_type: Type::any(),
         }
     }
 }
