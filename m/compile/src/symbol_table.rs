@@ -51,7 +51,11 @@ where
     where
         D: fmt::Display,
     {
-        let name = format!("t:{}:{}:{}", self.scope_id(), self.scope().len(), desc);
+        let name = if cfg!(feature = "release") {
+            format!("t:{}:{}", self.scope_id(), self.scope().len())
+        } else {
+            format!("t:{}:{}:{}", self.scope_id(), self.scope().len(), desc)
+        };
         self.new_local(name)
     }
 

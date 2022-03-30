@@ -55,3 +55,4 @@ path = '../vm'
 
 [features]
 default = ['serde']
+release = []

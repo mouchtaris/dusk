@@ -1,4 +1,4 @@
-# vim: et ts=4 sw=4 ft=ruby
+# vim: et ft=ruby ts=4 sw=4
 
 def TARGET = "test.dust";
 def TESTBIN = "_.test.dustbin";
@@ -10,25 +10,43 @@ def cargo = {
 }
 def cargo_run = {
     cargo run
-        # --features vm_stack_trace
+        --features serde_cbox
         $args
 }
 
-def main = {
-    let TARGET = TARGET;
-    let TESTBIN = TESTBIN;
+def build = {
+    def check = cargo check --all-targets $args;
+    def build = cargo build --all-targets $args;
+    build $args
+}
 
-    # cargo check --all-targets;
-    cargo build
-        --bin xs-compile
-        # --bin xs-debug
-        # --bin main
-        # --bin xs-write_file
-        --bin xs-run
+def xs-compile = {
+    # ./target/debug/xs-compile $TARGET $TESTBIN
+    ./target/release/xs-compile $TARGET $TESTBIN
+}
+
+def xs-run = {
+    # ./target/debug/xs-run $TESTBIN THE LOLZ
+    ./target/release/xs-run $TESTBIN THE LOLZ
+}
+
+def xs-debug = {
+    # ./target/debug/xs-debug $TESTBIN
+    ./target/release/xs-debug $TESTBIN
+}
+
+def compile_run = {
+    build 
+        --release --features release
     ;
-    ./target/debug/xs-compile $TARGET $TESTBIN;
-    #./target/debug/xs-debug $TESTBIN;
-    ./target/debug/xs-run $TESTBIN THE LOLZ;
+    xs-compile;
+    xs-run;
+    0
+}
+
+def main = {
+    compile_run;
+    # !xs2 web-app.dust;
     0
 }
 

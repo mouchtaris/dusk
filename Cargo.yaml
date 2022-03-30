@@ -86,6 +86,7 @@ module:
     inline:
       features:
         default: ["serde"]
+        release: []
   main:
     dep_mod:
       - error
