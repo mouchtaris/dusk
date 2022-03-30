@@ -75,7 +75,7 @@ let target = "bin";
 mkdir "bin";
 
 compile ci-tar;
-compile ci-install-local;
+compile ci-install-system;
 compile ci-compile;
 compile ci-test;
 compile ci;

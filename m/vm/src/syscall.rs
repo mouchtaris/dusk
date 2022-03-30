@@ -113,6 +113,9 @@ fn expand_arg(vm: &mut Vm, mut sbuf: buf::StringBuf, arg_addr: usize) -> Result<
             let s = te!(job.make_string());
             sbuf.add(s);
         }
+        Value::DynString(value::DynString(string)) => {
+            sbuf.add(string);
+        }
         other => temg!("Cannot expand arg@{}: {:?}", arg_addr, other),
     }
     Ok(sbuf)

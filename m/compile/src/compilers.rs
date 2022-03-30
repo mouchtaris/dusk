@@ -84,18 +84,19 @@ pub trait Compilers<'i> {
             // cmp = te!(cmp.compile(body));
 
             const MAIN: &str = "m___system_main___";
+            const MAIN_CALL: &str = "m___system_main___ $args";
 
             let body = ast::Body::Block(body);
             let def_stmt = ast::DefStmt((MAIN, body));
             let main_func = ast::Item::DefStmt(def_stmt);
 
-            let invc = te!(facade::parse_invocation(MAIN));
+            let invc = te!(facade::parse_invocation(MAIN_CALL));
             let invc = ast::Expr::Invocation(invc);
 
             let program = ast::Block((vec![main_func], invc));
 
             // Allocate minimal stack for call tmp local variables
-            const CALL_CTX: usize = 5;
+            const CALL_CTX: usize = 7;
             cmp.emit1(i::Allocate { size: CALL_CTX });
             te!(cmp.compile(program));
             cmp.emit1(i::Return(CALL_CTX));

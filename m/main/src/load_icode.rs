@@ -30,3 +30,11 @@ pub fn load_icode(input_path: &str) -> Result<vm::ICode> {
     };
     Ok(icode)
 }
+
+pub fn make_vm(args: Vec<String>) -> Result<vm::Vm> {
+    let mut vm = vm::Vm::default();
+    vm.reset();
+    vm.init(args);
+    te!(vm.init_bin_path_from_path_env());
+    Ok(vm)
+}

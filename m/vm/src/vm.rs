@@ -37,19 +37,23 @@ impl Vm {
         self.instr_ptr = 0;
     }
 
-    pub fn init(&mut self) {
+    pub fn init(&mut self, revargs: Vec<String>) {
         // synthetic call context
         // - RetVal
         // - # input redirs
         // - InvocationTarget
         // - Cwd
         // - Args + argn
-        self.allocate(5);
+        let argc = revargs.len();
+        self.allocate(5 + argc);
         self.push_null(); // retval allocation
         self.push_val(0); // # input redirections
         self.push_null(); // invocation target
         self.push_null(); // cwd
-        self.push_val(0); // nargs
+        for arg in revargs {
+            self.push_val(value::DynString(arg));
+        }
+        self.push_val(argc); // nargs
 
         self.instr_ptr = usize::max_value();
         self.prepare_call();
@@ -404,7 +408,7 @@ impl Vm {
         for i in 0..len {
             let i = len - 1 - i;
 
-            let pref = if i < 6 {
+            let pref = if i < 6 || fp < 7 {
                 "(sys)"
             } else {
                 let nargs: usize = *te!(vm.stack[fp - 3].try_ref());

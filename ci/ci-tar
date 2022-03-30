@@ -4,31 +4,28 @@ def SOURCE_TAR = "_.source.tar";
 def BIN_TAR = "_.bin.tar";
 
 def make_source_tar = {
-    src TARGET = SOURCE_TAR;
     !git
         archive HEAD
-        --output $TARGET
+        --output $SOURCE_TAR
         --format tar
     ;
     0
 }
 
 def make_bin_tar = {
-    src TARGET = BIN_TAR;
     !tar
         --create
-        --file $TARGET
+        --file $BIN_TAR
         bin/xs-compile
         bin/xs-run
+        bin/xs-debug
         bin/xs2
     ;
     0
 }
 
-let SOURCE_TAR = SOURCE_TAR;
-let BIN_TAR = BIN_TAR;
-
-make_source_tar;
+# make_source_tar;
+# !lsd --tree --long $SOURCE_TAR;
 make_bin_tar;
-!lsd --tree --long $SOURCE_TAR $BIN_TAR;
+!lsd --tree --long $BIN_TAR;
 0

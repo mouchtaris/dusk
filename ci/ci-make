@@ -21,11 +21,14 @@ def main = {
     # cargo check --all-targets;
     cargo build
         --bin xs-compile
-        --bin xs-debug
+        # --bin xs-debug
+        # --bin main
+        # --bin xs-write_file
+        --bin xs-run
     ;
     ./target/debug/xs-compile $TARGET $TESTBIN;
     #./target/debug/xs-debug $TESTBIN;
-    ./target/debug/xs-run $TESTBIN;
+    ./target/debug/xs-run $TESTBIN THE LOLZ;
     0
 }
 

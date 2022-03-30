@@ -3,15 +3,13 @@ use {::error::te, main::Result, std::fs};
 fn main() -> Result<()> {
     pretty_env_logger::init();
 
-    let args = std::env::args().collect::<Vec<_>>();
+    let mut args = std::env::args().skip(1).collect::<Vec<_>>();
+    args.reverse();
 
-    let input_path = te!(args.get(1));
+    let input_path = te!(args.pop(), "Missing input path");
     let icode = te!(main::load_icode(&input_path));
 
-    let mut vm = vm::Vm::default();
-    vm.reset();
-    vm.init();
-    te!(vm.init_bin_path_from_path_env());
+    let mut vm = te!(main::make_vm(args));
     te!(vm.debug_icode(&icode));
 
     #[cfg(not(release))]

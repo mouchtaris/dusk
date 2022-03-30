@@ -4,7 +4,7 @@ mod load_icode;
 pub mod sd;
 
 pub use {
-    load_icode::load_icode,
+    load_icode::{load_icode, make_vm},
     std::{
         boxed, collections, fmt, fs, io, iter, prelude, slice, str, string, u32, u8, usize, vec,
     },

@@ -157,8 +157,7 @@ def upload_release = {
 }
 
 def download_release = {
-    run_sh "tar -C src -cvf bin.tar bin";
-    cp "d3c:/home/bob/bin.tar" "_.dist.deb.tar";
+    cp "d3c:/home/bob/src/_.bin.tar" "_.dist.deb.tar";
     0
 }
 
@@ -182,15 +181,16 @@ def bootstrap = {
         $BASE
         sh -x -e -c r#"
             . $HOME/.cargo/env &&
-            target/debug/main ci/ci-install-local &&
+            target/debug/main ci/ci-install-system &&
             which xs2 &&
             which xs-compile &&
             which xs-run &&
+            which xs-debug &&
             which xs-make-self-exec &&
             which xs-write_file &&
             xs2 ci/ci-compile &&
             bin/ci-tar &&
-            echo help | bin/ci
+            mkdir -p _.ci/ && echo help | tee _.ci/command && bin/ci
         "# - $args
 }
 
