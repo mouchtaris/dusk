@@ -1,4 +1,4 @@
-use super::{io, Compiler, Show, SymInfo, SymbolTable};
+use super::{io, Compiler, Show, SymbolTable};
 
 impl Show for Compiler {
     fn write_to_impl<O>(&self, mut o: O) -> io::Result<()>

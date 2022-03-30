@@ -6,16 +6,19 @@ use {
 pub fn spawn(vm: &mut Vm) -> Result<()> {
     vm.prepare_call();
 
-    let &nargs: &usize = te!(vm.arg_get(0));
     let sbuf = te!(expand_args(vm, <_>::default()));
     let args: Vec<&str> = sbuf.seg_vec_in(<_>::default());
+
+    let &nargs: &usize = te!(vm.arg_get(0));
     let cwd: &Value = te!(vm.arg_get_val(nargs + 1));
     let target: &Value = te!(vm.arg_get_val(nargs + 2));
     let &inp_redir_n: &usize = te!(vm.arg_get(nargs + 3));
 
     type RV<'a> = Result<Vec<&'a Value>>;
+
     let vmargs: RV = (0..=nargs).map(|i| vm.arg_get_val(i)).collect();
     let vmargs = te!(vmargs);
+
     let inp_redirs: RV = (0..inp_redir_n)
         .map(|i| vm.arg_get_val(nargs + 3 + 1 + i))
         .collect();

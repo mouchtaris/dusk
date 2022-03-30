@@ -1,7 +1,7 @@
 use {
     super::{
-        debugger::Bugger as Debugger, ltrace, te, temg, value, Deq, ICode, Instr, Job, Result,
-        StringInfo, TryFrom, Value, ValueTypeInfo,
+        debugger::Bugger as Debugger, ltrace, te, temg, value, Deq, ICode, Job, Result, StringInfo,
+        TryFrom, Value, ValueTypeInfo,
     },
     std::{borrow::Borrow, io, mem, result},
 };

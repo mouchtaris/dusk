@@ -1,6 +1,7 @@
 # vim: et ft=scala ts=4 sw=4
 
 def util/join = !printf "%s" $args;
+def p = util/join $args;
 
 def DOCKER_CONTEXT = !cat ./etc/ci_docker_context;
 def VOLUME = "dust-ctx-0";
@@ -9,6 +10,7 @@ def DIST = "dust3:dist";
 def COPY = "d3c";
 def MEM = "/home/bob";
 def DOCKERFILE = "_.dockerfile";
+def SOURCE_TAR = "_.source.tar";
 
 def Dockerfile =
   r#" FROM debian as base
@@ -73,21 +75,16 @@ def Dockerfile =
   "#;
 
 def docker = {
-    let ctx = DOCKER_CONTEXT;
-    !docker --context $ctx $args;
-    0
+    !docker --context $DOCKER_CONTEXT $args
 }
 
-def docker_build = {
-    let Dockerfile = Dockerfile;
-    let DOCKERFILE = DOCKERFILE;
-    let ctx = DOCKER_CONTEXT;
 
-    let tag = util/join "dust3:" $args;
+def docker_build = {
+    let tag = p "dust3:" $args;
 
     !xs-write_file $Dockerfile $DOCKERFILE;
     !docker
-        --context $ctx
+        --context $DOCKER_CONTEXT
         buildx build
             --tag $tag
             --target $args
@@ -96,21 +93,18 @@ def docker_build = {
 }
 
 def run_mount = {
-    let VOLUME = VOLUME;
-    let MEM = MEM;
-    let BASE = BASE;
     let mount_spec = !printf "type=volume,source=%s,destination=%s" $VOLUME $MEM;
 
     docker run --mount $mount_spec $args
 }
 def run = {
-    let BASE = BASE;
     run_mount --rm $BASE $args
 }
-def run_sh = run sh -x -e -c $args;
+def run_sh = {
+    run sh -x -e -c $args
+}
 
 def vol = {
-    let VOLUME = VOLUME;
     docker volume $args --force $VOLUME
 }
 def vol-ls = docker volume list;
@@ -140,7 +134,6 @@ def rustup-init = {
     run_sh r#"bash rustup.sh -y --verbose "$@" "# - $args
 }
 def remove_cp_docker_container = {
-    let COPY = COPY;
     docker rm --force $COPY;
     0
 }
@@ -148,9 +141,6 @@ def ls =
     run_sh r#"ls "$@""# - $args
 ;
 def cp = {
-    let BASE = BASE;
-    let COPY = COPY;
-
     remove_cp_docker_container;
 
     run_mount -d --name $COPY $BASE;
@@ -161,7 +151,7 @@ def cp = {
 }
 
 def upload_release = {
-    cp "_.release.tar" "d3c:/home/bob/_.release.tar";
+    cp $SOURCE_TAR "d3c:/home/bob/_.release.tar";
     run_sh "mkdir -p src bin; tar -C src -x -v -f _.release.tar --atime-preserve";
     0
 }
@@ -173,7 +163,6 @@ def download_release = {
 }
 
 def cargo = {
-    let BASE = BASE;
     run_mount
         --workdir "/home/bob/src"
         --rm
@@ -187,7 +176,6 @@ def build = cargo build --all-targets;
 
 
 def bootstrap = {
-    let BASE = BASE;
     run_mount
         --workdir "/home/bob/src"
         --rm
@@ -204,8 +192,6 @@ def bootstrap = {
             bin/ci-tar &&
             echo help | bin/ci
         "# - $args
-    ;
-    0
 }
 
 def release = {
@@ -219,8 +205,6 @@ def del = {
     remove_cp_docker_container;
     vol-del;
 
-    let BASE = BASE;
-    let DIST = DIST;
     docker image rm --force $BASE $DIST;
 
     0

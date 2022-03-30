@@ -121,7 +121,7 @@ pub trait Compilers<'i> {
             //
             // Redirections
             let inp_redir_len = input_redirections.len();
-            let _inp_redir_sinfos = te!(cmp.compile(input_redirections));
+            let inp_redir_sinfos = te!(cmp.compile(input_redirections));
             // target
             let invctrgt = format!("{}", invocation_target);
             let invc_target_sinfo = te!(cmp.compile(invocation_target));
@@ -137,24 +137,27 @@ pub trait Compilers<'i> {
             let args_sinfos = te!(cmp.compile(args));
 
             // === Emits ===
-            //
-            // RetVal allocation
+            // RetVal Allocation
             let mut retval = cmp
                 .new_local_tmp(format_args!("retval-{}", invctrgt))
                 .clone();
-            cmp.emit1(i::PushNull); // retval allocation
-                                    // argn
+            cmp.emit1(i::PushNull);
+            // Input Redirections
+            for inprdi in &inp_redir_sinfos {
+                te!(cmp.emit_from_symbol(true, inprdi));
+            }
             cmp.new_local_tmp(format_args!("inp_redir_len-{}", invctrgt));
             cmp.emit1(i::PushNat(inp_redir_len));
-            te!(cmp.emit_from_symbol(true, &invc_target_sinfo)); // target
-            te!(cmp.emit_from_symbol(true, &cwd_sinfo)); // cwd
+            // Invocation target
+            te!(cmp.emit_from_symbol(true, &invc_target_sinfo));
+            // CWD
+            te!(cmp.emit_from_symbol(true, &cwd_sinfo));
+            // Arguments
             for argi in &args_sinfos {
-                // args
-                error::ltrace!("arg sinfo: {:?}", argi);
                 te!(cmp.emit_from_symbol(true, argi));
             }
             cmp.new_local_tmp(format_args!("argc-{}", invctrgt));
-            cmp.emit1(i::PushNat(arg_len)); // argn
+            cmp.emit1(i::PushNat(arg_len));
 
             const NOWHERE: usize = 0xffffffff;
             match invc_target_sinfo.typ {
@@ -177,11 +180,7 @@ pub trait Compilers<'i> {
     fn invocation_input_redirection() -> S<RedirectInput<'i>> {
         |cmp, node| match node {
             RedirectInput((Redirect::Path(_path),)) => todo!(),
-            RedirectInput((Redirect::Variable(ast::Variable((var,))),)) => {
-                let sinfo = te!(cmp.lookup(var)).to_owned();
-                te!(cmp.emit_from_symbol(true, &sinfo));
-                Ok(sinfo)
-            }
+            RedirectInput((Redirect::Variable(ast::Variable((var,))),)) => cmp.lookup(var).cloned(),
             RedirectInput((Redirect::Dereference(_deref),)) => todo!(),
         }
     }

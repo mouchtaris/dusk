@@ -55,8 +55,9 @@ macro_rules! soft_todo {
 macro_rules! te {
     ($e:expr , $fmt:literal $(, $fmtargs:expr)*) => {
         $crate::IntoResult::into_result($e).map_err(|mut e| {
-            e.trace.push((file!(), line!(), vec!()));
-            e.comment(format!($fmt $(, $fmtargs)*));
+            e.trace.push((file!(), line!(), vec!(
+                format!($fmt $(, $fmtargs)*)
+            )));
             e
         })?
     };
@@ -137,8 +138,8 @@ macro_rules! error_kind {
     }
 }
 
-impl<T, K> IntoResult<K, T> for std::result::Result<T, Error<K>> {
-    fn into_result(self) -> Result<T, K> {
+impl<T, K> IntoResult<K, T> for Result<T, K> {
+    fn into_result(self) -> Self {
         self
     }
 }

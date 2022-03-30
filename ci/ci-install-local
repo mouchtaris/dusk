@@ -19,7 +19,14 @@ def sudo_copy_to_target = {
   0
 }
 
-!cargo build --color always --release
+!cargo build
+  --color always
+  --release
+  --bin xs-compile
+  --bin xs-run
+  --bin main
+  --bin xs-debug
+  --bin xs-write_file
   # --features serde_cbor
   ;
 !mkdir -p ./bin/;
