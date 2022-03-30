@@ -113,40 +113,48 @@ pub trait Compilers<'i> {
             envs,
             mut args,
         ))| {
-            let mut retval = cmp.new_local_tmp("retval").clone();
-            cmp.emit1(i::PushNull);
-
-            // Redirections
-            let len = input_redirections.len();
-            let _inp_redir_sinfos = te!(cmp.compile(input_redirections));
-            cmp.new_local_tmp("inp_redir_len");
-            cmp.emit1(i::PushNat(len));
-
             // TODO
             let _ = envs;
             let _ = output_redirections;
 
+            // === Parsings ===
+            //
+            // Redirections
+            let inp_redir_len = input_redirections.len();
+            let _inp_redir_sinfos = te!(cmp.compile(input_redirections));
             // target
+            let invctrgt = format!("{}", invocation_target);
             let invc_target_sinfo = te!(cmp.compile(invocation_target));
-            te!(cmp.emit_from_symbol(true, &invc_target_sinfo));
-
             // cwd
-            if let Some(cwd) = cwd_opt {
-                te!(cmp.compile(cwd));
+            let cwd_sinfo = if let Some(cwd) = cwd_opt {
+                te!(cmp.compile(cwd))
             } else {
-                te!(cmp.emit_from_symbol(true, &SymInfo::NULL));
-            }
-
+                SymInfo::NULL
+            };
             // args
             let arg_len = args.len();
             args.reverse();
             let args_sinfos = te!(cmp.compile(args));
+
+            // === Emits ===
+            //
+            // RetVal allocation
+            let mut retval = cmp
+                .new_local_tmp(format_args!("retval-{}", invctrgt))
+                .clone();
+            cmp.emit1(i::PushNull); // retval allocation
+                                    // argn
+            cmp.new_local_tmp(format_args!("inp_redir_len-{}", invctrgt));
+            cmp.emit1(i::PushNat(inp_redir_len));
+            te!(cmp.emit_from_symbol(true, &invc_target_sinfo)); // target
+            te!(cmp.emit_from_symbol(true, &cwd_sinfo)); // cwd
             for argi in &args_sinfos {
+                // args
+                error::ltrace!("arg sinfo: {:?}", argi);
                 te!(cmp.emit_from_symbol(true, argi));
             }
-            // argn
-            cmp.new_local_tmp("argc");
-            cmp.emit1(i::PushNat(arg_len));
+            cmp.new_local_tmp(format_args!("argc-{}", invctrgt));
+            cmp.emit1(i::PushNat(arg_len)); // argn
 
             const NOWHERE: usize = 0xffffffff;
             match invc_target_sinfo.typ {
@@ -157,6 +165,7 @@ pub trait Compilers<'i> {
                     ..
                 }) => cmp.emit1(i::Spawn(NOWHERE)),
                 sym::Typ::Literal(_) => {
+                    // TODO skip everything above if this is the case
                     retval = invc_target_sinfo;
                 }
             }
@@ -252,14 +261,18 @@ pub trait Compilers<'i> {
                             )
                         }
                     }
-                    sinfo @ &SymInfo {
+                    _sinfo @ &SymInfo {
                         typ: sym::Typ::Address(_),
                         ..
                     } => {
-                        let name = te!(cmp.lookup_name(sinfo)).to_owned();
+                        //Ok(temg!("Not supported yet"))
+                        let name = te!(cmp.lookup_name(_sinfo)).to_owned();
                         let letstmt = ast::let_stmt(&name, ast::invoc(&name));
-                        let local_si: SymInfo = te!(cmp.compile(letstmt));
-                        Ok(local_si.to_owned())
+                        let local_si: SymInfo = te!(cmp.compile(letstmt)).to_owned();
+                        error::ldebug!("capture call to {} in {:?}", name, local_si);
+                        error::ldebug!("new {}: {:?}", name, te!(cmp.lookup(name.as_str())));
+
+                        Ok(local_si)
                     }
                 },
                 A::Path(path) => cmp.compile(path),

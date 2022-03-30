@@ -6,6 +6,7 @@ pub use {
     value::{Value, ValueTypeInfo},
 };
 
+mod debugger;
 mod icode;
 mod value;
 mod vm;
@@ -23,6 +24,7 @@ error::Error! {
     Io = io::Error
     Utf8Error = std::string::FromUtf8Error
     Job = job::Error
+    Debugger = debugger::Error
 }
 use error::{ltrace, soft_todo};
 use error::{te, temg, terr};

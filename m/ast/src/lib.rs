@@ -1,5 +1,6 @@
 pub const VERSION: &str = "0.0.1";
 
+mod display;
 mod factory;
 pub use factory::*;
 

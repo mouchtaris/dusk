@@ -12,7 +12,7 @@ fn main() -> Result<()> {
     vm.reset();
     vm.init();
     te!(vm.init_bin_path_from_path_env());
-    te!(vm.eval_icode(&icode));
+    te!(vm.debug_icode(&icode));
 
     #[cfg(not(release))]
     te!(vm.write_to(fs::File::create("./_.vm.txt")));

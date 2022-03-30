@@ -1,15 +1,8 @@
 use {
     ::error::te,
-    main::sd,
+    main::{sd, Result},
     std::{fs, io},
 };
-
-error::Error! {
-    Io = io::Error
-    Parse = parse::Error
-    Compile = compile::Error
-    Main = main::Error
-}
 
 fn main() -> Result<()> {
     pretty_env_logger::init();

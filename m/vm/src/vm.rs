@@ -1,7 +1,7 @@
 use {
     super::{
-        ltrace, te, temg, value, Deq, ICode, Instr, Job, Result, StringInfo, TryFrom, Value,
-        ValueTypeInfo,
+        debugger::Bugger as Debugger, ltrace, te, temg, value, Deq, ICode, Instr, Job, Result,
+        StringInfo, TryFrom, Value, ValueTypeInfo,
     },
     std::{borrow::Borrow, io, mem, result},
 };
@@ -40,14 +40,16 @@ impl Vm {
     pub fn init(&mut self) {
         // synthetic call context
         // - RetVal
+        // - # input redirs
         // - InvocationTarget
         // - Cwd
         // - Args + argn
-        self.allocate(4);
-        self.push_null();
-        self.push_null();
-        self.push_null();
-        self.push_val(0);
+        self.allocate(5);
+        self.push_null(); // retval allocation
+        self.push_val(0); // # input redirections
+        self.push_null(); // invocation target
+        self.push_null(); // cwd
+        self.push_val(0); // nargs
 
         self.instr_ptr = usize::max_value();
         self.prepare_call();
@@ -305,30 +307,49 @@ impl Vm {
         );
     }
 
-    pub fn load_icode(mut self, icode: &ICode) -> Result<Self> {
+    pub fn eval_icode(&mut self, icode: &ICode) -> Result<()> {
+        self.load_icode(&icode)
+            .and_then(|_| self.run_instructions(None, icode))
+    }
+
+    pub fn debug_icode(&mut self, icode: &ICode) -> Result<()> {
+        let debugger = te!(Debugger::open());
+        self.load_icode(&icode)
+            .and_then(|_| self.run_instructions(Some(debugger), icode))
+    }
+
+    pub fn load_icode(&mut self, icode: &ICode) -> Result<()> {
         for (s, i) in &icode.strings {
             ltrace!("Load literal string {} {}", i.id, s);
             self.add_string(i.clone(), s.clone());
         }
-        self = te!(self.run_instructions(&icode.instructions));
-        Ok(self)
+        Ok(())
     }
 
-    pub fn run_instructions(mut self, icode: &Deq<Instr>) -> Result<Self> {
-        while self.instr_ptr < icode.len() {
-            let instruction = &icode[self.instr_ptr];
-            self.instr_ptr += 1;
-            let mut success = instruction.borrow().operate_on(&mut self);
+    pub fn run_instructions(
+        &mut self,
+        mut debugger: Option<Debugger>,
+        icode: &ICode,
+    ) -> Result<()> {
+        let vm = self;
+
+        while vm.instr_ptr < icode.instructions.len() {
+            let instruction = &icode.instructions[vm.instr_ptr];
+            if let Some(debugger) = debugger.as_mut() {
+                te!(debugger.run(vm, icode));
+            }
+            vm.instr_ptr += 1;
+            let mut success = instruction.borrow().operate_on(vm);
             #[cfg(feature = "vm_stack_trace")]
             {
                 if let Err(_) = &success {
-                    te!(self.write_to(Ok(std::io::stderr())))
+                    te!(vm.write_to(Ok(std::io::stderr())))
                 }
             }
             success = success; // for compile warning
             te!(success);
         }
-        Ok(self)
+        Ok(())
     }
 
     /// Set the next instr_ptr to be executed
@@ -446,7 +467,7 @@ impl Vm {
                 let job: &mut Job = te!(vm.job_table.get_mut(proc_id), "Proc {}", proc_id);
                 te!(cln(job));
             }
-            v @ (Value::LitString(_) | Value::Null(_) | Value::Natural(_)) => {
+            v @ (Value::FuncAddr(_) | Value::LitString(_) | Value::Null(_) | Value::Natural(_)) => {
                 ltrace!("No cleanup: {:?}", v);
                 // No cleanup
             }

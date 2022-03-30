@@ -1,0 +1,39 @@
+# vim: et ts=4 sw=4 ft=ruby
+
+def TARGET = "test.dust";
+def TESTBIN = "_.test.dustbin";
+
+def cargo = {
+    !cargo
+        --color always
+        $args
+}
+def cargo_run = {
+    cargo run
+        # --features vm_stack_trace
+        $args
+}
+
+def main = {
+    let TARGET = TARGET;
+    let TESTBIN = TESTBIN;
+
+    # cargo check --all-targets;
+    cargo build
+        --bin xs-compile
+        --bin xs-debug
+    ;
+    ./target/debug/xs-compile $TARGET $TESTBIN;
+    #./target/debug/xs-debug $TESTBIN;
+    ./target/debug/xs-run $TESTBIN;
+    0
+}
+
+def loop = {
+    let git_files = !git ls-files;
+    src files = !printf "%s\n" test.dust $git_files;
+    !entr <$files xs-run bin/ci-make
+}
+
+main;
+0

@@ -32,7 +32,7 @@ fn main() -> Result<()> {
     vm.reset();
     vm.init();
     te!(vm.init_bin_path_from_path_env());
-    vm = te!(vm.load_icode(&icode));
+    te!(vm.eval_icode(&icode));
     te!(vm.write_to(fs::File::create("./_.vm.txt")));
 
     Ok(())

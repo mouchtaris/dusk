@@ -1,4 +1,4 @@
-use super::{io, Compiler, Show, SymbolTable};
+use super::{io, Compiler, Show, SymInfo, SymbolTable};
 
 impl Show for Compiler {
     fn write_to_impl<O>(&self, mut o: O) -> io::Result<()>
@@ -32,8 +32,31 @@ impl Show for SymbolTable {
             for scope in &self.scopes {
                 writeln!(o, "-- SCOPE {}", scope_id)?;
                 scope_id += 1;
-                for (name, sym_info) in scope {
-                    writeln!(o, ": {:12} : {:?}", name, sym_info)?;
+
+                let mut buffer: Vec<(String, String)> = scope
+                    .iter()
+                    .map(|(name, sym_info)| {
+                        let name = format!("{:?}", name);
+                        let sym_info = format!("{:?}", sym_info);
+                        (name, sym_info)
+                    })
+                    .collect();
+                buffer.sort_by(|a, b| a.0.cmp(&b.0));
+                let len = buffer
+                    .iter()
+                    .map(|(n, _)| n.len())
+                    .chain(std::iter::once(35))
+                    .max()
+                    .unwrap_or(0);
+
+                for (name, sym_info) in buffer {
+                    writeln!(
+                        o,
+                        ": {name:len$} : {si}",
+                        len = len,
+                        name = name,
+                        si = sym_info
+                    )?;
                 }
             }
         })

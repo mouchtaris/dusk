@@ -1,4 +1,4 @@
-# vim: et ts=4 sw=4 ft=scala
+# vim: et ft=scala ts=4 sw=4
 
 def p = !printf $args;
 def join = p " %s" $args;
@@ -79,6 +79,7 @@ compile ci-install-local;
 compile ci-compile;
 compile ci-test;
 compile ci;
+compile ci-make;
 
 lsd --tree --long ci "bin";
 
