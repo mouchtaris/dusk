@@ -2,26 +2,22 @@
 
 def XS_RUN = !which xs-run;
 def CI_TEST = "ci/ci-test";
-def CI_COMMAND = "_.ci/command";
 
-def p = !printf "%s" $args;
+def p = !printf "%s " $args;
+def join = !printf "%s" $args;
 
-let CI_TEST = CI_TEST;
 let XS_RUN = XS_RUN;
-let CI_COMMAND = CI_COMMAND;
+let CI_TEST = CI_TEST;
 
-let command = !less $CI_COMMAND;
-let ci_test = !sed "" $CI_TEST;
+let ci_test = !cat $CI_TEST;
 
 let script =
-    p $ci_test " ; " $command " ; 0"
+    p $ci_test ";" $args "; 0"
 ;
 
 let exec_header =
-    p "#!" $XS_RUN "\n"
+    join "#!" $XS_RUN "\n"
 ;
-
-!echo run $command;
 
 src compile =
     !xs-compile

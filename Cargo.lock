@@ -67,6 +67,11 @@ dependencies = [
 ]
 
 [[package]]
+name = "bio"
+version = "0.0.1"
+source = "git+https://gitlab.com/gvz/rs?branch=b2#4e404ae861f630657128538c17e10951d25b7733"
+
+[[package]]
 name = "bit-set"
 version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -471,6 +476,7 @@ dependencies = [
  "anyhow",
  "ast",
  "bincode",
+ "bio",
  "collection",
  "compile",
  "either 0.0.1",

@@ -52,11 +52,13 @@ def Dockerfile =
       FROM source as build
       RUN cd release && $HOME/.cargo/bin/cargo build --release --bin xs-compile
       RUN cd release && $HOME/.cargo/bin/cargo build --release --bin xs-run
-      RUN cd release && $HOME/.cargo/bin/cargo build --release --bin xs2
-
+      RUN cd release && $HOME/.cargo/bin/cargo build --release --bin xs-debug
+      RUN cd release && $HOME/.cargo/bin/cargo build --release --bin xs-write_out
+      RUN cd release && $HOME/.cargo/bin/cargo build --release --bin xs-make-self-exec
+      RUN cd release && $HOME/.cargo/bin/cargo build --release --bin main
 
       FROM build as install
-      RUN cd release && . $HOME/.cargo/env && target/release/main ci/ci-install-local
+      RUN cd release && . $HOME/.cargo/env && target/release/main ci/ci-install-system
       RUN cd release && xs2 ci/ci-compile
 
 
@@ -71,7 +73,7 @@ def Dockerfile =
       COPY --from=install /home/bob/release/bin/xs-run /usr/bin
       COPY --from=install /home/bob/release/bin/xs2 /usr/bin
       COPY --from=install /home/bob/release/bin/xs-make-self-exec /usr/bin
-      COPY --from=install /home/bob/release/bin/xs-write_file /usr/bin
+      COPY --from=install /home/bob/release/bin/xs-write_out /usr/bin
   "#;
 
 def docker = {
@@ -82,7 +84,8 @@ def docker = {
 def docker_build = {
     let tag = p "dust3:" $args;
 
-    !xs-write_file $Dockerfile $DOCKERFILE;
+    let Dockerfile = Dockerfile;
+    !xs-write_in <$Dockerfile $DOCKERFILE;
     !docker
         --context $DOCKER_CONTEXT
         buildx build
@@ -187,10 +190,11 @@ def bootstrap = {
             which xs-run &&
             which xs-debug &&
             which xs-make-self-exec &&
-            which xs-write_file &&
+            which xs-write_out &&
+            which xs-write_in &&
             xs2 ci/ci-compile &&
             bin/ci-tar &&
-            mkdir -p _.ci/ && echo help | tee _.ci/command && bin/ci
+            bin/ci help
         "# - $args
 }
 

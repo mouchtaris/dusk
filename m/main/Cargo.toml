@@ -12,6 +12,11 @@ path = '../ast'
 [dependencies.bincode]
 version = '*'
 
+[dependencies.bio]
+version = '*'
+git = 'https://gitlab.com/gvz/rs'
+branch = 'b2'
+
 [dependencies.collection]
 version = '0.0.1'
 path = '../collection'

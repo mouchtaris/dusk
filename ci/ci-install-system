@@ -8,7 +8,7 @@ def copy_to_target = {
     cp target/release/xs-run $args;
     cp target/release/xs-debug $args;
     cp target/release/xs-make-self-exec $args;
-    cp target/release/xs-write_file $args;
+    cp target/release/xs-write_out $args;
     0
 }
 
@@ -17,7 +17,10 @@ def sudo_copy_to_target = {
     sudo_cp target/release/xs-run $args;
     sudo_cp target/release/xs-debug $args;
     sudo_cp target/release/xs-make-self-exec $args;
-    sudo_cp target/release/xs-write_file $args;
+    sudo_cp target/release/xs-write_out $args;
+
+    let write_in = !printf "%s/%s" $args xs-write_in;
+    sudo_cp target/release/xs-write_out $write_in;
     0
 }
 
@@ -28,9 +31,9 @@ def sudo_copy_to_target = {
     --bin xs-run
     --bin main
     --bin xs-debug
-    --bin xs-write_file
+    --bin xs-write_out
     --bin xs-make-self-exec
-    # --features serde_cbor
+    --features serde_cbor,release
     ;
 !mkdir -p ./bin/;
 
