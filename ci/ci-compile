@@ -34,7 +34,7 @@ def xs-compile = {
     let subj = banner $color $args;
     info "Compiling" $subj;
 
-    ./bin/xs-compile $args;
+    !xs-compile $args;
     0
 }
 
@@ -44,7 +44,7 @@ def xs-make-self-exec = {
     let subj = banner $color $args $header;
     info "Make self-exec" $subj;
 
-    ./bin/xs-make-self-exec $args $header;
+    !xs-make-self-exec $args $header;
     0
 }
 

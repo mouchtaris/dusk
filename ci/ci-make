@@ -21,33 +21,14 @@ def build = {
     build $args
 }
 
-def xs-compile = {
-    #./target/debug/xs-compile $TARGET $TESTBIN
-    ./target/release/xs-compile $TARGET $TESTBIN
-}
-
-def xs-run = {
-    #./target/debug/xs-run $TESTBIN THE LOLZ
-    ./target/release/xs-run $TESTBIN THE LOLZ
-}
-
-def xs-debug = {
-    #./target/debug/xs-debug $TESTBIN
-    ./target/release/xs-debug $TESTBIN
-}
-
-def compile_run = {
-    build 
-        --release --features release
-    ;
-    xs-compile;
-    xs-run;
-    0
-}
+def xs2-dev =
+    ./target/debug/main $args
+;
 
 def main = {
-    # compile_run;
-    !xs2 web-app.dust MAKEFILE;
+    # build;
+    xs2-dev ci/ci-install-system;
+    !xs2 web-app.dust make;
     0
 }
 

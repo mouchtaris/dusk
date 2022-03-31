@@ -79,8 +79,11 @@ where
     I: io::Read,
     O: io::Write,
 {
-    while buf.read_from(&mut inp)? > 0 {
-        buf.write_to(&mut out)?;
+    while buf.free() == 0 || buf.read_from(&mut inp)? > 0 {
+        while buf.len() > 0 {
+            buf.write_to(&mut out)?;
+            buf.compact();
+        }
     }
     Ok(())
 }

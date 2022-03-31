@@ -37,10 +37,10 @@ def sudo_copy_to_target = {
     ;
 !mkdir -p ./bin/;
 
-copy_to_target ./bin/;
-sudo_copy_to_target "/usr/local/bin";
+# copy_to_target ./bin/;
+# cp target/release/main ./bin/xs2;
 
-cp target/release/main ./bin/xs2;
+sudo_copy_to_target "/usr/local/bin";
 sudo_cp target/release/main /usr/local/bin/xs2;
 
 0
