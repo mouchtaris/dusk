@@ -17,21 +17,22 @@ def cargo_run = {
 def build = {
     def check = cargo check --all-targets $args;
     def build = cargo build --all-targets $args;
+    check $args;
     build $args
 }
 
 def xs-compile = {
-    # ./target/debug/xs-compile $TARGET $TESTBIN
+    #./target/debug/xs-compile $TARGET $TESTBIN
     ./target/release/xs-compile $TARGET $TESTBIN
 }
 
 def xs-run = {
-    # ./target/debug/xs-run $TESTBIN THE LOLZ
+    #./target/debug/xs-run $TESTBIN THE LOLZ
     ./target/release/xs-run $TESTBIN THE LOLZ
 }
 
 def xs-debug = {
-    # ./target/debug/xs-debug $TESTBIN
+    #./target/debug/xs-debug $TESTBIN
     ./target/release/xs-debug $TESTBIN
 }
 
@@ -45,8 +46,8 @@ def compile_run = {
 }
 
 def main = {
-    compile_run;
-    # !xs2 web-app.dust;
+    # compile_run;
+    !xs2 web-app.dust MAKEFILE;
     0
 }
 

@@ -16,6 +16,7 @@ error::Error! {
     Vm = vm::Error
     ParseDust = parse::Error
     ParseInt = num::ParseIntError
+    Io = io::Error
 }
 
 mod compile;
@@ -23,6 +24,7 @@ mod compile_util;
 mod compilers;
 mod emit;
 pub mod facade;
+mod include;
 mod show;
 mod static_type;
 pub mod symbol_info;
@@ -32,6 +34,7 @@ pub use {
     compile_util::CompileUtil,
     compilers::{Compilers, CompilersImpl as cmps},
     emit::EmitExt,
+    include::IncludeExt,
     static_type::Type,
     symbol_info as sym,
     symbol_table::{SymInfo, SymbolTable, SymbolTableExt},
@@ -40,10 +43,7 @@ pub use {
 #[derive(Default, Debug, serde::Serialize, serde::Deserialize)]
 pub struct Compiler {
     pub icode: vm::ICode,
-    sym_table: SymbolTable,
-    /// For returning symbol info between node visitings
-    retval: SymInfo,
-    retval1: SymInfo,
+    pub sym_table: SymbolTable,
 }
 
 impl Compiler {
@@ -51,8 +51,6 @@ impl Compiler {
         Self {
             icode: <_>::default(),
             sym_table: <_>::default(),
-            retval: SymInfo::just(0),
-            retval1: SymInfo::just(0),
         }
     }
     pub fn init(&mut self) -> Result<()> {
@@ -63,14 +61,11 @@ impl Compiler {
         Ok(())
     }
 
-    pub fn compile<N>(self, node: N) -> Result<Self>
+    pub fn compile<N>(&mut self, node: N) -> Result<<Self as Compile<N>>::RetVal>
     where
         Self: Compile<N>,
     {
-        let mut cmp = self;
-
-        te!(Compile::compile(&mut cmp, node));
-        Ok(cmp)
+        Compile::compile(self, node)
     }
 
     /// Add the given literal string to the string_table and

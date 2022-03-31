@@ -56,6 +56,10 @@ pub trait Compilers<'i> {
 
                 Ok(ninfo)
             }
+            ast::Item::Include(ast::Include((path,))) => {
+                te!(IncludeExt::include(cmp, path));
+                Ok(SymInfo::NULL)
+            }
             ast::Item::Empty(_) => Ok(SymInfo::NULL),
         }
     }

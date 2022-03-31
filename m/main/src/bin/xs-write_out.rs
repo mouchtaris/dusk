@@ -1,5 +1,5 @@
 use {
-    error::{temg, te},
+    error::{te, temg},
     io::Write,
     main::Result,
     std::{env, fs, io},

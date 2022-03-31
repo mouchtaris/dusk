@@ -18,9 +18,13 @@ fn main() -> Result<()> {
 
     let mut cmp = compile::Compiler::new();
     te!(cmp.init());
-    cmp = te!(cmp.compile(module_ast));
-    use show::Show;
-    te!(cmp.write_to(fs::File::create("_.compiler.txt")));
+    te!(cmp.compile(module_ast));
+
+    #[cfg(not(features = "release"))]
+    {
+        use show::Show;
+        te!(cmp.write_to(fs::File::create("_.compiler.txt")));
+    }
 
     let icode = if cfg!(release) {
         cmp.icode
@@ -31,6 +35,7 @@ fn main() -> Result<()> {
 
     let mut vm = te!(main::make_vm(args));
     te!(vm.eval_icode(&icode));
+    #[cfg(not(features = "release"))]
     te!(vm.write_to(fs::File::create("./_.vm.txt")));
 
     Ok(())

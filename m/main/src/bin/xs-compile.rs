@@ -17,7 +17,7 @@ fn main() -> Result<()> {
 
     log::info!("Parsing {}", input_path);
     let module_ast = te!(parse::parse(&input_text));
-    #[cfg(not(release))]
+    #[cfg(not(features = "release"))]
     {
         use io::Write;
         te!(te!(fs::File::create("_.ast.txt")).write_fmt(format_args!("{:#?}", module_ast)));
@@ -26,8 +26,8 @@ fn main() -> Result<()> {
     log::info!("Compiling {}", input_path);
     let mut cmp = compile::Compiler::new();
     te!(cmp.init());
-    cmp = te!(cmp.compile(module_ast));
-    #[cfg(not(release))]
+    te!(cmp.compile(module_ast));
+    #[cfg(not(features = "release"))]
     {
         use show::Show;
         te!(cmp.write_to(fs::File::create("_.compiler.txt")));

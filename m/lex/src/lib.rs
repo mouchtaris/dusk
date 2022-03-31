@@ -92,7 +92,13 @@ lexpop![
                                                         exact("let"),
                                                         either(
                                                             exact("src"),
-                                                            either(exact("def"), exact("if"))
+                                                            either(
+                                                                exact("def"),
+                                                                either(
+                                                                    exact("if"),
+                                                                    exact("include")
+                                                                )
+                                                            )
                                                         )
                                                     )
                                                 )

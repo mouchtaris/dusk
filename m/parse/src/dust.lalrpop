@@ -13,6 +13,7 @@ Item: ast::Item<'input> = {
     "val" <Ident> "=" <Expr> ";" => ast::Item::LetStmt((<>,).into()),
     "src" <Ident> "=" <Expr> ";" => ast::Item::SrcStmt((<>,).into()),
     "def" <Ident> "=" <Body> => ast::Item::DefStmt((<>,).into()),
+    "include" <Path> ";" => ast::Item::Include((<>,).into()),
 }
 
 pub Expr: ast::Expr<'input> = {
@@ -126,6 +127,7 @@ extern {
         "!"                         => Tok::Kwd         (lex::Kwd           ("!"            )   ),
         "{"                         => Tok::Kwd         (lex::Kwd           ("{"            )   ),
         "}"                         => Tok::Kwd         (lex::Kwd           ("}"            )   ),
+        "include"                   => Tok::Kwd         (lex::Kwd           ("include"      )   ),
         IDENT                       => Tok::Idnt        (lex::Idnt          (<&'input str>  )   ),
         IDENT_NO_EQ                 => Tok::IdntNe      (lex::IdntNe        (<&'input str>  )   ),
         ABS_PATH                    => Tok::AbsPath     (lex::AbsPath       (<&'input str>  )   ),
