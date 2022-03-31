@@ -58,9 +58,14 @@ where
 
     let mut stdin = io::stdin();
     while te!(buf.read_from(&mut stdin)) > 0 {
+        use bio::BufferMethods;
+        let mark = buf.mark();
         for file in &mut files {
-            te!(buf.write_to(file));
-            buf.compact();
+            while buf.len() > 0 {
+                te!(buf.write_to(file));
+                buf.compact();
+            }
+            buf.reset_to(mark.clone());
         }
     }
 
