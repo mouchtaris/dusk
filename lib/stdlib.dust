@@ -1,0 +1,6 @@
+# vim: et ft=scala ts=4 sw=4
+
+def fmt = !printf $args;
+def p = fmt "%s" $args;
+
+0

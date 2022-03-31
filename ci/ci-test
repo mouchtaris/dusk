@@ -69,11 +69,11 @@ def Dockerfile =
       RUN useradd -d /home/bob -m -G sudo bob
       USER bob
       WORKDIR /home/bob
-      COPY --from=install /home/bob/release/bin/xs-compile /usr/bin
-      COPY --from=install /home/bob/release/bin/xs-run /usr/bin
-      COPY --from=install /home/bob/release/bin/xs2 /usr/bin
-      COPY --from=install /home/bob/release/bin/xs-make-self-exec /usr/bin
-      COPY --from=install /home/bob/release/bin/xs-write_out /usr/bin
+      COPY --from=install /home/bob/release/target/release/xs-compile /usr/bin
+      COPY --from=install /home/bob/release/target/release/xs-run /usr/bin
+      COPY --from=install /home/bob/release/target/release/main /usr/bin/xs2
+      COPY --from=install /home/bob/release/target/release/xs-make-self-exec /usr/bin
+      COPY --from=install /home/bob/release/target/release/xs-write_out /usr/bin
   "#;
 
 def docker = {
@@ -84,7 +84,7 @@ def docker = {
 def docker_build = {
     let tag = p "dust3:" $args;
 
-    let Dockerfile = Dockerfile;
+    src Dockerfile = Dockerfile;
     !xs-write_in <$Dockerfile $DOCKERFILE;
     !docker
         --context $DOCKER_CONTEXT

@@ -1,8 +1,5 @@
 # vim: et ft=ruby ts=4 sw=4
 
-def TARGET = "test.dust";
-def TESTBIN = "_.test.dustbin";
-
 def cargo = {
     !cargo
         --color always
@@ -21,14 +18,20 @@ def build = {
     build $args
 }
 
+def build_std = {
+    !mkdir -pv target/lib/dust;
+    !xs-compile lib/stdlib.dust target/lib/dust/stdlib
+}
+
 def xs2-dev =
     ./target/debug/main $args
 ;
 
 def main = {
     # build;
-    xs2-dev ci/ci-install-system;
-    !xs2 web-app.dust make;
+    # xs2-dev ci/ci-install-system;
+    build_std;
+    !xs2 "./web-app/ci.dust";
     0
 }
 

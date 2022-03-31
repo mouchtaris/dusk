@@ -61,11 +61,11 @@ where
         use bio::BufferMethods;
         let mark = buf.mark();
         for file in &mut files {
+            buf.reset_to(mark.clone());
             while buf.len() > 0 {
                 te!(buf.write_to(file));
                 buf.compact();
             }
-            buf.reset_to(mark.clone());
         }
     }
 
