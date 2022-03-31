@@ -12,7 +12,7 @@ fn main() -> Result<()> {
     let mut vm = te!(main::make_vm(args));
     te!(vm.eval_icode(&icode));
 
-    #[cfg(not(features = "release"))]
+    #[cfg(not(feature = "release"))]
     te!(vm.write_to(fs::File::create("./_.vm.txt")));
 
     let _ = vm;
