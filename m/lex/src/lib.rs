@@ -51,7 +51,10 @@ lexpop![natural, any(|| fn_(digit))];
 lexpop![longopt, one_and_any(exact("--"), ident)];
 lexpop![shortopt, one_and_any(exact("-"), ident)];
 lexpop![abspath, one_and_any(exact("/"), ident)];
-lexpop![relpath, one_and_any(exact("./"), ident)];
+lexpop![
+    relpath,
+    one_and_any(either(exact("./"), exact("../")), ident)
+];
 lexpop![ident, one_and_any(fn_(ident_init), || fn_(ident_rest))];
 lexpop![
     ident_no_eq,
@@ -247,7 +250,7 @@ fn digit(c: char) -> bool {
 }
 
 fn ident_init(c: char) -> bool {
-    c.is_alphabetic()
+    c.is_alphabetic() || c == '_'
 }
 
 fn ident_rest(c: char) -> bool {

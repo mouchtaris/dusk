@@ -185,7 +185,23 @@ pub trait Compilers<'i> {
     fn invocation_input_redirection() -> S<RedirectInput<'i>> {
         |cmp, node| match node {
             RedirectInput((Redirect::Path(_path),)) => todo!(),
-            RedirectInput((Redirect::Variable(ast::Variable((var,))),)) => cmp.lookup(var).cloned(),
+            RedirectInput((Redirect::Variable(ast::Variable((var,))),)) => {
+                match te!(cmp.lookup(var)) {
+                    &SymInfo {
+                        typ: sym::Typ::Address(_),
+                        ..
+                    } => {
+                        let name = var;
+                        let letstmt = ast::src_stmt(&name, ast::invoc(&name));
+                        let local_si: SymInfo = te!(cmp.compile(letstmt)).to_owned();
+                        error::ldebug!("capture call to {} in {:?}", name, local_si);
+                        error::ldebug!("new {}: {:?}", name, te!(cmp.lookup(name)));
+
+                        Ok(local_si)
+                    }
+                    other => panic!("{:?}", other),
+                }
+            }
             RedirectInput((Redirect::Dereference(_deref),)) => todo!(),
         }
     }
@@ -265,16 +281,15 @@ pub trait Compilers<'i> {
                             )
                         }
                     }
-                    _sinfo @ &SymInfo {
+                    &SymInfo {
                         typ: sym::Typ::Address(_),
                         ..
                     } => {
-                        //Ok(temg!("Not supported yet"))
-                        let name = te!(cmp.lookup_name(_sinfo)).to_owned();
+                        let name = var;
                         let letstmt = ast::let_stmt(&name, ast::invoc(&name));
                         let local_si: SymInfo = te!(cmp.compile(letstmt)).to_owned();
                         error::ldebug!("capture call to {} in {:?}", name, local_si);
-                        error::ldebug!("new {}: {:?}", name, te!(cmp.lookup(name.as_str())));
+                        error::ldebug!("new {}: {:?}", name, te!(cmp.lookup(name)));
 
                         Ok(local_si)
                     }

@@ -17,3 +17,10 @@ where
 {
     LetStmt((name, expr.into())).into()
 }
+
+pub fn src_stmt<'i, E>(name: &'i str, expr: E) -> Item<'i>
+where
+    E: Into<Expr<'i>>,
+{
+    SrcStmt((name, expr.into())).into()
+}
