@@ -24,3 +24,10 @@ where
 {
     SrcStmt((name, expr.into())).into()
 }
+
+pub fn block_of_stmts<'i>(mut stmts: Vec<Item<'i>>, last: Item<'i>) -> Block<'i> {
+    stmts.push(last);
+    (stmts, EXPR_0).into()
+}
+
+pub const EXPR_0: Expr = Expr::Natural(Natural(("0",)));

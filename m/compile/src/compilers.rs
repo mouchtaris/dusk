@@ -199,6 +199,21 @@ pub trait Compilers<'i> {
 
                         Ok(local_si)
                     }
+                    sinfo @ SymInfo {
+                        typ: sym::Typ::Local(_),
+                        scope_id,
+                    } => {
+                        if *scope_id == cmp.scope_id() {
+                            Ok(sinfo.to_owned())
+                        } else {
+                            temg!(
+                                "{} is in scope {} instead of {}",
+                                var,
+                                scope_id,
+                                cmp.scope_id()
+                            )
+                        }
+                    }
                     other => panic!("{:?}", other),
                 }
             }

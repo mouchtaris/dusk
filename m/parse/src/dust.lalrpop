@@ -87,6 +87,7 @@ Body: ast::Body<'input> = {
 
 pub Block: ast::Block<'input> = {
     <Item*> <Expr> => ((<>,)).into(),
+    <Item*> <Item> => ast::block_of_stmts(<>),
 }
 
 
