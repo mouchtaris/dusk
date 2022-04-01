@@ -100,7 +100,7 @@ pub trait Compilers<'i> {
             let program = ast::Block((vec![main_func], invc));
 
             // Allocate minimal stack for call tmp local variables
-            const CALL_CTX: usize = 7;
+            const CALL_CTX: usize = 8;
             cmp.emit1(i::Allocate { size: CALL_CTX });
             te!(cmp.compile(program));
             cmp.emit1(i::Return(CALL_CTX));
@@ -128,6 +128,9 @@ pub trait Compilers<'i> {
 
             // === Parsings ===
             //
+            // Envs
+            // ---
+            //
             // Redirections
             let inp_redir_len = input_redirections.len();
             if inp_redir_len > 1 {
@@ -154,6 +157,9 @@ pub trait Compilers<'i> {
                 .new_local_tmp(format_args!("retval-{}", invctrgt))
                 .clone();
             cmp.emit1(i::PushNull);
+            // Environment Variables
+            cmp.new_local_tmp(format_args!("nenvs-{}", invctrgt));
+            cmp.emit1(i::PushNat(0));
             // Input Redirections
             for inprdi in &inp_redir_sinfos {
                 te!(cmp.emit_from_symbol(true, inprdi));

@@ -45,8 +45,9 @@ impl Vm {
         // - Cwd
         // - Args + argn
         let argc = revargs.len();
-        self.allocate(5 + argc);
+        self.allocate(6 + argc);
         self.push_null(); // retval allocation
+        self.push_val(0); // # env var settings
         self.push_val(0); // # input redirections
         self.push_null(); // invocation target
         self.push_null(); // cwd
@@ -131,6 +132,11 @@ impl Vm {
     pub fn number_inputs(&self) -> Result<usize> {
         Ok(*te!(self.arg_get(te!(self.nargs()) + 3)))
     }
+    pub fn number_environments(&self) -> Result<usize> {
+        Ok(*te!(self.arg_get(
+            te!(self.nargs()) + 3 + te!(self.number_inputs()) + 1
+        )))
+    }
     pub fn call_target_func_addr(&self) -> Result<usize> {
         let vm = self;
 
@@ -144,7 +150,8 @@ impl Vm {
 
         let nargs = te!(vm.nargs());
         let ninps = te!(vm.number_inputs());
-        vm.arg_addr(nargs + 3 + ninps + 1)
+        let nenvs = te!(vm.number_environments());
+        vm.arg_addr(nargs + 3 + ninps + 1 + nenvs + 1)
     }
     pub fn ret_cell_mut(&mut self) -> Result<&mut Value> {
         let vm = self;
@@ -413,6 +420,7 @@ impl Vm {
             } else {
                 let nargs: usize = *te!(vm.stack[fp - 3].try_ref());
                 let n_inp_redir: usize = *te!(vm.stack[fp - 3 - nargs - 3].try_ref());
+                let nenvs: usize = *te!(vm.stack[fp - 3 - nargs - 3 - n_inp_redir - 1].try_ref());
                 match i {
                     i if fp == i => "fp",
                     i if fp - 1 == i => "ret instr",
@@ -425,7 +433,13 @@ impl Vm {
                     i if fp - 3 - nargs - 3 - n_inp_redir <= i && fp - 3 - nargs - 3 > i => {
                         "inp redr"
                     }
-                    i if fp - 3 - nargs - 3 - n_inp_redir - 1 == i => {
+                    i if fp - 3 - nargs - 3 - n_inp_redir - 1 == i => "nenvs",
+                    i if fp - 3 - nargs - 3 - n_inp_redir - 1 - nenvs <= i
+                        && fp - 3 - nargs - 3 - n_inp_redir - 1 > i =>
+                    {
+                        "env set"
+                    }
+                    i if fp - 3 - nargs - 3 - n_inp_redir - 1 - nenvs - 1 == i => {
                         sp = *te!(vm.stack[fp - 1].try_ref());
                         fp = *te!(vm.stack[fp - 2].try_ref());
                         w!(o, "--- frame {} ---", fp);

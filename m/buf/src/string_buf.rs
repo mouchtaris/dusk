@@ -36,16 +36,4 @@ impl StringBuf {
         let Self { buf, seg } = self;
         seg.get(i).map(|r| &buf[r.clone()])
     }
-
-    pub fn seg_vec_in<'s>(&'s self, mut v: Vec<&'s str>) -> Vec<&'s str> {
-        let mut i = 0;
-        loop {
-            match self.seg(i) {
-                Some(s) => v.push(s),
-                None => break,
-            }
-            i += 1;
-        }
-        v
-    }
 }

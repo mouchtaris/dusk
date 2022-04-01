@@ -6,13 +6,18 @@ use {
 pub fn spawn(vm: &mut Vm) -> Result<()> {
     vm.prepare_call();
 
-    let sbuf = te!(expand_args(vm, <_>::default()));
-    let args: Vec<&str> = sbuf.seg_vec_in(<_>::default());
+    let mut sbuf = <_>::default();
+    te!(expand_args(vm, &mut sbuf));
+    let args: Vec<&str> = sbuf.into_iter().collect();
+    let mut sbuf1 = <_>::default();
+    te!(expand_envs(vm, &mut sbuf1));
+    let envs: Vec<&str> = sbuf1.into_iter().collect();
 
     let &nargs: &usize = te!(vm.arg_get(0));
     let cwd: &Value = te!(vm.arg_get_val(nargs + 1));
     let target: &Value = te!(vm.arg_get_val(nargs + 2));
     let &inp_redir_n: &usize = te!(vm.arg_get(nargs + 3));
+    let &nenvs: &usize = te!(vm.arg_get(nargs + 3 + inp_redir_n + 1));
 
     type RV<'a> = Result<Vec<&'a Value>>;
 
@@ -32,6 +37,8 @@ pub fn spawn(vm: &mut Vm) -> Result<()> {
     vmargs      : {vmargs:?}
     args        : {args:?}
     redir       : {redir:?}
+    nenvs       : {nenvs:?}
+    envs        : {envs:?}
 ",
         target = target,
         cwd = cwd,
@@ -39,6 +46,8 @@ pub fn spawn(vm: &mut Vm) -> Result<()> {
         vmargs = vmargs,
         args = args,
         redir = inp_redirs,
+        nenvs = nenvs,
+        envs = envs,
     );
 
     use std::process::{Command, Stdio};
@@ -64,7 +73,7 @@ pub fn spawn(vm: &mut Vm) -> Result<()> {
         inp_jobs.push(match redir {
             &Value::Job(value::Job(jobid)) => (Id::Job, jobid),
             &Value::LitString(value::LitString(strid)) => (Id::Str, strid),
-            other => panic!("{:?}", other),
+            other => temg!("internal error: {:?}", other),
         })
     }
     for inp_job in inp_jobs {
@@ -94,7 +103,7 @@ pub fn spawn(vm: &mut Vm) -> Result<()> {
     Ok(())
 }
 
-fn expand_arg(vm: &mut Vm, mut sbuf: buf::StringBuf, arg_addr: usize) -> Result<buf::StringBuf> {
+fn expand_arg(vm: &mut Vm, sbuf: &mut buf::StringBuf, arg_addr: usize) -> Result<()> {
     let arg: &Value = vm.stack_get_val(arg_addr);
     match arg {
         &Value::LitString(value::LitString(strid)) => {
@@ -104,7 +113,7 @@ fn expand_arg(vm: &mut Vm, mut sbuf: buf::StringBuf, arg_addr: usize) -> Result<
         &Value::Array(value::Array { ptr }) => {
             let &arrlen: &usize = te!(vm.stack_get(ptr));
             for i in 1..=arrlen {
-                sbuf = te!(expand_arg(vm, sbuf, ptr - i));
+                te!(expand_arg(vm, sbuf, ptr - i));
             }
         }
         Value::Natural(n) => {
@@ -120,15 +129,43 @@ fn expand_arg(vm: &mut Vm, mut sbuf: buf::StringBuf, arg_addr: usize) -> Result<
         }
         other => temg!("Cannot expand arg@{}: {:?}", arg_addr, other),
     }
-    Ok(sbuf)
+    Ok(())
 }
 
-fn expand_args(vm: &mut Vm, mut sbuf: buf::StringBuf) -> Result<buf::StringBuf> {
-    let &nargs: &usize = te!(vm.arg_get(0));
-    ldebug!("expanding {} args from {}", nargs, te!(vm.arg_addr(1)));
+fn expand_args(vm: &mut Vm, sbuf: &mut buf::StringBuf) -> Result<()> {
+    expand_args2(vm, sbuf, |vm, i| Ok(te!(vm.arg_addr(i))))
+}
+
+fn expand_args2<G>(vm: &mut Vm, sbuf: &mut buf::StringBuf, argaddr: G) -> Result<()>
+where
+    G: Fn(&mut Vm, usize) -> Result<usize>,
+{
+    expand_args3(vm, sbuf, |vm, i| Ok((te!(argaddr(vm, i)), 1)))
+}
+
+fn expand_args3<G>(vm: &mut Vm, sbuf: &mut buf::StringBuf, argaddr: G) -> Result<()>
+where
+    G: Fn(&mut Vm, usize) -> Result<(usize, usize)>,
+{
+    let (nargs_addr, _) = te!(argaddr(vm, 0));
+    let &nargs: &usize = te!(vm.stack_get(nargs_addr));
+    ldebug!("expanding {} args from {}", nargs, nargs_addr);
 
     for i in 1..=nargs {
-        sbuf = te!(expand_arg(vm, sbuf, te!(vm.arg_addr(i))));
+        let (addr, len) = te!(argaddr(vm, i));
+        for j in 0..len {
+            te!(expand_arg(vm, sbuf, addr + j));
+        }
     }
-    Ok(sbuf)
+    Ok(())
+}
+
+fn expand_envs(vm: &mut Vm, sbuf: &mut buf::StringBuf) -> Result<()> {
+    let &nargs: &usize = te!(vm.arg_get(0));
+    let &ninpredr: &usize = te!(vm.arg_get(nargs + 3));
+    let &nenvs: &usize = te!(vm.arg_get(nargs + 3 + ninpredr + 1));
+
+    expand_args3(vm, sbuf, |vm, i| {
+        Ok((te!(vm.arg_addr(nargs + 3 + ninpredr + 1 + (i * 2))), 2))
+    })
 }

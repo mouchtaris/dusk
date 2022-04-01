@@ -110,7 +110,7 @@ impl Job {
             Self::Spec(spec) => te!(spawn_spec(spec, capture)),
             Self::System(s) => s,
             Self::Buffer(buf) => te!(echo_buffer(buf, capture)),
-            other => panic!("{:?}", other),
+            Self::Null(_) => temg!("Cannot pipe null Job"),
         })
     }
     pub fn make_pipe(&mut self, capture: bool) -> Result<()> {
