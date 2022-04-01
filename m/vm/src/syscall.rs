@@ -44,9 +44,11 @@ pub fn spawn(vm: &mut Vm) -> Result<()> {
     use std::process::{Command, Stdio};
 
     let target: &str = te!(vm.val_as_str(&target));
+
     let mut cmd = Command::new(target);
     cmd.stdin(Stdio::null());
     cmd.args(&args);
+
     if let Ok(cwd) = vm.val_as_str(&cwd) {
         cmd.current_dir(cwd);
     }

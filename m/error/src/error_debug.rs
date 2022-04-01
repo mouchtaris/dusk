@@ -12,19 +12,15 @@ impl<K: fmt::Debug> fmt::Debug for Error<K> {
         for (file, line, comments) in &self.trace {
             let file = *file;
             let line = *line;
-            let context_message = "";
-            let show = "";
-            writeln!(
+            write!(
                 f,
-                "[{ERR}ERROR{RS}] {FILE}{file}{RS}:{LINE}{line}{RS} :: {explain}{show}",
+                "\n[{ERR}ERROR{RS}] {FILE}{file}{RS}:{LINE}{line}{RS}",
                 ERR = _RED,
                 RS = _RESET,
                 FILE = _DORANGE,
                 file = file,
                 LINE = _GORANGE,
                 line = line,
-                explain = context_message,
-                show = show,
             )?;
             for comment in comments {
                 writeln!(
@@ -36,7 +32,7 @@ impl<K: fmt::Debug> fmt::Debug for Error<K> {
                 )?;
             }
         }
-        write!(f, "{:?}", self.kind)?;
+        write!(f, "\n{:?}", self.kind)?;
         Ok(())
     }
 }

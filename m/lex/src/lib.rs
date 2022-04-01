@@ -152,7 +152,10 @@ fn to_str<'i>(tok: Option<&'i Spanned<Tok>>) -> &'i str {
 fn ident_or_kwd<'i>(s: &mut LexState<'i>) -> Item<LexState<'i>> {
     let mut s0 = s.clone();
 
-    match s.mtch(ident(), Idnt) {
+    match s
+        .mtch(ident_no_eq(), IdntNe)
+        .or_else(|| s.mtch(ident(), Idnt))
+    {
         None => None,
 
         tid @ Some(_) => {

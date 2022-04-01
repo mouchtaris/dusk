@@ -119,13 +119,20 @@ pub trait Compilers<'i> {
             mut args,
         ))| {
             // TODO
-            let _ = envs;
-            let _ = output_redirections;
+            if !envs.is_empty() {
+                error::lwarn!("ignoring env");
+            }
+            if !output_redirections.is_empty() {
+                error::lwarn!("ignoring output redirections");
+            }
 
             // === Parsings ===
             //
             // Redirections
             let inp_redir_len = input_redirections.len();
+            if inp_redir_len > 1 {
+                temg!("More than one stdin redirections is not (yet) supported");
+            }
             let inp_redir_sinfos = te!(cmp.compile(input_redirections));
             // target
             let invctrgt = format!("{}", invocation_target);
@@ -214,7 +221,10 @@ pub trait Compilers<'i> {
                             )
                         }
                     }
-                    other => panic!("{:?}", other),
+                    sinfo @ SymInfo {
+                        typ: sym::Typ::Literal(_),
+                        ..
+                    } => Ok(sinfo.to_owned()),
                 }
             }
             RedirectInput((Redirect::Dereference(_deref),)) => todo!(),
