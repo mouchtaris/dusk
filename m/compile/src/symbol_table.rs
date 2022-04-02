@@ -181,3 +181,18 @@ impl AsMut<SymbolTable> for SymbolTable {
         self
     }
 }
+
+pub fn scopes<'s, S>(st: &'s S) -> impl Iterator<Item = (usize, &'s str, &'s SymInfo)>
+where
+    S: AsRef<SymbolTable>,
+{
+    st.as_ref()
+        .scopes
+        .iter()
+        .enumerate()
+        .flat_map(move |(scope_id, scope)| {
+            scope
+                .iter()
+                .map(move |(name, info)| (scope_id, name.as_str(), info))
+        })
+}

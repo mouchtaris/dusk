@@ -33,7 +33,8 @@ fn main() -> Result<()> {
         te!(main::sd::copy(&cmp)).icode
     };
 
-    let mut vm = te!(main::make_vm(args));
+    let mut vm = te!(main::make_vm());
+    vm.init(args);
     te!(vm.eval_icode(&icode));
     #[cfg(not(feature = "release"))]
     te!(vm.write_to(fs::File::create("./_.vm.txt")));

@@ -37,7 +37,7 @@ pub use {
     include::IncludeExt,
     static_type::Type,
     symbol_info as sym,
-    symbol_table::{SymInfo, SymbolTable, SymbolTableExt},
+    symbol_table::{scopes, SymInfo, SymbolTable, SymbolTableExt},
 };
 
 #[derive(Default, Debug, serde::Serialize, serde::Deserialize)]

@@ -74,21 +74,22 @@ impl Job {
     pub fn as_spec_mut(&mut self) -> Result<&mut Spec> {
         Ok(match self {
             Self::Spec(spec) => spec,
-            other => temg!("{:?}", other),
+            other => temg!("Internal error: not a spec job: {:?}", other),
         })
     }
 
     pub fn as_buffer_mut(&mut self) -> Result<&mut Buffer> {
         Ok(match self {
             Self::Buffer(buf) => buf,
-            other => temg!("{:?}", other),
+            sys @ Self::System(_) => te!(sys.made_buffer().and_then(Self::as_buffer_mut)),
+            other => temg!("Internal error: {:?}", other),
         })
     }
 
     pub fn as_buffer(&self) -> Result<&Buffer> {
         Ok(match self {
             Self::Buffer(buf) => buf,
-            other => temg!("{:?}", other),
+            other => temg!("Cannot be a buffer: {:?}", other),
         })
     }
 
@@ -120,10 +121,15 @@ impl Job {
     pub fn into_buffer(self) -> Result<Buffer> {
         Ok(match self {
             Self::Spec(s) => te!(collect_output(te!(spawn_spec(s, true)))),
+            Self::System(sys) => te!(collect_output(sys)),
             other => panic!("{:?}", other),
         })
     }
 
+    pub fn made_buffer(&mut self) -> Result<&mut Self> {
+        te!(self.make_buffer());
+        Ok(self)
+    }
     pub fn make_buffer(&mut self) -> Result<()> {
         Ok(*self = te!(mem::take(self).into_buffer()).into())
     }

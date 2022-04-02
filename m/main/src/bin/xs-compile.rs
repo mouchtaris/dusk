@@ -5,7 +5,7 @@ use {
 };
 
 fn main() -> Result<()> {
-    pretty_env_logger::init();
+    te!(main::init());
 
     let args = std::env::args().collect::<Vec<_>>();
 
@@ -13,7 +13,10 @@ fn main() -> Result<()> {
     let output_path = te!(args.get(2), "Missing output path");
 
     log::info!("Loading {}", input_path);
-    let input_path = match input_path.as_str() { "-" => "/dev/stdin", x => x };
+    let input_path = match input_path.as_str() {
+        "-" => "/dev/stdin",
+        x => x,
+    };
     let input_text: String = te!(fs::read_to_string(input_path));
 
     log::info!("Parsing {}", input_path);

@@ -1,7 +1,7 @@
 use {::error::te, main::Result, std::fs};
 
 fn main() -> Result<()> {
-    pretty_env_logger::init();
+    te!(main::init());
 
     let mut args = std::env::args().skip(1).collect::<Vec<_>>();
     args.reverse();
@@ -9,7 +9,8 @@ fn main() -> Result<()> {
     let input_path = te!(args.pop(), "Missing input path");
     let icode = te!(main::load_icode(&input_path));
 
-    let mut vm = te!(main::make_vm(args));
+    let mut vm = te!(main::make_vm());
+    vm.init(args);
     te!(vm.debug_icode(&icode));
 
     #[cfg(not(feature = "release"))]

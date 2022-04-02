@@ -1,5 +1,7 @@
 pub const VERSION: &str = "0.0.1";
+pub mod icode;
 pub mod syscall;
+pub mod value;
 pub use {
     crate::vm::Vm,
     icode::{ICode, Instr, StringInfo},
@@ -7,8 +9,6 @@ pub use {
 };
 
 mod debugger;
-mod icode;
-mod value;
 mod vm;
 
 use {

@@ -1,9 +1,13 @@
 use {
     super::{fs, sd, Result},
-    error::{ldebug, te},
+    error::{ldebug, te, temg},
 };
 
 pub fn load_icode(input_path: &str) -> Result<vm::ICode> {
+    Ok(te!(load_compiler(input_path)).icode)
+}
+
+pub fn load_compiler(input_path: &str) -> Result<compile::Compiler> {
     ldebug!("Loading {}", input_path);
     let inp: Vec<u8> = {
         let mut inp: Vec<u8> = te!(fs::read(input_path));
@@ -23,18 +27,33 @@ pub fn load_icode(input_path: &str) -> Result<vm::ICode> {
         }
         inp
     };
-    let icode: vm::ICode = {
-        ldebug!("loading {} -> {:x}", inp.len(), &inp[0]);
-        let cmp: compile::Compiler = te!(sd::deser(inp.as_slice()));
-        cmp.icode
-    };
-    Ok(icode)
+    ldebug!("loading {} -> {:x}", inp.len(), &inp[0]);
+    let cmp = te!(sd::deser(inp.as_slice()));
+    Ok(cmp)
 }
 
-pub fn make_vm(args: Vec<String>) -> Result<vm::Vm> {
+pub fn make_vm() -> Result<vm::Vm> {
     let mut vm = vm::Vm::default();
     vm.reset();
-    vm.init(args);
     te!(vm.init_bin_path_from_path_env());
     Ok(vm)
+}
+
+pub fn make_vm_call(
+    vm: &mut vm::Vm,
+    cmp: &compile::Compiler,
+    func_addr: &str,
+    args: Vec<String>,
+) -> Result<()> {
+    let sinfo = compile::scopes(&cmp.sym_table).find(|&(_, name, _)| name == func_addr);
+    Ok(match sinfo {
+        None => temg!("Function not found: {}", func_addr),
+        Some((_, _, sinfo)) => {
+            let addr = te!(sinfo.as_addr_ref()).addr;
+            vm.init(args);
+            vm.jump(addr);
+            te!(vm.eval_icode(&cmp.icode));
+            te!(vm::Instr::CleanUp(0).operate_on(vm));
+        }
+    })
 }
