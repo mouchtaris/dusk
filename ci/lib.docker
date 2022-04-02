@@ -14,6 +14,34 @@ def docker =
     !docker --context $DOCKER_CONTEXT $args
 ;
 
-def docker-run =
+def docker::run =
     docker --mount $DOCKER_MOUNT
 ;
+
+def run = p ./run/docker/dust-ci/ $args;
+def source.tar = run _.source.tar;
+
+def docker::make_release_tar = {
+    !mkdir -p $run;
+    !xs-write_in <$archive $source.tar;
+    !lsd --long $source.tar;
+}
+
+def docker::build-dist = {
+    let tag = p "dust:3-" $args;
+    let target = p $args "-dist";
+
+    docker::make_release_tar;
+    !docker
+        --context $DOCKER_CONTEXT
+        buildx build
+            --tag $tag
+            --target $target
+            --file ./var/docker/Dockerfile
+            $run
+    ;
+}
+
+def docker::build-all = {
+    docker::build-dist all;
+}

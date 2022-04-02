@@ -1,6 +1,6 @@
 # vim: et ft=scala ts=4 sw=4
 
-def install-build = {
+def install::build = {
     !cargo
         --color always
         build
@@ -14,22 +14,31 @@ def install-build = {
         --bin xs-write_out
 }
 
-def install-system-file = {
-    let srce = p run/cargo/target/release/ $args;
+def install::system-file = {
+    let srce = p target/release/ $args;
     let dest = p /usr/local/bin/ $args;
 
     !sudo cp -av $srce $dest;
     !sudo chown -v root:root $dest;
 }
 
-def install-system = {
-    install-build;
+def install::system-alias = {
+    !sudo
+        @/usr/local/bin
+        ln -fsv $args;
+}
 
-    def i = install-system-file $args;
+def install::system = {
+    install::build;
+
+    def i = install::system-file $args;
     i xs-run;
     i xs-compile;
     i xs-debug;
     i xs-make-self-exec;
     i xs-write_out;
     i xs2;
+
+    def a = install::system-alias $args;
+    a xs-write_out xs-write_in;
 }
