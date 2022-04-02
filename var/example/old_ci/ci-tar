@@ -24,8 +24,8 @@ def make_bin_tar = {
     0
 }
 
-# make_source_tar;
-# !lsd --tree --long $SOURCE_TAR;
-make_bin_tar;
-!lsd --tree --long $BIN_TAR;
+make_source_tar;
+!lsd --tree --long $SOURCE_TAR;
+# make_bin_tar;
+# !lsd --tree --long $BIN_TAR;
 0

@@ -1,29 +1,10 @@
-# vim: et ft=ruby ts=4 sw=4
+#!/usr/local/bin/xs2
+# vim: et ft=scala ts=4 sw=4
 
-def XS_RUN = !which xs-run;
-def CI_TEST = "ci/ci-test";
+include ./ci/lib.sys;
 
-def p = !printf "%s " $args;
-def join = !printf "%s" $args;
+let user_script = join $args;
 
-let XS_RUN = XS_RUN;
-let CI_TEST = CI_TEST;
+let script = fmt "include ./ci/lib; %s;" $user_script;
 
-let ci_test = !cat $CI_TEST;
-
-let script =
-    p $ci_test ";" $args "; 0"
-;
-
-let exec_header =
-    join "#!" $XS_RUN "\n"
-;
-
-src compile =
-    !xs-compile
-        <$script
-        /dev/stdin /dev/stdout
-;
-!xs-run <$compile /dev/stdin;
-
-0
+!xs2 <$script;

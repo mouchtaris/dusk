@@ -1,0 +1,35 @@
+# vim: et ft=scala ts=4 sw=4
+
+def install-build = {
+    !cargo
+        --color always
+        build
+        --features release
+        --release
+        --bin xs2
+        --bin xs-run
+        --bin xs-compile
+        --bin xs-debug
+        --bin xs-make-self-exec
+        --bin xs-write_out
+}
+
+def install-system-file = {
+    let srce = p run/cargo/target/release/ $args;
+    let dest = p /usr/local/bin/ $args;
+
+    !sudo cp -av $srce $dest;
+    !sudo chown -v root:root $dest;
+}
+
+def install-system = {
+    install-build;
+
+    def i = install-system-file $args;
+    i xs-run;
+    i xs-compile;
+    i xs-debug;
+    i xs-make-self-exec;
+    i xs-write_out;
+    i xs2;
+}

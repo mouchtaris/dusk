@@ -8,7 +8,7 @@ fn main() -> Result<()> {
     let mut args = std::env::args().skip(1).collect::<Vec<_>>();
     args.reverse();
 
-    let sample_path = args.pop().unwrap_or("sample.dust".to_owned());
+    let sample_path = args.pop().unwrap_or("/dev/stdin".to_owned());
     log::debug!("Loading {}", sample_path);
     let sample_text: String = te!(fs::read_to_string(&sample_path));
 

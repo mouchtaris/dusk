@@ -1,0 +1,19 @@
+# vim: et ft=scala ts=4 sw=4
+
+def DOCKER_CONTEXT = config-get DOCKER_CONTEXT;
+def DOCKER_VOLUME = config-get DOCKER_VOLUME;
+def DOCKER_VOLUME_MOUNT_POINT = config-get DOCKER_VOLUME_MOUNT_POINT;
+
+def DOCKER_MOUNT =
+    fmt "type=volume,source=%s,destination=%s"
+        $DOCKER_VOLUME
+        $DOCKER_VOLUME_MOUNT_POINT
+;
+
+def docker =
+    !docker --context $DOCKER_CONTEXT $args
+;
+
+def docker-run =
+    docker --mount $DOCKER_MOUNT
+;

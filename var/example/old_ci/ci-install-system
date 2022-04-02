@@ -33,7 +33,7 @@ def sudo_copy_to_target = {
     --bin xs-debug
     --bin xs-write_out
     --bin xs-make-self-exec
-    --features serde_cbor,release
+    --features release
     ;
 !mkdir -p ./bin/;
 

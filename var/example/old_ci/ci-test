@@ -9,72 +9,7 @@ def BASE = "dust3:base";
 def DIST = "dust3:dist";
 def COPY = "d3c";
 def MEM = "/home/bob";
-def DOCKERFILE = "_.dockerfile";
 def SOURCE_TAR = "_.source.tar";
-
-def Dockerfile =
-  r#" FROM debian as base
-      RUN apt-get update -y && apt-get upgrade -y
-      RUN apt-get install -y curl
-      RUN apt-get install -y gcc
-      RUN apt-get install -y sudo
-      RUN apt-get install -y git
-
-      RUN useradd -d /home/bob -m -G sudo bob
-      RUN ln -svf /home/bob/bin /,
-      RUN echo "%sudo  ALL=(ALL) NOPASSWD: ALL" | tee -a /etc/sudoers
-      RUN curl -LO 'https://github.com/Peltoche/lsd/releases/download/0.21.0/lsd_0.21.0_amd64.deb'
-      RUN dpkg -i lsd_0.21.0_amd64.deb
-      USER bob
-      WORKDIR /home/bob
-
-
-      FROM base as base-build
-      RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs --output rustup.sh
-      RUN bash rustup.sh -y --verbose
-      RUN $HOME/.cargo/bin/cargo install --bin dev_workspace --git https://gitlab.com/gvz/rs/ --branch main
-
-
-      FROM base-build as deps
-      RUN mkdir -pv release
-      ADD --chown=bob:bob Cargo.yaml release
-      RUN cd release && \
-        $HOME/.cargo/bin/dev_workspace --for-real && \
-        printf '%s\n' '[build-dependencies]' 'lalrpop = "0.19.6"' | tee -a m/parse/Cargo.toml && \
-        $HOME/.cargo/bin/cargo check --release --all-targets && \
-        $HOME/.cargo/bin/cargo build --release --all-targets && \
-        true
-
-      FROM deps as source
-      ADD _.source.tar release/
-      RUN sudo chown -Rv bob:bob release
-
-      FROM source as build
-      RUN cd release && $HOME/.cargo/bin/cargo build --release --bin xs-compile
-      RUN cd release && $HOME/.cargo/bin/cargo build --release --bin xs-run
-      RUN cd release && $HOME/.cargo/bin/cargo build --release --bin xs-debug
-      RUN cd release && $HOME/.cargo/bin/cargo build --release --bin xs-write_out
-      RUN cd release && $HOME/.cargo/bin/cargo build --release --bin xs-make-self-exec
-      RUN cd release && $HOME/.cargo/bin/cargo build --release --bin main
-
-      FROM build as install
-      RUN cd release && . $HOME/.cargo/env && target/release/main ci/ci-install-system
-      RUN cd release && xs2 ci/ci-compile
-
-
-      FROM debian as dist
-      RUN apt-get update -y && apt-get upgrade -y
-      RUN apt-get install -y sudo
-      RUN echo "%sudo  ALL=(ALL) NOPASSWD: ALL" | tee -a /etc/sudoers
-      RUN useradd -d /home/bob -m -G sudo bob
-      USER bob
-      WORKDIR /home/bob
-      COPY --from=install /home/bob/release/target/release/xs-compile /usr/bin
-      COPY --from=install /home/bob/release/target/release/xs-run /usr/bin
-      COPY --from=install /home/bob/release/target/release/main /usr/bin/xs2
-      COPY --from=install /home/bob/release/target/release/xs-make-self-exec /usr/bin
-      COPY --from=install /home/bob/release/target/release/xs-write_out /usr/bin
-  "#;
 
 def docker = {
     !docker --context $DOCKER_CONTEXT $args
@@ -83,15 +18,12 @@ def docker = {
 
 def docker_build = {
     let tag = p "dust3:" $args;
-
-    src Dockerfile = Dockerfile;
-    !xs-write_in <$Dockerfile $DOCKERFILE;
     !docker
         --context $DOCKER_CONTEXT
         buildx build
             --tag $tag
             --target $args
-            -f $DOCKERFILE
+            -f Dockerfile
             "."
 }
 

@@ -1,0 +1,41 @@
+# vim: ft=ruby et ts=4 sw=4
+def p = !printf "%s\n" $args;
+
+src a = !echo a;
+src b = !cat <$a;
+src c = !cat <$b;
+src d = !cat <$c;
+src e = !cat <$d;
+!cat <$e;
+
+src s0 = p SOURCE0 SOURCE1 SO2;
+src s1 = !cat < $s0 -n ;
+src s2 = !cat < $s1 -n ;
+src s3 = !cat < $s2 -n ;
+src j = !cat <$s3;
+!cat <$j;
+
+
+
+def ghost = !echo -n CHOGST;
+def b = 1111;
+def a = !echo -n $b;
+def bob = !echo HI $a 12 $b $ghost;
+bob;
+
+let cont = !echo "CONTENT";
+let dest = "_.bob1";
+!xs-write_in <$cont $dest;
+!cat $dest;
+
+include ./lib/stdlib.dust;
+
+def cont1 = !echo "HELLO";
+def cont2 = !echo "BYEBYE";
+def cont = !cat
+    <$cont2
+;
+cont;
+
+!echo PATH = 12 PATH;
+!printenv PATH = 12 PATH;

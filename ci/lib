@@ -1,0 +1,18 @@
+# vim: et ft=scala ts=4 sw=4
+
+include ./ci/lib.sys;
+
+def LOCAL/ = p "local/" $args;
+
+def CONFIG_DIR/ = LOCAL/ var/ $args;
+def CONFIG = CONFIG_DIR/ config.sqlite3;
+def CONFIG_FILE = LOCAL/ etc/config.json;
+include ./ci/lib.config;
+
+include ./ci/lib.docker;
+
+include ./ci/lib.init;
+
+include ./ci/lib.install;
+
+def archive = !git archive HEAD --format tar;
