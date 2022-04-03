@@ -4,13 +4,15 @@ use {
     std::{borrow::Borrow, fmt},
 };
 
-#[derive(Debug, Default, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Default)]
 pub struct SymbolTable {
-    pub(crate) scopes: Vec<Scope>,
-    pub(crate) scope_stack: Deq<usize>,
+    pub(crate) scopes: Scopes,
+    pub(crate) scope_stack: ScopeStack,
 }
 
+pub type ScopeStack = Deq<usize>;
 pub type Scope = Map<String, SymInfo>;
+pub type Scopes = Vec<Scope>;
 pub type SymInfo = sym::Info;
 pub type SymType = sym::Typ;
 
@@ -182,7 +184,7 @@ impl AsMut<SymbolTable> for SymbolTable {
     }
 }
 
-pub fn scopes<'s, S>(st: &'s S) -> impl Iterator<Item = (usize, &'s str, &'s SymInfo)>
+pub fn scopes<'s, S>(st: &'s S) -> impl ExactSizeIterator<Item = (usize, &'s str, &'s SymInfo)>
 where
     S: AsRef<SymbolTable>,
 {
@@ -195,4 +197,10 @@ where
                 .iter()
                 .map(move |(name, info)| (scope_id, name.as_str(), info))
         })
+        .collect::<Vec<_>>()
+        .into_iter()
 }
+
+//pub fn write_to<O: io::Write>(st: &SymbolTable, out: O) -> io::Result<O> {
+//    buf::Serializer::new(out).finish(st)
+//}

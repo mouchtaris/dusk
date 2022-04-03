@@ -17,6 +17,7 @@ error::Error! {
     ParseDust = parse::Error
     ParseInt = num::ParseIntError
     Io = io::Error
+    Sd2 = buf::sd2::Error
 }
 
 mod compile;
@@ -25,8 +26,8 @@ mod compilers;
 mod emit;
 pub mod facade;
 mod include;
+mod sd;
 mod show;
-mod static_type;
 pub mod symbol_info;
 mod symbol_table;
 pub use {
@@ -35,12 +36,11 @@ pub use {
     compilers::{Compilers, CompilersImpl as cmps},
     emit::EmitExt,
     include::IncludeExt,
-    static_type::Type,
     symbol_info as sym,
     symbol_table::{scopes, SymInfo, SymbolTable, SymbolTableExt},
 };
 
-#[derive(Default, Debug, serde::Serialize, serde::Deserialize)]
+#[derive(Default, Debug)]
 pub struct Compiler {
     pub icode: vm::ICode,
     pub sym_table: SymbolTable,
@@ -53,6 +53,15 @@ impl Compiler {
             sym_table: <_>::default(),
         }
     }
+
+    pub fn write_out<O: io::Write>(&self, out: &mut O) -> io::Result<()> {
+        buf::sd2::WriteOut::write_out(self, out)
+    }
+
+    pub fn read_in<I: io::Read>(inp: &mut I) -> Result<Self> {
+        Ok(te!(buf::sd2::ReadIn::read_in(inp)))
+    }
+
     pub fn init(&mut self) -> Result<()> {
         let cmp = self;
 

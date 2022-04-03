@@ -4,10 +4,10 @@ def install::build = {
     !cargo
         --color always
         build
-        --features release
         --release
         --bin xs2
         --bin xs-run
+        --bin xs-call
         --bin xs-compile
         --bin xs-debug
         --bin xs-make-self-exec
@@ -33,6 +33,7 @@ def install::system = {
 
     def i = install::system-file $args;
     i xs-run;
+    i xs-call;
     i xs-compile;
     i xs-debug;
     i xs-make-self-exec;

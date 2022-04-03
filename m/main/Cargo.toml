@@ -2,15 +2,9 @@
 name = 'main'
 version = '0.0.1'
 edition = '2018'
-[dependencies.anyhow]
-version = '*'
-
 [dependencies.ast]
 version = '0.0.1'
 path = '../ast'
-
-[dependencies.bincode]
-version = '*'
 
 [dependencies.bio]
 version = '*'
@@ -33,16 +27,9 @@ path = '../either'
 version = '0.0.1'
 path = '../error'
 
-[dependencies.git2]
-version = '*'
-optional = true
-
 [dependencies.job]
 version = '0.0.1'
 path = '../job'
-
-[dependencies.lalrpop-util]
-version = '*'
 
 [dependencies.lex]
 version = '0.0.1'
@@ -55,9 +42,6 @@ path = '../lexpop'
 [dependencies.log]
 version = '*'
 
-[dependencies.nom]
-version = '*'
-
 [dependencies.parse]
 version = '0.0.1'
 path = '../parse'
@@ -65,67 +49,10 @@ path = '../parse'
 [dependencies.pretty_env_logger]
 version = '*'
 
-[dependencies.proc-macro2]
-version = '*'
-
-[dependencies.quote]
-version = '*'
-
-[dependencies.ron]
-version = '*'
-optional = true
-
-[dependencies.serde]
-version = '*'
-features = ['derive']
-optional = true
-
-[dependencies.serde-transcode]
-version = '*'
-
-[dependencies.serde_cbor]
-version = '*'
-optional = true
-
-[dependencies.serde_json]
-version = '*'
-
-[dependencies.serde_yaml]
-version = '*'
-
 [dependencies.show]
 version = '0.0.1'
 path = '../show'
 
-[dependencies.syn]
-version = '*'
-features = [
-    'extra-traits',
-    'full',
-    'visit',
-    'visit-mut',
-]
-optional = true
-
-[dependencies.termcolor]
-version = '*'
-
-[dependencies.thiserror]
-version = '*'
-
-[dependencies.toml]
-version = '*'
-
-[dependencies.trybuild]
-version = '*'
-features = ['diff']
-
-[dependencies.url]
-version = '*'
-
 [dependencies.vm]
 version = '0.0.1'
 path = '../vm'
-
-[features]
-default = ['serde']

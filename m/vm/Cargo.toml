@@ -29,22 +29,6 @@ path = '../job'
 [dependencies.log]
 version = '*'
 
-[dependencies.serde]
-version = '*'
-features = ['derive']
-optional = true
-
-[dependencies.serde_cbor]
-version = '*'
-optional = true
-
-[dependencies.serde_json]
-version = '*'
-
 [dependencies.show]
 version = '0.0.1'
 path = '../show'
-
-[features]
-default = ['serde']
-vm_stack_trace = []

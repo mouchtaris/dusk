@@ -15,11 +15,8 @@ module:
     dep_crate:
       - log
   buf:
-    dep_crate:
-      - serde
-    inline:
-      features:
-        default: ["serde"]
+    dep_mod:
+      - error
   lexpop:
     dep_mod:
       - either
@@ -51,13 +48,6 @@ module:
       - job
     dep_crate:
       - log
-      - serde
-      - serde_cbor
-      - serde_json
-    inline:
-      features:
-        vm_stack_trace: []
-        default: ["serde"]
   parse:
     dep_mod:
       - ast
@@ -80,13 +70,6 @@ module:
       - buf
     dep_crate:
       - log
-      - serde
-      - serde_cbor
-      - serde_json
-    inline:
-      features:
-        default: ["serde"]
-        release: []
   main:
     dep_mod:
       - error
@@ -101,33 +84,9 @@ module:
       - lex
       - job
     dep_crate:
-      - lalrpop-util
-      - anyhow
-      - bincode
-      - git2
       - log
-      - nom
       - pretty_env_logger
-      - proc-macro2
-      - quote
-      - ron
-      - serde-transcode
-      - serde
-      - serde_cbor
-      - serde_json
-      - serde_yaml
-      - syn
-      - termcolor
-      - thiserror
-      - toml
-      - trybuild
-      - url
       - bio
-    inline:
-      features:
-        default:
-          - serde
-          #- serde_cbor
 crate:
   anyhow: "*"
   bincode: "*"

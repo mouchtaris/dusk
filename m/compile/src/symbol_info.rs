@@ -1,33 +1,33 @@
 use super::{temg, Result};
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Info {
     pub typ: Typ,
     pub scope_id: usize,
 }
 
 either::either![
-    #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, Eq, PartialEq)]
+    #[derive(Debug, Clone, Eq, PartialEq)]
     pub Typ,
         Local,
         Address,
         Literal
 ];
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Local {
     pub fp_off: usize,
     pub is_alias: bool,
 }
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Address {
     pub addr: usize,
 }
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Literal {
     pub id: usize,
     pub lit_type: LitType,
 }
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum LitType {
     Natural,
     String,

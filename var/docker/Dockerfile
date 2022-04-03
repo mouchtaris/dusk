@@ -44,23 +44,8 @@ RUN sudo chown -Rv bob:bob release
 
 ###$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-FROM source as build
-RUN cd release && \
-    $HOME/.cargo/bin/cargo build \
-    --features release,serde_cbor \
-    --release \
-    --bin xs-compile \
-    --bin xs-run \
-    --bin xs-debug \
-    --bin xs-write_out \
-    --bin xs-make-self-exec \
-    --bin xs2
-
-###$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-
-FROM build as install
-RUN cd release && . $HOME/.cargo/env && target/release/xs2 ci/ci install::system
-RUN cd release && xs2 ci/ci CONFIG_DIR/ bob
+FROM source as install
+RUN cd release && . $HOME/.cargo/env && ci/bootstrap.sh
 
 ###$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
@@ -122,33 +107,8 @@ RUN sudo chown -Rv bob:bob release
 
 ###$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-FROM arch-source as arch-build
-RUN cd release && \
-    $HOME/.cargo/bin/cargo build \
-    --features release,serde_cbor \
-    --release \
-    --bin xs-compile \
-    --bin xs-run \
-    --bin xs-debug \
-    --bin xs-write_out \
-    --bin xs-make-self-exec \
-    --bin xs2
-RUN cp -av \
-        release/target/release/xs-run \
-        release/target/release/xs-compile \
-        release/target/release/xs-debug \
-        release/target/release/xs-write_out \
-        release/target/release/xs-make-self-exec \
-        release/target/release/xs2 \
-        $HOME/.cargo/bin/ \
-    && cp -av \
-        release/target/release/xs-write_out $HOME/.cargo/bin/xs-write_in
-
-###$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-
-FROM arch-build as arch-install
-RUN cd release && . $HOME/.cargo/env && xs2 ci/ci install::system
-RUN cd release && xs2 ci/ci CONFIG_DIR/ bob
+FROM arch-source as arch-install
+RUN cd release && . $HOME/.cargo/env && ci/bootstrap.sh
 
 ###$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
