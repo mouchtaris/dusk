@@ -1,14 +1,22 @@
 use {
-    super::{facade, te, Compiler, Result},
-    std::{fs, path::Path},
+    super::{facade, te, Compiler, FilePathExt, Result},
+    std::fs,
 };
 
 pub trait IncludeExt: AsMut<Compiler> {
-    fn include<P: AsRef<Path>>(&mut self, path: P) -> Result<()> {
+    fn include(&mut self, path: &str) -> Result<()> {
         let cmp = self.as_mut();
-        let input = te!(fs::read_to_string(path));
-        let block = te!(facade::parse_block(&input));
+
+        let path = cmp.push_file_path(path);
+
+        error::ldebug!("include :: {}", path);
+
+        let input = te!(fs::read_to_string(path), "Include: {}", path);
+        let block = te!(facade::parse_block(&input), "In include: {}", path);
         te!(cmp.compile(block));
+
+        cmp.pop_file_path();
+
         Ok(())
     }
 }

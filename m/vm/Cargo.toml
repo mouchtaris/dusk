@@ -1,7 +1,7 @@
 [package]
 name = 'vm'
 version = '0.0.1'
-edition = '2018'
+edition = '2021'
 [dependencies.ast]
 version = '0.0.1'
 path = '../ast'
@@ -32,7 +32,3 @@ version = '*'
 [dependencies.show]
 version = '0.0.1'
 path = '../show'
-
-[features]
-default = ['inject_args']
-inject_args = []

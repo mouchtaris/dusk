@@ -17,7 +17,10 @@ buf::sd_enum![LitType, Null, 0u8, String, 1u8, Natural, 2u8];
 
 buf::sd![
     Compiler,
-    |Compiler { icode, sym_table }, mut dst| {
+    |Compiler {
+         icode, sym_table, ..
+     },
+     mut dst| {
         icode.write_to(Ok(&mut dst))?;
         sym_table.write_out(&mut dst)?;
         Ok(())
@@ -28,6 +31,7 @@ buf::sd![
                 vm::ICode::load_from(Ok(&mut inp)).map_err(|e| format!("Loading icode: {:?}", e))
             ),
             sym_table: te!(<_>::read_in(&mut inp)),
+            current_file_path: <_>::default(),
         })
     }
 ];

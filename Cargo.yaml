@@ -48,10 +48,6 @@ module:
       - job
     dep_crate:
       - log
-    inline:
-      features:
-        inject_args: []
-        default: [inject_args]
   parse:
     dep_mod:
       - ast
@@ -91,10 +87,6 @@ module:
       - log
       - pretty_env_logger
       - bio
-    inline:
-      features:
-        inject_args: []
-        default: [inject_args]
 crate:
   anyhow: "*"
   bincode: "*"

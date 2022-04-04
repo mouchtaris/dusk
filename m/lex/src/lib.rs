@@ -50,10 +50,10 @@ use lexpop::lex::fat as rawstring;
 lexpop![natural, any(|| fn_(digit))];
 lexpop![longopt, one_and_any(exact("--"), ident)];
 lexpop![shortopt, one_and_any(exact("-"), ident)];
-lexpop![abspath, one_and_any(exact("/"), ident)];
+lexpop![abspath, one_and_any(exact("/"), || fn_(ident_rest))];
 lexpop![
     relpath,
-    one_and_any(either(exact("./"), exact("../")), ident)
+    one_and_any(either(exact("./"), exact("../")), || fn_(ident_rest))
 ];
 lexpop![ident, one_and_any(fn_(ident_init), || fn_(ident_rest))];
 lexpop![

@@ -5,7 +5,6 @@ def install::build = {
         --color always
         build
         --release
-        --features inject_args
         --bin xs2
         --bin xs-run
         --bin xs-call

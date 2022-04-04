@@ -25,6 +25,7 @@ mod compile_util;
 mod compilers;
 mod emit;
 pub mod facade;
+mod file_path;
 mod include;
 mod sd;
 mod show;
@@ -35,6 +36,7 @@ pub use {
     compile_util::CompileUtil,
     compilers::{Compilers, CompilersImpl as cmps},
     emit::EmitExt,
+    file_path::FilePathExt,
     include::IncludeExt,
     symbol_info as sym,
     symbol_table::{scopes, SymInfo, SymbolTable, SymbolTableExt},
@@ -44,6 +46,7 @@ pub use {
 pub struct Compiler {
     pub icode: vm::ICode,
     pub sym_table: SymbolTable,
+    pub(in crate) current_file_path: Vec<String>,
 }
 
 impl Compiler {
@@ -51,6 +54,7 @@ impl Compiler {
         Self {
             icode: <_>::default(),
             sym_table: <_>::default(),
+            current_file_path: <_>::default(),
         }
     }
 
@@ -62,10 +66,11 @@ impl Compiler {
         Ok(te!(buf::sd2::ReadIn::read_in(inp)))
     }
 
-    pub fn init(&mut self) -> Result<()> {
+    pub fn init(&mut self, file_path: &str) -> Result<()> {
         let cmp = self;
 
         cmp.enter_scope();
+        cmp.push_file_path(file_path);
 
         Ok(())
     }

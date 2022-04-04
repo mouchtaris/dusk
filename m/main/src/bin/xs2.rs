@@ -17,7 +17,7 @@ fn main() -> Result<()> {
     log::trace!("AST: {:#?}", module_ast);
 
     let mut cmp = compile::Compiler::new();
-    te!(cmp.init());
+    te!(cmp.init(&sample_path));
     te!(cmp.compile(module_ast));
 
     #[cfg(not(feature = "release"))]
