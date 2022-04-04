@@ -1,0 +1,39 @@
+# vim: et ft=scala ts=4 sw=4
+
+include ./lib.term;
+
+def ux::begin = {
+    src action = arg_get 1 $args;
+    src source_path = arg_get 2 $args;
+    src dest_path = arg_get 3 $args;
+
+    fmt "\r[ %s ] %s %s%s%s to %s%s%s"
+        "  "
+        $action
+        $_SOURCE $source_path $_RS
+        $_BINARY $dest_path $_RS;
+}
+
+def ux::ok = {
+    src action = arg_get 1 $args;
+    src source_path = arg_get 2 $args;
+    src dest_path = arg_get 3 $args;
+
+    fmt "\r[ %s ] %s(done) %s%s %s%s%s to %s%s%s\n"
+        $_OK
+        $_GREY $action $_RS
+        $_SOURCE $source_path $_RS
+        $_BINARY $dest_path $_RS;
+}
+
+def ux::progress = {
+    src action = arg_get 1 $args;
+    src source_path = arg_get 2 $args;
+    src dest_path = arg_get 3 $args;
+
+    fmt "\r[ %s ] %s %s%s%s to %s%s%s"
+        $_IN_PROG
+        $action
+        $_SOURCE $source_path $_RS
+        $_BINARY $dest_path $_RS;
+}

@@ -1,0 +1,20 @@
+# vim: et ft=scala ts=4 sw=4
+
+# ## Clone a buffer binding.
+#
+# Al buffer bindings are consumed if used as input
+# sources.
+#
+# This method uses them as arguments (which only borrows
+# the buffer), and re-prints them to stdout -- thus copying.
+#
+# # Example
+#
+#   src origin = !echo I will be consumed;
+#   src copyca = clone $origin;
+#
+#   !sink-1 < $origin;
+#   !sink-2 < #copyca;
+
+def clone =
+    !xs-write_out --echo $args;

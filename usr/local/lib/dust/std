@@ -1,10 +1,15 @@
 # vim: et ft=scala ts=4 sw=4
 
+include ./sys;
+
 def fmt = !printf $args;
 
 def p = fmt "%s" $args;
 def p0 = fmt "%s\x00" $args;
 def join = fmt "%s " $args;
+
+def dirname = { src _ = !dirname $args; !tr <$_ -d "\n" }
+def basename = { src _ = !basename args; !tr <$_ -d "\n" }
 
 def arg_get = {
     #

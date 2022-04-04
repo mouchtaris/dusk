@@ -1,10 +1,13 @@
 # vim: et ft=scala ts=4 sw=4
 
-include /usr/local/lib/dust/std;
-include /usr/local/lib/dust/lib.term;
+include ../usr/local/lib/dust/std;
+include ../usr/local/lib/dust/lib.term;
 
+def _lib.ide-context_path = "./run/dust.ctx/1";
 def _lib.ide-target_path = "./run/dust";
-include /usr/local/lib/dust/lib.ide;
+def _LIB_CI = "./run/dust/ci/lib";
+def _LIB_IDE = _LIB_CI;
+include ../usr/local/lib/dust/lib.ide;
 
 def LOCAL/ = p "local/" $args;
 
@@ -25,6 +28,7 @@ def lib-init = {
 
 def ide::compile_all = {
     ide::compile ci/lib;
-    ide::compile var/example/sample-app/nginx-fcgi-dust/lib;
-    ide::list_libs;
+    ide::compile var/web-app/lib;
+
+    !lsd --tree $_lib.ide-target_path;
 }

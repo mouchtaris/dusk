@@ -1,6 +1,56 @@
 # vim: et ft=scala ts=4 sw=4
 
+include ./lib.ux;
+
 def _target_path = _lib.ide-target_path;
+def _context_path = _lib.ide-context_path;
+
+def ide::list_lib = {
+    !find $_target_path -type f -print0
+}
+
+def ide::list_func = {
+    src lib = !cat $_context_path;
+    src lib = !tr <$lib -d "\n";
+
+    !xsi-list-func $lib
+}
+
+def ide::set_ctx = {
+    src ctx_dir = dirname $_context_path;
+
+    ux::begin "Creating context dir" "" $ctx_dir;
+    !mkdir -p $ctx_dir;
+    ux::ok "Creating context dir" "" $ctx_dir;
+
+    src ctx = p $args;
+    src ctx_ = clone $ctx;
+
+    ux::begin "Setting context" $ctx $_context_path;
+    !xs-write_in <$ctx_ $_context_path;
+    ux::ok "Setting context" $ctx $_context_path;
+}
+
+def ide::help = {
+    src dust = p "DUST=" $_LIB_IDE;
+    !env $dust xs-call $_LIB_IDE ide::select_func;
+}
+
+def ide::compile = {
+    let source_path = p $args;
+    let dest_path = p $_target_path / $args;
+
+    src _ = !dirname $dest_path;
+    src dest_dir = !tr <$_ -d "\n";
+
+    ux::begin Compiling $source_path $dest_path;
+
+    !mkdir -p $dest_dir;
+    !xs-compile $source_path $dest_path;
+
+    ux::ok compiling $source_path $dest_path;
+
+}
 
 def ide::fzf = {
     src header = arg_get 1 $args;
@@ -27,13 +77,6 @@ def ide::fzf = {
         --print0
 }
 
-def ide::list_func = {
-    src lib = !printenv DUST;
-    src lib = !tr <$lib -d "\n";
-
-    !xsi-list-func $lib
-}
-
 def ide::select_func = {
     src funcs0 = ide::list_func;
     src funcs64 = !base64 <$funcs0 --wrap=0;
@@ -44,29 +87,29 @@ def ide::select_func = {
         $funcs64
 }
 
-def ide::compile = {
-    let source_path = p $args;
-    let dest_path = p $_target_path / $args;
+def ide::select_ctx = {
+    def libs0 = ide::list_lib;
+    def libs64 = !base64 <$libs0 --wrap=0;
 
-    src _ = !dirname $dest_path;
-    src dest_dir = !tr <$_ -d "\n";
+    let ctx = ide::fzf
+        "Welcome, to the future."
+        "Select a library: "
+        $libs64;
+    src ctx = !tr <$ctx -d "\000";
+    # !ruby <$ctx -e "p STDIN.read";
 
-    fmt "\r[ %s ] Compiling %s%s%s to %s%s%s"
-        "  "
-        $_SOURCE $source_path $_RS
-        $_BINARY $dest_path $_RS;
-
-    !mkdir -p $dest_dir;
-    !xs-compile $source_path $dest_path;
-
-    fmt "\r[ %s ] Compiling %s%s%s to %s%s%s"
-        $_OK
-        $_SOURCE $source_path $_RS
-        $_BINARY $dest_path $_RS;
-
-    !echo;
+    ide::set_ctx $ctx;
 }
 
-def ide::list_libs = {
-    !lsd --tree $_target_path;
+def ide::show_ctx = {
+    !cat $_context_path
+}
+
+def ide::call_command = {
+    src _ = ide::select_func;
+    src func = !tr <$_ -d "\000";
+
+    src ctx = ide::show_ctx;
+
+    join xs-call $ctx $func
 }
