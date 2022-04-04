@@ -11,7 +11,7 @@ pub fn load_compiler(input_path: &str) -> Result<compile::Compiler> {
     ldebug!("Loading {}", input_path);
     let inp: Vec<u8> = {
         let mut inp: Vec<u8> = te!(fs::read(input_path));
-        if inp[0] == b'#' {
+        if !inp.is_empty() && inp[0] == b'#' {
             let len = inp.len();
             let hashbang_end = inp.iter().cloned().take_while(|&b| b != b'\n').count();
             let hashbang_seg = te!(std::str::from_utf8(&inp[0..=hashbang_end]));
@@ -56,4 +56,15 @@ pub fn make_vm_call(
             te!(vm::Instr::CleanUp(0).operate_on(vm));
         }
     })
+}
+
+pub fn list_func(cmp: &compile::Compiler) -> impl Iterator<Item = &str> {
+    use collection::Recollect;
+    compile::scopes(cmp)
+        .filter_map(|l| match l {
+            (1, name, info) if !name.starts_with('_') && info.as_addr_ref().is_ok() => Some(name),
+            _ => None,
+        })
+        .sorted()
+        .into_iter()
 }

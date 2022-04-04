@@ -530,4 +530,9 @@ impl Vm {
         let job = self.job_table.get_mut(jobid);
         Ok(te!(job, "jobid {}", jobid))
     }
+
+    pub fn get_job(&self, jobid: usize) -> Result<&Job> {
+        let job = self.job_table.get(jobid);
+        Ok(te!(job, "jobid {}", jobid))
+    }
 }

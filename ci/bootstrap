@@ -8,5 +8,6 @@ install::build;
 def xs-compile = ./target/release/xs-compile $args;
 def xs-call = ./target/release/xs-call $args;
 
+!mkdir -p run;
 xs-compile ./ci/lib ./run/lib;
 xs-call ./run/lib install::system;

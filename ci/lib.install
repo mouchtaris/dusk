@@ -5,6 +5,7 @@ def install::build = {
         --color always
         build
         --release
+        --features inject_args
         --bin xs2
         --bin xs-run
         --bin xs-call
@@ -12,6 +13,7 @@ def install::build = {
         --bin xs-debug
         --bin xs-make-self-exec
         --bin xs-write_out
+        --bin xsi-list-func
 }
 
 def install::system-file = {
@@ -39,7 +41,13 @@ def install::system = {
     i xs-make-self-exec;
     i xs-write_out;
     i xs2;
+    i xsi-list-func;
 
     def a = install::system-alias $args;
     a xs-write_out xs-write_in;
+}
+
+def install::lib = {
+    !xs-write_out --echo "ci/lib -> run/lib";
+    !xs-compile ci/lib run/lib;
 }

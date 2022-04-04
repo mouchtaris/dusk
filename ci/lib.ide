@@ -1,0 +1,40 @@
+# vim: et ft=scala ts=4 sw=4
+
+def ide::fzf = {
+    src header = arg_get 1 $args;
+    src prompt = arg_get 2 $args;
+    src opts64 = arg_get 3 $args;
+
+    src opts = !base64 <$opts64 -d;
+
+    !fzf <$opts
+        --height "100%"
+        --layout=reverse
+        --border=sharp
+        "--margin=15%"
+        "--padding=5%"
+        --info=default
+        "--prompt" $prompt
+        "--pointer=>|"
+        "--marker=.|"
+        --header $header
+        --ansi
+        --tabstop=4
+        --color=light
+        --read0
+        --print0
+}
+
+def ide::list_func = {
+    !xsi-list-func $LIB
+}
+
+def ide::select_func = {
+    src funcs0 = ide::list_func;
+    src funcs64 = !base64 <$funcs0 --wrap=0;
+
+    ide::fzf
+        "Welcome, to the future."
+        "Select function: "
+        $funcs64
+}

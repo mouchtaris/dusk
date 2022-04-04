@@ -1,6 +1,10 @@
 use {
     super::{mem, value, Job, Result, Value, Vm},
     error::{ldebug, te, temg},
+    std::{
+        fmt::Write,
+        process::{Command, Stdio},
+    },
 };
 
 pub fn spawn(vm: &mut Vm) -> Result<()> {
@@ -50,13 +54,19 @@ pub fn spawn(vm: &mut Vm) -> Result<()> {
         envs = envs,
     );
 
-    use std::process::{Command, Stdio};
-
     let target: &str = te!(vm.val_as_str(&target));
 
     let mut cmd = Command::new(target);
     cmd.stdin(Stdio::null());
-    cmd.args(&args);
+
+    {
+        fn addr(vm: &Vm, i: usize) -> Result<(usize, usize)> {
+            let ptr = vm.arg_addr(i);
+            let len = 1;
+            Ok((te!(ptr), len))
+        }
+        te!(install_args(vm, &mut cmd, addr, &mut String::new()));
+    }
 
     if let Ok(cwd) = vm.val_as_str(&cwd) {
         cmd.current_dir(cwd);
@@ -163,9 +173,65 @@ where
 fn expand_envs(vm: &mut Vm, sbuf: &mut buf::StringBuf) -> Result<()> {
     let &nargs: &usize = te!(vm.arg_get(0));
     let &ninpredr: &usize = te!(vm.arg_get(nargs + 3));
-    let &nenvs: &usize = te!(vm.arg_get(nargs + 3 + ninpredr + 1));
+    //let &nenvs: &usize = te!(vm.arg_get(nargs + 3 + ninpredr + 1));
 
     expand_args3(vm, sbuf, |vm, i| {
         Ok((te!(vm.arg_addr(nargs + 3 + ninpredr + 1 + (i * 2))), 2))
     })
+}
+
+type Addr = fn(&Vm, usize) -> Result<(usize, usize)>;
+
+const ADDR_ENV: Addr = |vm, i| {
+    let &nargs: &usize = te!(vm.arg_get(0));
+    let &ninpredr: &usize = te!(vm.arg_get(nargs + 3));
+    Ok((te!(vm.arg_addr(nargs + 3 + ninpredr + 1 + (i * 2))), 2))
+};
+
+fn install_args<G>(vm: &Vm, cmd: &mut Command, argaddr: G, sbuf: &mut String) -> Result<()>
+where
+    G: Fn(&Vm, usize) -> Result<(usize, usize)>,
+{
+    let (nargs_addr, _) = te!(argaddr(vm, 0));
+    let &nargs: &usize = te!(vm.stack_get(nargs_addr));
+    ldebug!("injecting {} args from {}", nargs, nargs_addr);
+
+    for i in 1..=nargs {
+        let (addr, len) = te!(argaddr(vm, i));
+        for j in 0..len {
+            te!(inject_arg(vm, cmd, addr + j, sbuf));
+        }
+    }
+    Ok(())
+}
+
+fn inject_arg(vm: &Vm, cmd: &mut Command, arg_addr: usize, sbuf: &mut String) -> Result<()> {
+    let arg: &Value = vm.stack_get_val(arg_addr);
+    match arg {
+        &Value::LitString(value::LitString(strid)) => {
+            let arg: &str = te!(vm.get_string_id(strid));
+            cmd.arg(arg);
+        }
+        &Value::Array(value::Array { ptr }) => {
+            let &arrlen: &usize = te!(vm.stack_get(ptr));
+            for i in 1..=arrlen {
+                te!(inject_arg(vm, cmd, ptr - i, sbuf));
+            }
+        }
+        Value::Natural(n) => {
+            sbuf.clear();
+            te!(write!(sbuf, "{}", n));
+            cmd.arg(sbuf);
+        }
+        &Value::Job(value::Job(jobid)) => {
+            let job = te!(vm.get_job(jobid));
+            let s = te!(job.as_str());
+            cmd.arg(s);
+        }
+        Value::DynString(value::DynString(string)) => {
+            cmd.arg(string);
+        }
+        other => temg!("Cannot expand arg@{}: {:?}", arg_addr, other),
+    }
+    Ok(())
 }

@@ -9,6 +9,9 @@ def CONFIG = CONFIG_DIR/ config.sqlite3;
 def CONFIG_FILE = LOCAL/ etc/config.json;
 include ./ci/lib.config;
 
+def LIB = "./run/lib";
+include ./ci/lib.ide;
+
 include ./ci/lib.install;
 
 def archive = !git archive HEAD --format tar;
