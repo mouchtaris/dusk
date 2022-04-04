@@ -15,9 +15,21 @@ def install::build = {
         --bin xsi-list-func
 }
 
-def install::system-file = {
+def install::system-bin = {
     let srce = p target/release/ $args;
     let dest = p /usr/local/bin/ $args;
+
+    !sudo cp -av $srce $dest;
+    !sudo chown -v root:root $dest;
+}
+
+def install::system-file = {
+    let srce = p $args;
+    let dest = p / $args;
+
+    src dirname = !dirname $dest;
+    src _ = !tr <$dirname -d "\n";
+    !sudo mkdir -p $_;
 
     !sudo cp -av $srce $dest;
     !sudo chown -v root:root $dest;
@@ -32,7 +44,7 @@ def install::system-alias = {
 def install::system = {
     install::build;
 
-    def i = install::system-file $args;
+    def i = install::system-bin $args;
     i xs-run;
     i xs-call;
     i xs-compile;
@@ -47,6 +59,7 @@ def install::system = {
 }
 
 def install::lib = {
-    !xs-write_out --echo "ci/lib -> run/lib";
-    !xs-compile ci/lib run/lib;
+    def f = install::system-file $args;
+    f usr/local/lib/dust/std;
+    f usr/local/lib/dust/lib.term;
 }

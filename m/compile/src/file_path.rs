@@ -9,8 +9,8 @@ pub trait FilePathExt: AsMut<Compiler> {
         paths.last().unwrap().as_str()
     }
 
-    fn pop_file_path(&mut self) {
-        self.cmp().current_file_path.pop();
+    fn pop_file_path(&mut self) -> Option<String> {
+        self.cmp().current_file_path.pop()
     }
 
     fn cmp(&mut self) -> &mut Compiler {
@@ -20,12 +20,17 @@ pub trait FilePathExt: AsMut<Compiler> {
 
 impl<S: AsMut<Compiler>> FilePathExt for S {}
 
-fn compute_include_path(base: &mut String, path: &str) {
-    let (last_slash, _) = base
-        .char_indices()
-        .rev()
-        .find(|&(_, x)| x == '/')
-        .unwrap_or((0, '/'));
-    base.truncate(last_slash + 1);
-    base.push_str(path);
+pub fn compute_include_path(base: &mut String, path: &str) {
+    if path.starts_with('/') {
+        base.clear();
+        base.push_str(path);
+    } else {
+        let (last_slash, _) = base
+            .char_indices()
+            .rev()
+            .find(|&(_, x)| x == '/')
+            .unwrap_or((0, '/'));
+        base.truncate(last_slash + 1);
+        base.push_str(path);
+    }
 }

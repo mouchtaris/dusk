@@ -1,0 +1,7 @@
+# vim: ft=scala et ts=4 sw=4
+
+def _SOURCE = fmt "\x1b[38;5;147m";
+def _BINARY = fmt "\x1b[38;5;103m";
+def _GREEN = fmt "\x1b[38;5;191m";
+def _RS = fmt "\x1b[m";
+def _OK = fmt "%s%s%s" $_GREEN "OK" $_RS;

@@ -1,5 +1,7 @@
 # vim: et ft=scala ts=4 sw=4
 
+def _target_path = _lib.ide-target_path;
+
 def ide::fzf = {
     src header = arg_get 1 $args;
     src prompt = arg_get 2 $args;
@@ -26,7 +28,10 @@ def ide::fzf = {
 }
 
 def ide::list_func = {
-    !xsi-list-func $LIB
+    src lib = !printenv DUST;
+    src lib = !tr <$lib -d "\n";
+
+    !xsi-list-func $lib
 }
 
 def ide::select_func = {
@@ -37,4 +42,31 @@ def ide::select_func = {
         "Welcome, to the future."
         "Select function: "
         $funcs64
+}
+
+def ide::compile = {
+    let source_path = p $args;
+    let dest_path = p $_target_path / $args;
+
+    src _ = !dirname $dest_path;
+    src dest_dir = !tr <$_ -d "\n";
+
+    fmt "\r[ %s ] Compiling %s%s%s to %s%s%s"
+        "  "
+        $_SOURCE $source_path $_RS
+        $_BINARY $dest_path $_RS;
+
+    !mkdir -p $dest_dir;
+    !xs-compile $source_path $dest_path;
+
+    fmt "\r[ %s ] Compiling %s%s%s to %s%s%s"
+        $_OK
+        $_SOURCE $source_path $_RS
+        $_BINARY $dest_path $_RS;
+
+    !echo;
+}
+
+def ide::list_libs = {
+    !lsd --tree $_target_path;
 }

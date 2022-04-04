@@ -36,7 +36,7 @@ pub use {
     compile_util::CompileUtil,
     compilers::{Compilers, CompilersImpl as cmps},
     emit::EmitExt,
-    file_path::FilePathExt,
+    file_path::{compute_include_path, FilePathExt},
     include::IncludeExt,
     symbol_info as sym,
     symbol_table::{scopes, SymInfo, SymbolTable, SymbolTableExt},

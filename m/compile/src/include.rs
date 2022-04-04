@@ -13,9 +13,11 @@ pub trait IncludeExt: AsMut<Compiler> {
 
         let input = te!(fs::read_to_string(path), "Include: {}", path);
         let block = te!(facade::parse_block(&input), "In include: {}", path);
-        te!(cmp.compile(block));
 
-        cmp.pop_file_path();
+        let cmp_result = cmp.compile(block);
+
+        let path = cmp.pop_file_path().unwrap();
+        te!(cmp_result, "In including: {}", path);
 
         Ok(())
     }

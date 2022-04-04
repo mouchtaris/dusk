@@ -1,23 +1,30 @@
 # vim: et ft=scala ts=4 sw=4
 
-include ./ci/lib.sys;
+include /usr/local/lib/dust/std;
+include /usr/local/lib/dust/lib.term;
+
+def _lib.ide-target_path = "./run/dust";
+include /usr/local/lib/dust/lib.ide;
 
 def LOCAL/ = p "local/" $args;
 
 def CONFIG_DIR/ = LOCAL/ var/ $args;
 def CONFIG = CONFIG_DIR/ config.sqlite3;
 def CONFIG_FILE = LOCAL/ etc/config.json;
-include ./ci/lib.config;
+include ./lib.config;
 
-def LIB = "./run/lib";
-include ./ci/lib.ide;
-
-include ./ci/lib.install;
+include ./lib.install;
 
 def archive = !git archive HEAD --format tar;
 
-include ./ci/lib.docker;
+include ./lib.docker;
 
 def lib-init = {
     config-init;
+}
+
+def ide::compile_all = {
+    ide::compile ci/lib;
+    ide::compile var/example/sample-app/nginx-fcgi-dust/lib;
+    ide::list_libs;
 }

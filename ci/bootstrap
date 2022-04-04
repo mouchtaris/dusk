@@ -1,13 +1,9 @@
 #!/usr/local/bin/xs2
 # vim: et ft=ruby ts=4 sw=4
 
-include ./ci/lib;
-
-install::build;
+include ./lib;
 
 def xs-compile = ./target/release/xs-compile $args;
 def xs-call = ./target/release/xs-call $args;
 
-!mkdir -p run;
-xs-compile ./ci/lib ./run/lib;
-xs-call ./run/lib install::system;
+ide::compile_all;
