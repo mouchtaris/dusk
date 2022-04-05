@@ -5,8 +5,20 @@ fn main() -> Result<()> {
     args.reverse();
     args.pop();
 
-    let path = te!(args.pop(), "Missing input path");
-    let cmp = te!(main::load_compiler(&path));
+    let input_path = args.pop();
+    let input_path = match input_path {
+        Some(mut s) => match s.as_str() {
+            "-" => {
+                s.clear();
+                s.push_str("/dev/stdin");
+                s
+            }
+            _ => s,
+        },
+        None => "/dev/stdin".to_owned(),
+    };
+
+    let cmp = te!(main::load_compiler(&input_path));
     for f in main::list_func(&cmp) {
         print!("{}\x00", f);
     }

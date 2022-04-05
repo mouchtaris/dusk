@@ -17,7 +17,11 @@ fn main() -> Result<()> {
         "-" => "/dev/stdin",
         x => x,
     };
-    let input_text: String = te!(fs::read_to_string(input_path), "Reading input file: {}", input_path);
+    let input_text: String = te!(
+        fs::read_to_string(input_path),
+        "Reading input file: {}",
+        input_path
+    );
 
     log::info!("Parsing {}", input_path);
     let module_ast = te!(parse::parse(&input_text));

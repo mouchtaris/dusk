@@ -1,4 +1,4 @@
-use {::error::te, main::Result, std::fs};
+use {::error::te, main::Result};
 
 fn main() -> Result<()> {
     te!(main::init());
@@ -6,13 +6,20 @@ fn main() -> Result<()> {
     let mut args = std::env::args().skip(1).collect::<Vec<_>>();
     args.reverse();
 
-    let mut input_path = te!(args.pop(), "Missing input path");
-    let icode = te!(main::load_icode(&input_path));
+    let input_path = args.pop();
+    let input_path = match input_path {
+        Some(mut s) => match s.as_str() {
+            "-" => {
+                s.clear();
+                s.push_str("/dev/stdin");
+                s
+            }
+            _ => s,
+        },
+        None => "/dev/stdin".to_owned(),
+    };
 
-    if input_path == "-" {
-        input_path.clear();
-        input_path.push_str("/dev/stdin");
-    }
+    let icode = te!(main::load_icode(&input_path));
 
     let mut vm = te!(main::make_vm());
     vm.init(args);
