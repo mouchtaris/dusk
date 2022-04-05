@@ -23,6 +23,5 @@ error::Error! {
 }
 
 pub fn init() -> Result<()> {
-    te!(pretty_env_logger::try_init());
     Ok(())
 }

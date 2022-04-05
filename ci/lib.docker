@@ -40,5 +40,5 @@ def docker::build-stage = {
 }
 
 def docker::build-all = {
-    docker::build-stage dist-all;
+    docker::build-stage all-dist;
 }

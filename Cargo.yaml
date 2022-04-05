@@ -85,10 +85,8 @@ module:
       - job
     dep_crate:
       - log
-      - pretty_env_logger
       - bio
 crate:
   log: "*"
-  pretty_env_logger: "*"
   lalrpop-util: "*"
   bio: { version: "*", git: "https://gitlab.com/gvz/rs", branch: "b2" }

@@ -3,8 +3,6 @@ use {::error::te, std::fs};
 use main::Result;
 
 fn main() -> Result<()> {
-    pretty_env_logger::init();
-
     let mut args = std::env::args().skip(1).collect::<Vec<_>>();
     args.reverse();
 
