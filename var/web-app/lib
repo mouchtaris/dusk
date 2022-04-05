@@ -1,6 +1,6 @@
 # vim: ft=scala et ts=4 sw=4
 
-include ../../usr/local/lib/dust/std;
+include ../../include/dust/std;
 
 include ./config.local;
 include ./ci;

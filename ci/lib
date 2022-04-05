@@ -1,34 +1,23 @@
-# vim: et ft=scala ts=4 sw=4
+# vim: et ft=ruby ts=4 sw=4
 
-include ../usr/local/lib/dust/std;
-include ../usr/local/lib/dust/lib.term;
+include ./config;
 
-def _lib.ide-context_path = "./run/dust.ctx/1";
-def _lib.ide-target_path = "./run/dust";
-def _LIB_CI = "./run/dust/ci/lib";
-def _LIB_IDE = _LIB_CI;
-include ../usr/local/lib/dust/lib.ide;
 
-def LOCAL/ = p "local/" $args;
-
-def CONFIG_DIR/ = LOCAL/ var/ $args;
-def CONFIG = CONFIG_DIR/ config.sqlite3;
-def CONFIG_FILE = LOCAL/ etc/config.json;
-include ./lib.config;
+include ../include/dust/std;
+include ../include/dust/lib.term;
+include ../include/dust/lib.ide;
 
 include ./lib.install;
-
 def archive = !git archive HEAD --format tar;
-
 include ./lib.docker;
 
 def lib-init = {
-    config-init;
+    ;
 }
 
 def ide::compile_all = {
     ide::compile ci/lib;
     ide::compile var/web-app/lib;
 
-    !lsd --tree $_lib.ide-target_path;
+    !lsd --tree $_.lib.ide/target_path;
 }

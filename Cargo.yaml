@@ -88,25 +88,7 @@ module:
       - pretty_env_logger
       - bio
 crate:
-  anyhow: "*"
-  bincode: "*"
-  git2: { version: "*", optional: true }
   log: "*"
-  nom: "*"
   pretty_env_logger: "*"
-  proc-macro2: { version: "*" }
-  quote: "*"
-  ron: { version: "*", optional: true }
-  serde-transcode: "*"
-  serde: { version: "*", features: ["derive"], optional: true }
-  serde_cbor: { version: "*", optional: true }
-  serde_json: "*"
-  serde_yaml: "*"
-  syn: { version: "*", features: ["full", "extra-traits", "visit", "visit-mut"], optional: true }
-  termcolor: "*"
-  thiserror: "*"
-  toml: "*"
-  trybuild: { version: "*", features: ["diff"] }
-  url: "*"
   lalrpop-util: "*"
   bio: { version: "*", git: "https://gitlab.com/gvz/rs", branch: "b2" }

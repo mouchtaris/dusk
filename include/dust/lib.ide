@@ -2,8 +2,8 @@
 
 include ./lib.ux;
 
-def _target_path = _lib.ide-target_path;
-def _context_path = _lib.ide-context_path;
+def _target_path  = _.lib.ide/target_path;
+def _context_path = _.lib.ide/context_path;
 
 def ide::list_lib = {
     !find $_target_path -type f -print0

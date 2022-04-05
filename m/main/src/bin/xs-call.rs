@@ -6,8 +6,13 @@ fn main() -> Result<()> {
     let mut args = std::env::args().skip(1).collect::<Vec<_>>();
     args.reverse();
 
-    let module_path = te!(args.pop(), "Missing module path");
+    let mut module_path = te!(args.pop(), "Missing module path");
     let func_addr = te!(args.pop(), "Missing function addr");
+
+    if module_path == "-" {
+        module_path.clear();
+        module_path.push_str("/dev/stdin");
+    }
 
     let compl = te!(
         main::load_compiler(&module_path),

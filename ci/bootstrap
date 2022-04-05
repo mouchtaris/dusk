@@ -6,4 +6,9 @@ include ./lib;
 def xs-compile = ./target/release/xs-compile $args;
 def xs-call = ./target/release/xs-call $args;
 
+install::system;
+install::lib;
+
 ide::compile_all;
+
+install::make_bin_release_tar;

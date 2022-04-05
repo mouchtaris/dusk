@@ -1,14 +1,31 @@
 # vim: et ft=scala ts=4 sw=4
 
+def install::make_bin_release_tar = {
+    !tar
+        --create
+        --verbose
+        -C $INSTALL_PREFIX
+        --file bin-release.tar
+        bin/xs-compile
+        bin/xs-run
+        bin/xs-call
+        bin/xs-debug
+        bin/xs-write_in
+        bin/xs-write_out
+        bin/xs-make-self-exec
+        bin/xsi-list-func
+        include/dust
+    ;
+}
+
 def install::build = {
     !cargo
         --color always
         build
         --release
-        --bin xs2
+        --bin xs-compile
         --bin xs-run
         --bin xs-call
-        --bin xs-compile
         --bin xs-debug
         --bin xs-make-self-exec
         --bin xs-write_out
@@ -17,7 +34,7 @@ def install::build = {
 
 def install::system-bin = {
     let srce = p target/release/ $args;
-    let dest = p /usr/local/bin/ $args;
+    let dest = p $INSTALL_PREFIX /bin/ $args;
 
     !sudo cp -av $srce $dest;
     !sudo chown -v root:root $dest;
@@ -25,7 +42,7 @@ def install::system-bin = {
 
 def install::system-file = {
     let srce = p $args;
-    let dest = p / $args;
+    let dest = p $INSTALL_PREFIX / $args;
 
     src dirname = !dirname $dest;
     src _ = !tr <$dirname -d "\n";
@@ -35,10 +52,14 @@ def install::system-file = {
     !sudo chown -v root:root $dest;
 }
 
-def install::system-alias = {
-    !sudo
-        @/usr/local/bin
-        ln -fsv $args;
+def install::system-bin-alias = {
+    let arg1 = arg_get 1 $args;
+    let arg2 = arg_get 2 $args;
+
+    src source = p $INSTALL_PREFIX /bin/ $arg1;
+    src destin = p $INSTALL_PREFIX /bin/ $arg2;
+
+    !sudo ln -fsv $source $destin;
 }
 
 def install::system = {
@@ -54,12 +75,18 @@ def install::system = {
     i xs2;
     i xsi-list-func;
 
-    def a = install::system-alias $args;
+    def a = install::system-bin-alias $args;
     a xs-write_out xs-write_in;
 }
 
 def install::lib = {
     def f = install::system-file $args;
-    f usr/local/lib/dust/std;
-    f usr/local/lib/dust/lib.term;
+    f include/dust/std;
+    f include/dust/lib.term;
+    f include/dust/lib.ux;
+    f include/dust/lib.ide;
+    f include/dust/lib.term;
+    f include/dust/lib.docker;
+    f include/dust/std;
+    f include/dust/sys;
 }

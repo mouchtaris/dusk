@@ -9,7 +9,7 @@
 # Debian
 # ###
 
-FROM debian as base
+FROM debian as debian-base
 RUN apt-get update && \
     apt-get install -yqq  curl gcc sudo git && \
     rm -rf /var/lib/apt/lists/*
@@ -26,25 +26,31 @@ WORKDIR /home/bob
 
 ###$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-FROM base as build-base
+FROM debian-base as debian-build-base
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs --output rustup.sh
 RUN bash rustup.sh -y --verbose
 RUN $HOME/.cargo/bin/cargo install --bin dev_workspace --git https://gitlab.com/gvz/rs/ --branch main
 
 ###$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-FROM build-base as deps
+FROM debian-build-base as debian-deps
 RUN mkdir -pv release
 
 ###$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-FROM deps as source
+FROM debian-deps as debian-source
 ADD _.source.tar release/
 RUN sudo chown -Rv bob:bob release
 
 ###$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-FROM source as install
+FROM debian-source as debian-build
+RUN cd release && . $HOME/.cargo/env && cargo build --release
+
+###$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+FROM debian-build as debian-install
+ADD ci release/ci
 RUN cd release && . $HOME/.cargo/env && ci/bootstrap.sh
 
 ###$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
@@ -54,16 +60,10 @@ RUN apt-get update -y && apt-get upgrade -y
 RUN apt-get install -y sudo
 RUN echo "%sudo  ALL=(ALL) NOPASSWD: ALL" | tee -a /etc/sudoers
 RUN useradd -d /home/bob -m -G sudo bob
+COPY --from=debian-install /home/bob/release/bin-release.tar /tmp/dust-bin-release.tar
+RUN tar -C /usr -xf /tmp/dust-bin-release.tar && rm /tmp/dust-bin-release.tar
 USER bob
 WORKDIR /home/bob
-COPY --from=install /home/bob/release/target/release/xs-compile /usr/bin
-COPY --from=install /home/bob/release/target/release/xs-run /usr/bin
-COPY --from=install /home/bob/release/target/release/xs2 /usr/bin/
-COPY --from=install /home/bob/release/target/release/xs-make-self-exec /usr/bin
-COPY --from=install /home/bob/release/target/release/xs-write_out /usr/bin
-COPY --from=install /home/bob/release/target/release/xs-write_out /usr/bin/xs-write_in
-
-
 
 
 ###$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
@@ -107,7 +107,13 @@ RUN sudo chown -Rv bob:bob release
 
 ###$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-FROM arch-source as arch-install
+FROM arch-source as arch-build
+RUN cd release && . $HOME/.cargo/env && cargo build --release
+
+###$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+FROM arch-build as arch-install
+ADD ci release/ci
 RUN cd release && . $HOME/.cargo/env && ci/bootstrap.sh
 
 ###$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
@@ -117,15 +123,10 @@ RUN pacman -Syu --noconfirm sudo
 RUN useradd -d /home/bob -m bob
 RUN ln -svf /home/bob/bin /,
 RUN echo "bob ALL=(ALL) NOPASSWD: ALL" | tee -a /etc/sudoers
+COPY --from=arch-install /home/bob/release/bin-release.tar /tmp/dust-bin-release.tar
+RUN tar -C /usr -xf /tmp/dust-bin-release.tar && rm /tmp/dust-bin-release.tar
 USER bob
 WORKDIR /home/bob
-COPY --from=arch-install /home/bob/release/target/release/xs-compile /usr/bin
-COPY --from=arch-install /home/bob/release/target/release/xs-run /usr/bin
-COPY --from=arch-install /home/bob/release/target/release/xs2 /usr/bin/xs2
-COPY --from=arch-install /home/bob/release/target/release/xs-make-self-exec /usr/bin
-COPY --from=arch-install /home/bob/release/target/release/xs-write_out /usr/bin
-COPY --from=arch-install /home/bob/release/target/release/xs-write_out /usr/bin/xs-write_in
-
 
 
 ###$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
@@ -137,15 +138,5 @@ COPY --from=arch-install /home/bob/release/target/release/xs-write_out /usr/bin/
 # Meta targets
 # ###
 FROM scratch as all-dist
-COPY --from=arch-dist /usr/bin/xs-compile           /var/xs-arch/
-COPY --from=arch-dist /usr/bin/xs-run               /var/xs-arch/
-COPY --from=arch-dist /usr/bin/xs2                  /var/xs-arch/
-COPY --from=arch-dist /usr/bin/xs-make-self-exec    /var/xs-arch/
-COPY --from=arch-dist /usr/bin/xs-write_out         /var/xs-arch/
-COPY --from=arch-dist /usr/bin/xs-write_out         /var/xs-arch/
-COPY --from=debian-dist /usr/bin/xs-compile         /var/xs-debian/
-COPY --from=debian-dist /usr/bin/xs-run             /var/xs-debian/
-COPY --from=debian-dist /usr/bin/xs2                /var/xs-debian/
-COPY --from=debian-dist /usr/bin/xs-make-self-exec  /var/xs-debian/
-COPY --from=debian-dist /usr/bin/xs-write_out       /var/xs-debian/
-COPY --from=debian-dist /usr/bin/xs-write_out       /var/xs-debian/
+COPY --from=arch-dist   /usr/bin/xs-call /dev/null
+COPY --from=debian-dist /usr/bin/xs-call /dev/null
