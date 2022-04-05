@@ -48,8 +48,8 @@ tokens![
 ];
 use lexpop::lex::fat as rawstring;
 lexpop![natural, any(|| fn_(digit))];
-lexpop![longopt, one_and_any(exact("--"), ident)];
-lexpop![shortopt, one_and_any(exact("-"), ident)];
+lexpop![longopt, one_and_any(exact("--"), || fn_(ident_rest))];
+lexpop![shortopt, one_and_any(exact("-"), || fn_(ident_rest))];
 lexpop![abspath, one_and_any(exact("/"), || fn_(ident_rest))];
 lexpop![
     relpath,

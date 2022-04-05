@@ -3,9 +3,6 @@
 def _.lib.ide/context_path      = "./run/dust.ctx/1";
 def _.lib.ide/target_path       = "./run/dust";
 
-def _LIB_CI                     = "./run/dust/ci/lib";
-def _LIB_IDE                    = _LIB_CI;
-
 def INSTALL_PREFIX              = "/usr/local";
 
 def DOCKER_CONTEXT              = "p5001";

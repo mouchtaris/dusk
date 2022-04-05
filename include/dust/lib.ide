@@ -31,11 +31,6 @@ def ide::set_ctx = {
     ux::ok "Setting context" $ctx $_context_path;
 }
 
-def ide::help = {
-    src dust = p "DUST=" $_LIB_IDE;
-    !env $dust xs-call $_LIB_IDE ide::select_func;
-}
-
 def ide::compile = {
     let source_path = p $args;
     let dest_path = p $_target_path / $args;

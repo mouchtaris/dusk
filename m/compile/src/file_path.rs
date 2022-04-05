@@ -31,6 +31,12 @@ pub fn compute_include_path(base: &mut String, path: &str) {
             .find(|&(_, x)| x == '/')
             .unwrap_or((0, '/'));
         base.truncate(last_slash + 1);
+
+        let path = if path.starts_with("./") {
+            &path[2..]
+        } else {
+            path
+        };
         base.push_str(path);
     }
 }
