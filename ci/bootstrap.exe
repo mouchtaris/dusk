@@ -1,0 +1,5 @@
+# vim: et ft=ruby ts=4 sw=4
+
+include ./lib;
+
+ci::bootstrap;

@@ -32,24 +32,62 @@ def install::build = {
         --bin xsi-list-func
 }
 
-def install::system-bin = {
-    let srce = p target/release/ $args;
-    let dest = p $INSTALL_PREFIX /bin/ $args;
-
+def install::root_file = {
+    let srce = arg_get 1 $args;
+    let dest = arg_get 2 $args;
     !sudo cp -av $srce $dest;
     !sudo chown -v root:root $dest;
 }
 
-def install::system-file = {
-    let srce = p $args;
-    let dest = p $INSTALL_PREFIX / $args;
+def install::user_file = {
+    !cp -av $args;
+}
 
-    src dirname = !dirname $dest;
-    src _ = !tr <$dirname -d "\n";
+def install::root_parentdir = {
+    src _ = dirname $args;
     !sudo mkdir -p $_;
+}
 
-    !sudo cp -av $srce $dest;
-    !sudo chown -v root:root $dest;
+def install::user_parentdir = {
+    src _ = dirname $args;
+    !mkdir -p $_;
+}
+
+
+def _srce = p target/release/ $args;
+def _dest = p $INSTALL_PREFIX /bin/ $args;
+
+def install::system-bin = {
+    let srce = _srce $args;
+    let dest = _dest $args;
+
+    install::root_file $srce $dest;
+}
+
+def install::local-bin = {
+    let srce = _srce $args;
+    let dest = _dest $args;
+
+    install::user_file $srce $dest;
+}
+
+def _srce = p $args;
+def _dest = p $INSTALL_PREFIX / $args;
+
+def install::system-file = {
+    let srce = _srce $args;
+    let dest = _dest $args;
+
+    install::root_parentdir $dest;
+    install::root_file $srce $dest;
+}
+
+def install::local-file = {
+    let srce = _srce $args;
+    let dest = _dest $args;
+
+    install::user_parentdir $dest;
+    install::user_file $srce $dest;
 }
 
 def install::system-bin-alias = {
@@ -60,6 +98,16 @@ def install::system-bin-alias = {
     src destin = p $INSTALL_PREFIX /bin/ $arg2;
 
     !sudo ln -fsv $source $destin;
+}
+
+def install::local-bin-alias = {
+    let arg1 = arg_get 1 $args;
+    let arg2 = arg_get 2 $args;
+
+    src source = p $INSTALL_PREFIX /bin/ $arg1;
+    src destin = p $INSTALL_PREFIX /bin/ $arg2;
+
+    !ln -fsv $source $destin;
 }
 
 def install::system = {
@@ -79,14 +127,49 @@ def install::system = {
     a xs-write_out xs-write_in;
 }
 
+def install::local = {
+    install::build;
+
+    def i = install::local-bin $args;
+    i xs-run;
+    i xs-call;
+    i xs-compile;
+    i xs-debug;
+    i xs-make-self-exec;
+    i xs-write_out;
+    i xs2;
+    i xsi-list-func;
+
+    def a = install::local-bin-alias $args;
+    a xs-write_out xs-write_in;
+}
+
 def install::lib = {
     def f = install::system-file $args;
-    f include/dust/std;
-    f include/dust/lib.term;
-    f include/dust/lib.ux;
-    f include/dust/lib.ide;
-    f include/dust/lib.term;
+    f include/dust/hashi;
+    f include/dust/docker;
+    f include/dust/package;
     f include/dust/lib.docker;
+    f include/dust/lib.ide;
+    f include/dust/lib.ux;
+    f include/dust/lib.term;
+    f include/dust/lib.std;
+    f include/dust/lib.core;
+    f include/dust/std;
+    f include/dust/sys;
+}
+
+def install::local-lib = {
+    def f = install::local-file $args;
+    f include/dust/hashi;
+    f include/dust/docker;
+    f include/dust/package;
+    f include/dust/lib.docker;
+    f include/dust/lib.ide;
+    f include/dust/lib.ux;
+    f include/dust/lib.term;
+    f include/dust/lib.std;
+    f include/dust/lib.core;
     f include/dust/std;
     f include/dust/sys;
 }

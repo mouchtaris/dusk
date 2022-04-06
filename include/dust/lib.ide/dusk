@@ -8,7 +8,8 @@ def ide::dusk-list0-modules = {
     src pkg-info = p $mod / package;
     src _ = !cat $pkg-info;
     src _ = !xs-write_out <$_
-        --echo "include /usr/local/include/dust/std; "
+        --echo "include " --echo $INSTALL_PREFIX
+        --echo "/include/dust/std; "
         --stdin --echo "MODULES;" ;
     src _ = !xs-compile <$_;
     let _ = !xs-run <$_;

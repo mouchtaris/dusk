@@ -7,29 +7,64 @@ include ../include/dust/lib.term/lib;
 include ../include/dust/lib.ide/lib;
 
 include ./lib.install;
+
 def archive = !git archive HEAD --format tar;
 include ./lib.docker;
 
-def lib-init = {
-    ;
-}
 
-def build = {
+def ci::build = {
     ide::compile ci/lib;
     ide::compile var/web-app/lib;
 }
 
-def ide::compile_all = {
-    build;
+def ci::compile_all = {
+    ci::build;
 
     src libci = ide::target_path ci/lib;
     src config = "./ci/config";
     ide::dusk-build $libci $config ./include/dust/hashi;
-    # ide::dusk-build $libci $config ./include/dust;
 
     !lsd --tree include/ -I hashi $_.lib.ide/target_path;
 }
 
+def ci::install = {
+    ci::compile_all;
+    install::local;
+}
+
+def ci::dist-clean = {
+    def bin = p $INSTALL_PREFIX / bin / $args;
+
+    src include_ = p $INSTALL_PREFIX "/include";
+    src lib = p $INSTALL_PREFIX "/lib";
+
+    src xs2 = bin xs2;
+    src xs-compile = bin xs-compile;
+    src xs-run = bin xs-run;
+    src xs-debug = bin xs-debug;
+    src xs-make-self-exec = bin xs-make-self-exec;
+    src xs-call = bin xs-call;
+    src xs-write_out = bin xs-write_out;
+
+    !rm -rfv
+        $include_
+        $xs2
+        $xs-compile
+        $xs-run
+        $xs-debug
+        $xs-make-self-exec
+        $xs-call
+        $xs-write_out
+        ;
+}
+
+def ci::bootstrap = {
+    ci::dist-clean;
+    install::local-lib;
+    install::local;
+    ci::compile_all;
+}
+
 def test = {
-    ide::compile_all;
+    ;
 }
