@@ -1,0 +1,126 @@
+# vim: et ft=scala ts=4 sw=4
+
+def ide::dusk-list0-modules = {
+    let lib = arg_get 1 $args;
+    let mod = arg_get 2 $args;
+
+    ux::wip "> Read module info " $lib "";
+    src pkg-info = p $mod / package;
+    src _ = !cat $pkg-info;
+    src _ = !xs-write_out <$_
+        --echo "include /usr/local/include/dust/std; "
+        --stdin --echo "MODULES;" ;
+    src _ = !xs-compile <$_;
+    let _ = !xs-run <$_;
+    ux::ok "> Read module info" $lib "";
+
+    !cat <$_
+}
+
+def ide::dusk-build = {
+    let lib = arg_get 1 $args;
+    let config = arg_get 2 $args;
+    let mod = arg_get 3 $args;
+
+    ux::wip "Begin package build" $mod $lib;
+    !echo;
+
+    def modules = {
+        let lib = arg_get 1 $args;
+        let mod = arg_get 2 $args;
+        src _ = ide::dusk-list0-modules $lib $mod;
+        !xargs <$_ -0 -n1 printf "%s/%s/lib\x00" $mod
+    }
+
+    src _modules = modules $lib $mod;
+    ux::wip "> Building modules" $lib "";
+    !echo;
+    !xargs
+        <$_modules
+        -xo0 -n1
+        xs-call $lib ide::dusk-compile-module $lib $config;
+    ux::ok "> Building modules" $lib "";
+
+    ux::begin "Exporting" $lib "";
+    src sub-modules = modules $lib $mod;
+    src script = !xargs
+        <$sub-modules
+        -xo0 -n1
+        xs-call $lib ide::dusk-export-module $lib $mod;
+
+    src pkg_path = p $mod /pkg;
+    src dest_path = ide::target_path $pkg_path;
+    !xs-compile <$script - $dest_path;
+    ux::ok "Exporting" $lib $dest_path;
+
+    src target = ide::target_path $mod;
+    ux::ok "Package build" $mod $target;
+}
+
+def ide::dusk-export-module = {
+    let lib = arg_get 1 $args;
+    let mod = arg_get 2 $args;
+    let submod = arg_get 3 $args;
+
+    def funcs = {
+        src mod-lib = ide::target_path $args;
+        !xsi-list-func $mod-lib
+    }
+
+    # FEATURE: Blocks with reference beyond the frame.
+    # (not closures -- only valid in context of parent frame)
+    #
+    #     def a_func = !print $args;
+    #     src bound = a_func 12;
+    #     blk funcs = {
+    #         # valid outer scope reference
+    #         !cat <$bound
+    #     }
+    #
+    # `blk` can only be accessed in this frame.
+    #
+    #     !cat <$funcs;   # => 12
+
+    src _ = funcs $submod;
+    !xargs <$_ -xo0 -n1
+        xs-call $lib ide::dusk-export-module-func $submod
+}
+
+def ide::dusk-export-module-func = {
+    src submod = arg_get 1 $args;
+    src func_name = arg_get 2 $args;
+
+    src _ = dirname $submod;
+    src ns = basename $_;
+
+    src lib_path = ide::target_path $submod;
+    fmt
+        "def %s::%s =\n    !xs-call %s %s $args;\n"
+        $ns $func_name $lib_path $func_name
+}
+
+def ide::dusk-compile-module = {
+    src lib = arg_get 1 $args;
+    src config = arg_get 2 $args;
+    src source_path = arg_get 3 $args;
+
+    src dest_path = ide::target_path $source_path;
+
+    src source_dir = dirname $source_path;
+    src dest_dir = dirname $dest_path;
+
+    let nl = "
+";
+    src script = p
+        "include " $cwd / $config "; " $nl
+        "include " $cwd / $source_path "; " $nl
+    ;
+
+    ux::begin "Make directory" "" $dest_dir;
+    !mkdir -p $dest_dir;
+    ux::ok "Make directory" "" $dest_dir;
+
+    ux::begin "Compiling" $source_path $dest_path;
+    !xs-compile <$script - $dest_path;
+    ux::ok "Compiling" $source_path $dest_path;
+}

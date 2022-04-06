@@ -1,0 +1,8 @@
+# vim: et ft=ruby ts=4 sw=4
+
+include ../../std;
+include ./base;
+include ./state;
+include ./terraform;
+include ./backend;
+include ./aws;

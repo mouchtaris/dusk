@@ -1,7 +1,7 @@
 # vim: ft=ruby et ts=4 sw=4
 
-include ../../include/dust/lib.ux;
-include ../../include/dust/lib.docker;
+include ../../include/dust/lib.ux/lib;
+include ../../include/dust/lib.docker/docker;
 include ../../ci/lib;
 
 def Delete_stale_environment = {
@@ -34,7 +34,7 @@ def exec = {
 }
 
 def exec_show = {
-    ux::progress $args;
+    ux::wip $args;
     !echo;
     !xs-call $_CI_LIB $args;
     ux::ok $args;

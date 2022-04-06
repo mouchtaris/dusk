@@ -1,0 +1,6 @@
+# vim: et ft=ruby ts=4 sw=4
+
+def MODULES = p0
+    terraform
+    vault
+;

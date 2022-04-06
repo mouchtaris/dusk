@@ -1,0 +1,2 @@
+# vim: et ft=ruby ts=4 sw=4
+def __info = "include/dust/hashi/vault/user";

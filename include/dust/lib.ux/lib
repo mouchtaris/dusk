@@ -1,6 +1,6 @@
 # vim: et ft=scala ts=4 sw=4
 
-include ./lib.term;
+include ../lib.term/lib;
 
 def ux::begin = {
     src action = arg_get 1 $args;
@@ -26,7 +26,7 @@ def ux::ok = {
         $_BINARY $dest_path $_RS;
 }
 
-def ux::progress = {
+def ux::wip = {
     src action = arg_get 1 $args;
     src source_path = arg_get 2 $args;
     src dest_path = arg_get 3 $args;

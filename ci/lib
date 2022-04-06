@@ -3,8 +3,8 @@
 include ./config;
 
 include ../include/dust/std;
-include ../include/dust/lib.term;
-include ../include/dust/lib.ide;
+include ../include/dust/lib.term/lib;
+include ../include/dust/lib.ide/lib;
 
 include ./lib.install;
 def archive = !git archive HEAD --format tar;
@@ -14,9 +14,22 @@ def lib-init = {
     ;
 }
 
-def ide::compile_all = {
+def build = {
     ide::compile ci/lib;
     ide::compile var/web-app/lib;
+}
 
-    !lsd --tree $_.lib.ide/target_path;
+def ide::compile_all = {
+    build;
+
+    src libci = ide::target_path ci/lib;
+    src config = "./ci/config";
+    ide::dusk-build $libci $config ./include/dust/hashi;
+    # ide::dusk-build $libci $config ./include/dust;
+
+    !lsd --tree include/ -I hashi $_.lib.ide/target_path;
+}
+
+def test = {
+    ide::compile_all;
 }

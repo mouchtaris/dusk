@@ -1,0 +1,9 @@
+# vim: et ft=scala ts=4 sw=4
+def MODULES = p0
+    lib.core
+    lib.ide
+    lib.std
+    lib.term
+    lib.ux
+    lib.docker
+;

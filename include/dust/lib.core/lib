@@ -1,0 +1,35 @@
+# vim: et ft=scala ts=4 sw=4
+
+include ../sys;
+
+def fmt = !printf $args;
+
+def p = fmt "%s" $args;
+def p0 = fmt "%s\x00" $args;
+def join = fmt "%s " $args;
+
+def dirname = { src _ = !dirname $args; !tr <$_ -d "\n" }
+def basename = { src _ = !basename $args; !tr <$_ -d "\n" }
+def cwd = { src _ = !pwd; !tr <$_ -d "\n" }
+
+def arg_get = {
+    #
+    # Get first argument, n, index (from 1) of argument to echo
+    #
+    src _ = p0 $args;
+    src _ = !tail <$_ -z -n "+1"; # Some attempt to empty the stream and avoid deadlocks
+    src _ = !head <$_ -z -n "+1"; # No need to tail this because it's already length 1
+    src _ = !tr <$_ -d "\000";
+    let n = !cat <$_;
+
+    #
+    # Get the actual argument n
+    #
+    src _ = p0 $args;
+    src _ = !tail <$_ -z -n "+2";
+    src _ = !head <$_ -z -n $n;
+    src _ = !tail <$_ -z -n "-1";
+    src _ = !tr <$_ -d "\000";
+
+    !cat <$_
+}

@@ -1,9 +1,12 @@
 # vim: et ft=scala ts=4 sw=4
 
-include ./lib.ux;
+include ../lib.ux/lib;
 
 def _target_path  = _.lib.ide/target_path;
 def _context_path = _.lib.ide/context_path;
+
+def ide::target_path =
+    p $_target_path / $args;
 
 def ide::list_lib = {
     !find $_target_path -type f -print0
@@ -44,7 +47,6 @@ def ide::compile = {
     !xs-compile $source_path $dest_path;
 
     ux::ok compiling $source_path $dest_path;
-
 }
 
 def ide::fzf = {
@@ -108,3 +110,5 @@ def ide::call_command = {
 
     join xs-call $ctx $func
 }
+
+include ./dusk;

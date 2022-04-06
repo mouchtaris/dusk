@@ -1,6 +1,6 @@
 # vim: ft=scala et ts=4 sw=4
 
-include ./std;
+include ../std;
 
 def _SOURCE = fmt "\x1b[38;5;147m";
 def _BINARY = fmt "\x1b[38;5;103m";

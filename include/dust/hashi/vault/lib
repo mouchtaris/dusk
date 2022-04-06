@@ -1,0 +1,9 @@
+# vim: et ft=ruby ts=4 sw=4
+
+include ../../std;
+include ./base;
+include ./unseal;
+include ./ssh;
+include ./user;
+include ./policy;
+include ./aws;
