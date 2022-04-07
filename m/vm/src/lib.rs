@@ -26,6 +26,7 @@ error::Error! {
     Job = job::Error
     Debugger = debugger::Error
     Fmt = std::fmt::Error
+    BufferSd = buf::sd2::Error
 }
 use error::{ltrace, soft_todo};
 use error::{te, temg, terr};

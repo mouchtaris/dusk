@@ -16,6 +16,7 @@ pub struct ICode {
 pub struct StringInfo {
     pub id: usize,
 }
+buf::sd_struct![StringInfo, id];
 
 #[derive(Debug, Copy, Eq, Ord, Hash, PartialEq, PartialOrd, Clone)]
 pub enum Instr {
@@ -104,17 +105,8 @@ impl ICode {
         O: io::Write,
     {
         let ilen = usize::to_le_bytes(self.instructions.len());
-        let slen = usize::to_le_bytes(self.strings.len());
         out.and_then(|mut out| {
-            out.write_all(&slen)?;
-            for (sval, info) in &self.strings {
-                let s = sval.as_bytes();
-                let slen = usize::to_le_bytes(s.len());
-                out.write_all(&slen)?;
-                out.write_all(s)?;
-                let strid = usize::to_le_bytes(info.id);
-                out.write_all(&strid)?;
-            }
+            buf::sd2::WriteOut::write_out(&self.strings, &mut out)?;
             out.write_all(&ilen)?;
             for instr in &self.instructions {
                 let (code, arg0) = match *instr {
@@ -151,27 +143,11 @@ impl ICode {
     {
         let mut usize_buf = usize::to_le_bytes(0usize);
         let mut icode = ICode::default();
-        let mut byte_buf = Vec::new();
+        //let mut byte_buf = Vec::new();
 
         let inp = Ok(te!(inp));
         inp.and_then(|mut inp| {
-            te!(inp.read_exact(&mut usize_buf));
-            let slen = usize::from_le_bytes(usize_buf);
-            icode.strings.reserve(slen);
-            for _ in 0..slen {
-                te!(inp.read_exact(&mut usize_buf));
-                let slen = usize::from_le_bytes(usize_buf);
-
-                byte_buf.resize(slen, 0x00);
-                te!(inp.read_exact(&mut byte_buf));
-
-                te!(inp.read_exact(&mut usize_buf));
-                let strid = usize::from_le_bytes(usize_buf);
-
-                let s = te!(String::from_utf8(byte_buf.clone()));
-                let info = StringInfo { id: strid };
-                icode.strings.insert(s, info);
-            }
+            icode.strings = te!(buf::sd2::ReadIn::read_in(&mut inp));
 
             te!(inp.read_exact(&mut usize_buf));
             let ilen = usize::from_le_bytes(usize_buf);
