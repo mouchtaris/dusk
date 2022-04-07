@@ -28,8 +28,6 @@ let dest = "_.bob1";
 !xs-write_in <$cont $dest;
 !cat $dest;
 
-include ./lib/stdlib.dust;
-
 def cont1 = !echo "HELLO";
 def cont2 = !echo "BYEBYE";
 def cont = !cat
@@ -39,3 +37,14 @@ cont;
 
 !echo PATH = 12 PATH;
 !printenv PATH = 12 PATH;
+
+src _ = !xs-compile var/sample/test.dust;
+src _ = !xs-call <$_ - cont2;
+!cat <$_;
+
+
+!xs-call
+    <${xs-compile var/sample/test.dust}
+;
+
+# !xs-compile var/sample/test.dust

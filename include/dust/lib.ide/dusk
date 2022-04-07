@@ -38,7 +38,7 @@ def ide::dusk-build = {
     !echo;
     !xargs
         <$_modules
-        -xo0 -n1
+        -0 -n1
         xs-call $lib ide::dusk-compile-module $lib $config;
     ux::ok "> Building modules" $lib "";
 
@@ -46,7 +46,7 @@ def ide::dusk-build = {
     src sub-modules = modules $lib $mod;
     src script = !xargs
         <$sub-modules
-        -xo0 -n1
+        -0 -n1
         xs-call $lib ide::dusk-export-module $lib $mod;
 
     src pkg_path = p $mod /pkg;
@@ -83,7 +83,7 @@ def ide::dusk-export-module = {
     #     !cat <$funcs;   # => 12
 
     src _ = funcs $submod;
-    !xargs <$_ -xo0 -n1
+    !xargs <$_ -0 -n1
         xs-call $lib ide::dusk-export-module-func $submod
 }
 
