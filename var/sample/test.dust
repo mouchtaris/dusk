@@ -43,8 +43,8 @@ src _ = !xs-call <$_ - cont2;
 !cat <$_;
 
 
-!xs-call
-    <${xs-compile var/sample/test.dust}
-;
+#!xs-call
+#    <${xs-compile var/sample/test.dust}
+#;
 
-# !xs-compile var/sample/test.dust
+#m!xs-compile var/sample/test.dust

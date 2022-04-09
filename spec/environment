@@ -1,0 +1,7 @@
+# vim: et ft=scala ts=4 sw=4
+
+let expected = "HELLO";
+
+let actual = !printenv HELLO=HELLO HELLO;
+
+!test $actual "=" $expected;

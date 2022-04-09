@@ -312,6 +312,8 @@ impl Buffer {
         Ok(match mem::take(self) {
             Buffer::Null => temg!("Cannot make string from Null"),
             Buffer::String(cmd, string) => {
+                // Nothing changes here, just reconstruct because things
+                // are moved out of `self`.
                 *self = Buffer::String(cmd, string);
                 te!(self.as_str())
             }
