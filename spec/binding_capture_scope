@@ -1,0 +1,16 @@
+# vim: et ft=scala ts=4 sw=4
+
+src test_script = r#"
+
+    def func-0 = 0;
+    def func-1 = 1;
+
+    !echo $func-0;
+
+"#;
+
+src _ = !xs-compile <$test_script;
+src _ = !xsi-list-func <$_;
+src _ = !jq <$_ -sRc r#"split("\u0000")"#;
+
+!test $_ "=" r#"["func-0","func-1"]"#;

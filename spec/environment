@@ -3,7 +3,7 @@
 let expected = "hello";
 
 def actual = {
-    src _ = !printenv HELLO=$expected HELLO;
+    src _ = !printenv HELLO = $expected HELLO;
     src _ = !tr <$_ -d "\n";
     !xs-write_out <$_ --stdin
 }

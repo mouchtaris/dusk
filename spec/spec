@@ -1,0 +1,28 @@
+# vim: et ft=scala ts=4 sw=4
+include ../include/dust/lib.ux/lib;
+
+def test =  {
+    ux::begin "Testing" $args "";
+
+    src _ = !sh -c r###"
+        xs-compile "$@" 2>/dev/null | xs-run >/dev/null 2>&1;
+        if test $? = 0
+        then
+            echo 'include '"$(pwd)"'/include/dust/lib.ux/lib;
+                ux::ok "Testing" $args "";
+            ' | xs-compile | xs-run - "$@"
+        else
+            echo 'include '"$(pwd)"'/include/dust/lib.ux/lib;
+                ux::bad "Testing" $args "";
+            ' | xs-compile | xs-run - "$@"
+        fi
+    "### - $args;
+
+    !cat <$_
+}
+
+test "./spec/environment";
+test "./spec/current_working_directory";
+test "./spec/collection_time";
+test "./spec/binding_capture_scope";
+test "./spec/input_redirection_to_method";

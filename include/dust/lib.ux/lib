@@ -37,3 +37,15 @@ def ux::wip = {
         $_SOURCE $source_path $_RS
         $_BINARY $dest_path $_RS;
 }
+
+def ux::bad = {
+    src action = arg_get 1 $args;
+    src source_path = arg_get 2 $args;
+    src dest_path = arg_get 3 $args;
+
+    fmt "\r[ %s ] %s(done) %s%s %s%s%s to %s%s%s\n"
+        $_BAD
+        $_GREY $action $_RS
+        $_SOURCE $source_path $_RS
+        $_BINARY $dest_path $_RS;
+}

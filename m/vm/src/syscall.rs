@@ -58,7 +58,7 @@ pub fn spawn(vm: &mut Vm) -> Result<()> {
         &mut String::new()
     ));
 
-    // Set command enviroenment
+    // Set command environment
     //
     {
         let mut value = String::new();

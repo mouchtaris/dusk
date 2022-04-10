@@ -1,0 +1,21 @@
+# vim: et ft=scala ts=4 sw=4
+
+include ../include/dust/std;
+
+def actual = {
+    src _ = p "!pwd @" $args ";";
+    src _ = !xs-compile <$_;
+    src _ = !xs-run <$_;
+    src _ = !tr <$_ -d "\n";
+    !cat <$_
+}
+
+def test = {
+    src _ = actual $args;
+    !echo test $_ "=" $args;
+    !test $_ "=" $args;
+}
+
+test "/";
+test "/tmp";
+test "/usr";

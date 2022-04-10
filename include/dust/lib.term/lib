@@ -11,3 +11,4 @@ def _GREY = fmt "\x1b[38;5;252m";
 def _RS = fmt "\x1b[m";
 def _OK = fmt "%s%s%s" $_GREEN "OK" $_RS;
 def _IN_PROG = fmt "%s%s%s" $_ORANGE "wip" $_RS;
+def _BAD = fmt "%s%s%s" $_RED "BAD" $_RS;

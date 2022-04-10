@@ -1,0 +1,26 @@
+# vim: et ft=scala ts=4 sw=4
+
+src test_script = r#"
+
+    def frst = { !echo "I am printed first."; 0 }
+    def midl = { !echo "I am printed in the middle."; 0 }
+
+    let frst = frst;
+
+    def last = { !echo "I am printed last."; 0 }
+
+    def nevr = !echo "I am printed never.";
+
+    src midl = midl;
+
+    last;
+"#;
+
+src _ = !xs-compile <$test_script;
+src _ = !xs-run <$_;
+
+!test $_ "="
+"I am printed first.
+I am printed in the middle.
+I am printed last.
+";

@@ -123,9 +123,6 @@ pub trait Compilers<'i> {
             mut args,
         ))| {
             // TODO
-            if !envs.is_empty() {
-                error::lwarn!("ignoring env");
-            }
             if !output_redirections.is_empty() {
                 error::lwarn!("ignoring output redirections");
             }
