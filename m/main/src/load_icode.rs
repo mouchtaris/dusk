@@ -1,5 +1,5 @@
 use {
-    super::{fs, sd, Result},
+    super::{fs, io, sd, Result},
     error::{ldebug, te, temg},
 };
 
@@ -9,8 +9,14 @@ pub fn load_icode(input_path: &str) -> Result<vm::ICode> {
 
 pub fn load_compiler(input_path: &str) -> Result<compile::Compiler> {
     ldebug!("Loading {}", input_path);
+    Ok(te!(read_compiler(&mut te!(fs::File::open(input_path)))))
+}
+
+pub fn read_compiler<R: io::Read>(mut input: R) -> Result<compile::Compiler> {
     let inp: Vec<u8> = {
-        let mut inp: Vec<u8> = te!(fs::read(input_path));
+        let mut inp: Vec<u8> = vec![];
+        te!(io::Read::read_to_end(&mut input, &mut inp));
+
         if !inp.is_empty() && inp[0] == b'#' {
             let len = inp.len();
             let hashbang_end = inp.iter().cloned().take_while(|&b| b != b'\n').count();
@@ -25,8 +31,10 @@ pub fn load_compiler(input_path: &str) -> Result<compile::Compiler> {
             inp.copy_within(hashbang_end + 1.., 0);
             inp.truncate(len - hashbang_end - 1);
         }
+
         inp
     };
+
     ldebug!("loading {} -> {:x}", inp.len(), &inp[0]);
     let cmp = te!(sd::deser(inp.as_slice()));
     Ok(cmp)

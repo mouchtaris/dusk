@@ -38,6 +38,8 @@ pub fn spawn(vm: &mut Vm) -> Result<()> {
 
     let target: &str = te!(vm.val_as_str(&target));
 
+    // Set command name and close stdin
+    //
     let mut cmd = Command::new(target);
     cmd.stdin(Stdio::null());
 
@@ -45,6 +47,8 @@ pub fn spawn(vm: &mut Vm) -> Result<()> {
         cmd.current_dir(cwd);
     }
 
+    // Set command args
+    //
     te!(install_args(
         vm,
         &mut |arg| {
@@ -53,17 +57,19 @@ pub fn spawn(vm: &mut Vm) -> Result<()> {
         ADDR_ARG,
         &mut String::new()
     ));
+
+    // Set command enviroenment
+    //
     {
-        let mut key = String::new();
+        let mut value = String::new();
         te!(install_args(
             vm,
             &mut |env| {
-                if key.is_empty() {
-                    key.push_str(env);
+                if value.is_empty() {
+                    value.push_str(env);
                 } else {
-                    eprintln!("Set ENV {} = {}", key, env);
-                    cmd.env(key.as_str(), env);
-                    key.clear();
+                    cmd.env(env, value.as_str());
+                    value.clear();
                 }
             },
             ADDR_ENV,
@@ -71,7 +77,12 @@ pub fn spawn(vm: &mut Vm) -> Result<()> {
         ));
     }
 
+    // Turn into a job
+    //
     let mut job: Job = cmd.into();
+
+    // Connect input redirections
+    //
     enum Id {
         Job,
         Str,
@@ -104,14 +115,24 @@ pub fn spawn(vm: &mut Vm) -> Result<()> {
         te!(job.add_input_job(inp_job));
     }
 
+    // Add job to job table and get its ID.
+    //
     let job_id = vm.add_job(job);
 
+    // Hand-handle stack frame
+    //
+    // - Allocate 1 local, to push a job-id value
     vm.allocate(1);
     let val: Value = value::Job(job_id).into();
     ldebug!("put {:?} to {}", val, vm.stackp());
+    te!(vm.wait_debugger(format_args!("{:?}", val)));
+    // - Push the local
     vm.push_val(val);
+    // - Set-ret-val from the local
     te!(vm.set_ret_val_from_local(0));
+    // - Return from call
     te!(vm.return_from_call(0));
+    // - Dealloc the 1
     vm.dealloc(1);
 
     Ok(())

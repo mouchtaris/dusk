@@ -53,10 +53,10 @@ where
     where
         D: fmt::Display,
     {
-        let name = if cfg!(feature = "release") {
-            format!("t:{}:{}", self.scope_id(), self.scope().len())
-        } else {
+        let name = if cfg!(feature = "debug") {
             format!("t:{}:{}:{}", self.scope_id(), self.scope().len(), desc)
+        } else {
+            format!("{}:{}", self.scope_id(), self.scope().len())
         };
         self.new_local(name)
     }
@@ -200,7 +200,3 @@ where
         .collect::<Vec<_>>()
         .into_iter()
 }
-
-//pub fn write_to<O: io::Write>(st: &SymbolTable, out: O) -> io::Result<O> {
-//    buf::Serializer::new(out).finish(st)
-//}

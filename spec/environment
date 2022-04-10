@@ -1,7 +1,16 @@
 # vim: et ft=scala ts=4 sw=4
 
-let expected = "HELLO";
+let expected = "hello";
 
-let actual = !printenv HELLO=HELLO HELLO;
+def actual = {
+    src _ = !printenv HELLO=$expected HELLO;
+    src _ = !tr <$_ -d "\n";
+    !xs-write_out <$_ --stdin
+}
+
+!echo Expected: $expected;
+!echo Actual: $actual;
 
 !test $actual "=" $expected;
+
+!echo OK;

@@ -1,6 +1,7 @@
 use {
-    super::{te, ICode, Vm},
+    super::{te, Vm},
     std::{
+        fmt,
         fs::File,
         io,
         sync::mpsc::{self, Receiver},
@@ -33,7 +34,10 @@ error::Error! {
 }
 
 impl Bugger {
-    pub fn run(&mut self, vm: &mut Vm, icode: &ICode) -> Result<()> {
+    pub fn run<I>(&mut self, vm: &mut Vm, instr: I) -> Result<()>
+    where
+        I: fmt::Debug,
+    {
         let Self {
             recv,
             in_system_main,
@@ -41,7 +45,6 @@ impl Bugger {
         } = self;
 
         let instr_id = vm.instr_addr();
-        let instr = &icode.instructions[instr_id];
 
         if !*in_system_main {
             if instr_id == 2 {

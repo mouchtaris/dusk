@@ -134,6 +134,11 @@ pub trait Compilers<'i> {
             //
             // Envs
             // ---
+            let envs_len = envs.len();
+            let mut envs_sinfos = vec![];
+            for (env_name, env_val) in envs {
+                envs_sinfos.push((te!(cmp.compile_text(env_name)), te!(cmp.compile(env_val))))
+            }
             //
             // Redirections
             let inp_redir_len = input_redirections.len();
@@ -163,7 +168,11 @@ pub trait Compilers<'i> {
             cmp.emit1(i::PushNull);
             // Environment Variables
             cmp.new_local_tmp(format_args!("nenvs-{}", invctrgt));
-            cmp.emit1(i::PushNat(0));
+            for (env_name, env_var) in &envs_sinfos {
+                te!(cmp.emit_from_symbol(true, env_var));
+                te!(cmp.emit_from_symbol(true, env_name));
+            }
+            cmp.emit1(i::PushNat(envs_len));
             // Input Redirections
             for inprdi in &inp_redir_sinfos {
                 te!(cmp.emit_from_symbol(true, inprdi));

@@ -3,7 +3,7 @@ use {
         debugger::Bugger as Debugger, ltrace, te, temg, value, Deq, ICode, Job, Result, StringInfo,
         TryFrom, Value, ValueTypeInfo,
     },
-    std::{borrow::Borrow, io, mem, result},
+    std::{borrow::Borrow, fmt, io, mem, result},
 };
 
 #[derive(Default, Debug)]
@@ -15,6 +15,7 @@ pub struct Vm {
     frame_ptr: usize,
     stack_ptr: usize,
     instr_ptr: usize,
+    debugger: Option<Debugger>,
 }
 
 pub struct Stack {
@@ -151,7 +152,7 @@ impl Vm {
         let nargs = te!(vm.nargs());
         let ninps = te!(vm.number_inputs());
         let nenvs = te!(vm.number_environments());
-        vm.arg_addr(nargs + 3 + ninps + 1 + nenvs + 1)
+        vm.arg_addr(nargs + 3 + ninps + 1 + 2 * nenvs + 1)
     }
     pub fn ret_cell_mut(&mut self) -> Result<&mut Value> {
         let vm = self;
@@ -320,13 +321,27 @@ impl Vm {
 
     pub fn eval_icode(&mut self, icode: &ICode) -> Result<()> {
         self.load_icode(&icode)
-            .and_then(|_| self.run_instructions(None, icode))
+            .and_then(|_| self.run_instructions(icode))
     }
 
     pub fn debug_icode(&mut self, icode: &ICode) -> Result<()> {
-        let debugger = te!(Debugger::open());
+        self.debugger = Some(te!(Debugger::open()));
         self.load_icode(&icode)
-            .and_then(|_| self.run_instructions(Some(debugger), icode))
+            .and_then(|_| self.run_instructions(icode))
+    }
+
+    pub fn wait_debugger<I>(&mut self, instr: I) -> Result<()>
+    where
+        I: fmt::Debug,
+    {
+        let vm = self;
+
+        if let Some(mut bugger) = vm.debugger.take() {
+            te!(bugger.run(vm, instr));
+            vm.debugger = Some(bugger)
+        }
+
+        Ok(())
     }
 
     pub fn load_icode(&mut self, icode: &ICode) -> Result<()> {
@@ -337,18 +352,12 @@ impl Vm {
         Ok(())
     }
 
-    pub fn run_instructions(
-        &mut self,
-        mut debugger: Option<Debugger>,
-        icode: &ICode,
-    ) -> Result<()> {
+    pub fn run_instructions(&mut self, icode: &ICode) -> Result<()> {
         let vm = self;
 
         while vm.instr_ptr < icode.instructions.len() {
             let instruction = &icode.instructions[vm.instr_ptr];
-            if let Some(debugger) = debugger.as_mut() {
-                te!(debugger.run(vm, icode));
-            }
+            te!(vm.wait_debugger(instruction));
             vm.instr_ptr += 1;
             let mut success = instruction.borrow().operate_on(vm);
             #[cfg(feature = "vm_stack_trace")]
@@ -396,6 +405,9 @@ impl Vm {
         let vm = self;
         let mut o = te!(o);
 
+        let mut strbuf = String::new();
+        use fmt::Write;
+
         use error::te_writeln as w;
         //w!(o, "=== BIN_PATH ===")?;
         //for path in &vm.bin_path {
@@ -415,7 +427,7 @@ impl Vm {
         for i in 0..len {
             let i = len - 1 - i;
 
-            let pref = if i < 6 || fp < 7 {
+            let pref = if fp < 7 {
                 "(sys)"
             } else {
                 let nargs: usize = *te!(vm.stack[fp - 3].try_ref());
@@ -434,12 +446,12 @@ impl Vm {
                         "inp redr"
                     }
                     i if fp - 3 - nargs - 3 - n_inp_redir - 1 == i => "nenvs",
-                    i if fp - 3 - nargs - 3 - n_inp_redir - 1 - nenvs <= i
+                    i if fp - 3 - nargs - 3 - n_inp_redir - 1 - 2 * nenvs <= i
                         && fp - 3 - nargs - 3 - n_inp_redir - 1 > i =>
                     {
                         "env set"
                     }
-                    i if fp - 3 - nargs - 3 - n_inp_redir - 1 - nenvs - 1 == i => {
+                    i if fp - 3 - nargs - 3 - n_inp_redir - 1 - 2 * nenvs - 1 == i => {
                         sp = *te!(vm.stack[fp - 1].try_ref());
                         fp = *te!(vm.stack[fp - 2].try_ref());
                         w!(o, "--- frame {} ---", fp);
@@ -450,7 +462,22 @@ impl Vm {
                 }
             };
             let cell = &vm.stack[i];
-            w!(o, "{:10} [{:4}] {:?}", pref, i, cell);
+            strbuf.clear();
+            te!(write!(strbuf, "{:?}", cell));
+            let explain_start = strbuf.len();
+            match cell {
+                &Value::LitString(value::LitString(strid)) => {
+                    te!(write!(strbuf, "{:?}", te!(vm.get_string_id(strid))))
+                }
+                &Value::Job(value::Job(jobid)) => {
+                    te!(write!(strbuf, "{:?}", te!(vm.get_job(jobid))))
+                }
+                &Value::Natural(val) => te!(write!(strbuf, "{}", val)),
+                _ => (),
+            };
+            let cell_str = &strbuf[..explain_start];
+            let explain = &strbuf[explain_start..];
+            w!(o, "{:10} [{:4}] {:29} | {}", pref, i, cell_str, explain);
         }
         w!(o, "=== STATE ===");
         w!(o, "- frame pointer    : {}", vm.frame_ptr);

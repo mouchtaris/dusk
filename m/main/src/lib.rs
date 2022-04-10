@@ -5,7 +5,7 @@ pub mod sd;
 
 pub use {
     error::te,
-    load_icode::{list_func, load_compiler, load_icode, make_vm, make_vm_call},
+    load_icode::{list_func, load_compiler, load_icode, make_vm, make_vm_call, read_compiler},
     std::{
         boxed, collections, fmt, fs, io, iter, prelude, slice, str, string, u32, u8, usize, vec,
     },
@@ -23,5 +23,6 @@ error::Error! {
 }
 
 pub fn init() -> Result<()> {
+    pretty_env_logger::init();
     Ok(())
 }

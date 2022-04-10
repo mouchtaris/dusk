@@ -46,6 +46,9 @@ version = '*'
 version = '0.0.1'
 path = '../parse'
 
+[dependencies.pretty_env_logger]
+version = '*'
+
 [dependencies.show]
 version = '0.0.1'
 path = '../show'

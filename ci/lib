@@ -24,7 +24,13 @@ def ci::compile_all = {
     src config = "./ci/config";
     ide::dusk-build $libci $config ./include/dust/hashi;
 
-    !lsd --tree include/ -I hashi $_.lib.ide/target_path;
+    !lsd
+        --color always
+        --tree
+        --ignore-glob hashi
+        include/
+        $_.lib.ide/target_path
+    ;
 }
 
 def ci::install = {
