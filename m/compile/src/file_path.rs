@@ -21,22 +21,34 @@ pub trait FilePathExt: AsMut<Compiler> {
 impl<S: AsMut<Compiler>> FilePathExt for S {}
 
 pub fn compute_include_path(base: &mut String, path: &str) {
+    error::ltrace!("resolve path {} + {}", base, path);
+
     if path.starts_with('/') {
         base.clear();
         base.push_str(path);
     } else {
-        let (last_slash, _) = base
+        let last_slash = base
             .char_indices()
             .rev()
             .find(|&(_, x)| x == '/')
-            .unwrap_or((0, '/'));
-        base.truncate(last_slash + 1);
+            .map(|(l, _)| l);
+
+        match last_slash {
+            Some(n) => {
+                base.truncate(n + 1);
+            }
+            None => {
+                base.clear();
+                base.push_str("./");
+            }
+        }
 
         let path = if path.starts_with("./") {
             &path[2..]
         } else {
             path
         };
+
         base.push_str(path);
     }
 }

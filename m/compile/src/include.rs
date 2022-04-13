@@ -7,6 +7,7 @@ pub trait IncludeExt: AsMut<Compiler> {
     fn include(&mut self, path: &str) -> Result<()> {
         let cmp = self.as_mut();
 
+        error::ltrace!("resolving include: {}", path);
         let path = cmp.push_file_path(path);
 
         error::ldebug!("include :: {}", path);
