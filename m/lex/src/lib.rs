@@ -256,7 +256,7 @@ fn digit(c: char) -> bool {
 }
 
 fn ident_init(c: char) -> bool {
-    c.is_alphabetic() || c == '_'
+    c.is_alphabetic() || c == '_' || c == '.'
 }
 
 fn ident_rest(c: char) -> bool {
