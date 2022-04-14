@@ -4,9 +4,10 @@ def install::make_bin_release_tar = {
     !tar
         --create
         --verbose
-        -C $INSTALL_PREFIX
+        -C $_INSTALL_PREFIX
         --file bin-release.tar
         bin/xs-compile
+        bin/xs-decompile
         bin/xs-run
         bin/xs-call
         bin/xs-debug
@@ -24,12 +25,14 @@ def install::build = {
         build
         --release
         --bin xs-compile
+        --bin xs-decompile
         --bin xs-run
         --bin xs-call
         --bin xs-debug
         --bin xs-make-self-exec
         --bin xs-write_out
         --bin xsi-list-func
+    ;
 }
 
 def install::root_file = {
@@ -55,7 +58,7 @@ def install::user_parentdir = {
 
 
 def _srce = p target/release/ $args;
-def _dest = p $INSTALL_PREFIX /bin/ $args;
+def _dest = p $_INSTALL_PREFIX /bin/ $args;
 
 def install::system-bin = {
     let srce = _srce $args;
@@ -72,7 +75,7 @@ def install::local-bin = {
 }
 
 def _srce = p $args;
-def _dest = p $INSTALL_PREFIX / $args;
+def _dest = p $_INSTALL_PREFIX / $args;
 
 def install::system-file = {
     let srce = _srce $args;
@@ -94,8 +97,8 @@ def install::system-bin-alias = {
     let arg1 = arg_get 1 $args;
     let arg2 = arg_get 2 $args;
 
-    src source = p $INSTALL_PREFIX /bin/ $arg1;
-    src destin = p $INSTALL_PREFIX /bin/ $arg2;
+    src source = p $_INSTALL_PREFIX /bin/ $arg1;
+    src destin = p $_INSTALL_PREFIX /bin/ $arg2;
 
     !sudo ln -fsv $source $destin;
 }
@@ -104,8 +107,8 @@ def install::local-bin-alias = {
     let arg1 = arg_get 1 $args;
     let arg2 = arg_get 2 $args;
 
-    src source = p $INSTALL_PREFIX /bin/ $arg1;
-    src destin = p $INSTALL_PREFIX /bin/ $arg2;
+    src source = p $_INSTALL_PREFIX /bin/ $arg1;
+    src destin = p $_INSTALL_PREFIX /bin/ $arg2;
 
     !ln -fsv $source $destin;
 }
@@ -117,6 +120,7 @@ def install::system = {
     i xs-run;
     i xs-call;
     i xs-compile;
+    i xs-decompile;
     i xs-debug;
     i xs-make-self-exec;
     i xs-write_out;
@@ -134,6 +138,7 @@ def install::local = {
     i xs-run;
     i xs-call;
     i xs-compile;
+    i xs-decompile;
     i xs-debug;
     i xs-make-self-exec;
     i xs-write_out;
@@ -172,4 +177,60 @@ def install::local-lib = {
     f include/dust/lib.core;
     f include/dust/std;
     f include/dust/sys;
+}
+
+def uninstall::local = {
+    def bin = p $_INSTALL_PREFIX / bin / $args;
+
+    src include_ = p $_INSTALL_PREFIX "/include/dust";
+    src lib = p $_INSTALL_PREFIX "/lib/dust";
+
+    src xs2 = bin xs2;
+    src xs-compile = bin xs-compile;
+    src xs-decompile = bin xs-decompile;
+    src xs-run = bin xs-run;
+    src xs-debug = bin xs-debug;
+    src xs-make-self-exec = bin xs-make-self-exec;
+    src xs-call = bin xs-call;
+    src xs-write_out = bin xs-write_out;
+
+    !rm -rfv
+        $include_
+        $xs2
+        $xs-compile
+        $xs-decompile
+        $xs-run
+        $xs-debug
+        $xs-make-self-exec
+        $xs-call
+        $xs-write_out
+    ;
+}
+
+def uninstall::system = {
+    def bin = p $_INSTALL_PREFIX / bin / $args;
+
+    src include_ = p $_INSTALL_PREFIX "/include/dust";
+    src lib = p $_INSTALL_PREFIX "/lib/dust";
+
+    src xs2 = bin xs2;
+    src xs-compile = bin xs-compile;
+    src xs-decompile = bin xs-decompile;
+    src xs-run = bin xs-run;
+    src xs-debug = bin xs-debug;
+    src xs-make-self-exec = bin xs-make-self-exec;
+    src xs-call = bin xs-call;
+    src xs-write_out = bin xs-write_out;
+
+    !sudo rm -rfv
+        $include_
+        $xs2
+        $xs-compile
+        $xs-decompile
+        $xs-run
+        $xs-debug
+        $xs-make-self-exec
+        $xs-call
+        $xs-write_out
+    ;
 }

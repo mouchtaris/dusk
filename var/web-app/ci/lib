@@ -1,8 +1,9 @@
 # vim: ft=ruby et ts=4 sw=4
 
-include ../../include/dust/lib.ux/lib;
-include ../../include/dust/lib.docker/docker;
-include ../../ci/lib;
+include ../config.local;
+include ../../../include/dust/lib.ux/lib;
+include ../../../include/dust/lib.docker/docker;
+include ../../../ci/lib;
 
 def Delete_stale_environment = {
     docker container rm

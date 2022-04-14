@@ -2,4 +2,4 @@
 def _DOCKER_CONTEXT = "p5001";
 def _DOCKER_NAME = "windpipe-ci";
 def _DOCKER_IMAGE = "debian";
-def _CI_LIB = "./run/dust/var/web-app/lib";
+def _CI_LIB = "./run/dust/var/web-app/ci/lib";

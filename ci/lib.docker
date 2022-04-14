@@ -1,17 +1,17 @@
 # vim: et ft=scala ts=4 sw=4
 
-def DOCKER_MOUNT =
+def _DOCKER_MOUNT =
     fmt "type=volume,source=%s,destination=%s"
-        $DOCKER_VOLUME
-        $DOCKER_VOLUME_MOUNT_POINT
+        $_DOCKER_VOLUME
+        $_DOCKER_VOLUME_MOUNT_POINT
 ;
 
 def docker =
-    !docker --context $DOCKER_CONTEXT $args
+    !docker --context $_DOCKER_CONTEXT $args
 ;
 
 def docker::run =
-    docker --mount $DOCKER_MOUNT
+    docker --mount $_DOCKER_MOUNT
 ;
 
 def run = p ./run/docker/dust-ci/ $args;
@@ -30,7 +30,7 @@ def docker::build-stage = {
 
     docker::make_release_tar;
     !docker
-        --context $DOCKER_CONTEXT
+        --context $_DOCKER_CONTEXT
         buildx build
             --tag $tag
             --target $target

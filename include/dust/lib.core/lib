@@ -2,6 +2,9 @@
 
 include ../sys;
 
+def nl = "
+";
+
 def fmt = !printf $args;
 
 def p = fmt "%s" $args;

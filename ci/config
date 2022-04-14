@@ -3,11 +3,9 @@
 def _.lib.ide/context_path      = "./run/dust.ctx/1";
 def _.lib.ide/target_path       = "./run/dust";
 
-def INSTALL_PREFIX              = "/usr/local";
-def DIST_PREFIX                 = "/usr/local";
+def _INSTALL_PREFIX             = "/usr/local";
+def _DIST_PREFIX                = _INSTALL_PREFIX;
 
-def DOCKER_CONTEXT              = "p5001";
-def DOCKER_VOLUME               = "dust-ci-vol-0";
-def DOCKER_VOLUME_MOUNT_POINT   = "/home/bob";
-
-def _DOCKER_CONTEXT = DOCKER_CONTEXT;
+def _DOCKER_CONTEXT             = "p5001";
+def _DOCKER_VOLUME              = "dust-ci-vol-0";
+def _DOCKER_VOLUME_MOUNT_POINT  = "/home/bob";

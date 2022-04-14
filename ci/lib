@@ -11,16 +11,20 @@ include ./lib.install;
 def archive = !git archive HEAD --format tar;
 include ./lib.docker;
 
+def libci = ide::target_path ci/lib;
 
 def ci::build = {
     ide::compile ci/lib;
-    ide::compile var/web-app/lib;
+    ide::dusk-build $libci var/web-app/config.local var/web-app;
+}
+
+def ci::build_aba = {
+    ide::dusk-build $libci ci/config var/aba;
 }
 
 def ci::compile_all = {
     ci::build;
 
-    src libci = ide::target_path ci/lib;
     src config = "./ci/config";
     ide::dusk-build $libci $config ./include/dust/hashi;
 
@@ -33,72 +37,16 @@ def ci::compile_all = {
     ;
 }
 
-def ci::install = {
-    ci::compile_all;
-    install::local;
-}
-
-def ci::dist-clean = {
-    def bin = p $INSTALL_PREFIX / bin / $args;
-
-    src include_ = p $INSTALL_PREFIX "/include/dust";
-    src lib = p $INSTALL_PREFIX "/lib/dust";
-
-    src xs2 = bin xs2;
-    src xs-compile = bin xs-compile;
-    src xs-run = bin xs-run;
-    src xs-debug = bin xs-debug;
-    src xs-make-self-exec = bin xs-make-self-exec;
-    src xs-call = bin xs-call;
-    src xs-write_out = bin xs-write_out;
-
-    !rm -rfv
-        $include_
-        $xs2
-        $xs-compile
-        $xs-run
-        $xs-debug
-        $xs-make-self-exec
-        $xs-call
-        $xs-write_out
-        ;
-}
-
-def ci::system-dist-clean = {
-    def bin = p $INSTALL_PREFIX / bin / $args;
-
-    src include_ = p $INSTALL_PREFIX "/include/dust";
-    src lib = p $INSTALL_PREFIX "/lib/dust";
-
-    src xs2 = bin xs2;
-    src xs-compile = bin xs-compile;
-    src xs-run = bin xs-run;
-    src xs-debug = bin xs-debug;
-    src xs-make-self-exec = bin xs-make-self-exec;
-    src xs-call = bin xs-call;
-    src xs-write_out = bin xs-write_out;
-
-    !sudo rm -rfv
-        $include_
-        $xs2
-        $xs-compile
-        $xs-run
-        $xs-debug
-        $xs-make-self-exec
-        $xs-call
-        $xs-write_out
-        ;
-}
-
 def ci::bootstrap-local = {
-    ci::dist-clean;
+    uninstall::local;
     install::local-lib;
     install::local;
     ci::compile_all;
+    install::make_bin_release_tar;
 }
 
 def ci::bootstrap-system = {
-    ci::system-dist-clean;
+    uninstall::system;
     install::lib;
     install::system;
     ci::compile_all;

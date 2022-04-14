@@ -35,16 +35,35 @@ def cont = !cat
 ;
 cont;
 
-!echo PATH = 12 PATH;
-!printenv PATH = 12 PATH;
+!echo FOO = 12 FOO;
+!printenv FOO = 12 FOO;
 
 src _ = !xs-compile var/sample/test.dust;
 src _ = !xs-call <$_ - cont2;
 !cat <$_;
 
-
-#!xs-call
-#    <${xs-compile var/sample/test.dust}
-#;
-
+## !echo
+##     >/dev/null
+##     >$Variable
+##     >*dereference
+##     Hi;
+## # !cat <~/test.dust;
+##
+## !cat
+##     > xs-compile
+##     <./var/sample/test.dust
+##     | xs-call
+##
+##
+## ;
+##
+## !xs-call
+##     <${
+##     xs-compile
+##        <${cat
+##           <${cat var/sample/test.dust}
+##         }
+##     }
+## ;
+##
 #m!xs-compile var/sample/test.dust
