@@ -45,7 +45,7 @@ impl Show for SymbolTable {
                 let len = buffer
                     .iter()
                     .map(|(n, _)| n.len())
-                    .chain(std::iter::once(35))
+                    .chain(std::iter::once(8))
                     .max()
                     .unwrap_or(0);
 
@@ -55,7 +55,7 @@ impl Show for SymbolTable {
                         ": {name:len$} : {si}",
                         len = len,
                         name = name,
-                        si = sym_info
+                        si = sym_info,
                     )?;
                 }
             }

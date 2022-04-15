@@ -60,6 +60,7 @@ Redirect: ast::Redirect<'input> = {
     Path => <>.into(),
     Variable => <>.into(),
     Dereference => <>.into(),
+    "(" <Invocation> ")" => <>.into(),
 }
 
 Opt: ast::Opt<'input> = {
@@ -128,6 +129,8 @@ extern {
         "!"                         => Tok::Kwd         (lex::Kwd           ("!"            )   ),
         "{"                         => Tok::Kwd         (lex::Kwd           ("{"            )   ),
         "}"                         => Tok::Kwd         (lex::Kwd           ("}"            )   ),
+        "("                         => Tok::Kwd         (lex::Kwd           ("("            )   ),
+        ")"                         => Tok::Kwd         (lex::Kwd           (")"            )   ),
         "include"                   => Tok::Kwd         (lex::Kwd           ("include"      )   ),
         IDENT                       => Tok::Idnt        (lex::Idnt          (<&'input str>  )   ),
         IDENT_NO_EQ                 => Tok::IdntNe      (lex::IdntNe        (<&'input str>  )   ),

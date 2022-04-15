@@ -208,6 +208,7 @@ pub trait Compilers<'i> {
     fn invocation_input_redirection() -> S<RedirectInput<'i>> {
         |cmp, node| match node {
             RedirectInput((Redirect::Path(_path),)) => todo!(),
+            RedirectInput((Redirect::Invocation(invc),)) => cmp.compile(invc),
             RedirectInput((Redirect::Variable(ast::Variable((var,))),)) => {
                 match te!(cmp.lookup(var)) {
                     &SymInfo {
@@ -250,6 +251,7 @@ pub trait Compilers<'i> {
     fn invocation_output_redirection() -> S<RedirectOutput<'i>> {
         |_cmp, node| match node {
             RedirectOutput((Redirect::Path(_path),)) => todo!(),
+            RedirectOutput((Redirect::Invocation(invc),)) => todo!(),
             RedirectOutput((Redirect::Variable(_id),)) => todo!(),
             RedirectOutput((Redirect::Dereference(_deref),)) => todo!(),
         }

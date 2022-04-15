@@ -71,38 +71,44 @@ lexpop![
 lexpop![
     kwd,
     either(
-        '{',
+        '(',
         either(
-            '}',
+            ')',
             either(
-                '=',
+                '{',
                 either(
-                    '$',
+                    '}',
                     either(
-                        '*',
+                        '=',
                         either(
-                            '"',
+                            '$',
                             either(
-                                ';',
+                                '*',
                                 either(
-                                    '@',
+                                    '"',
                                     either(
-                                        '<',
+                                        ';',
                                         either(
-                                            '>',
+                                            '@',
                                             either(
-                                                '!',
+                                                '<',
                                                 either(
-                                                    exact("val"),
+                                                    '>',
                                                     either(
-                                                        exact("let"),
+                                                        '!',
                                                         either(
-                                                            exact("src"),
+                                                            exact("val"),
                                                             either(
-                                                                exact("def"),
+                                                                exact("let"),
                                                                 either(
-                                                                    exact("if"),
-                                                                    exact("include")
+                                                                    exact("src"),
+                                                                    either(
+                                                                        exact("def"),
+                                                                        either(
+                                                                            exact("if"),
+                                                                            exact("include")
+                                                                        )
+                                                                    )
                                                                 )
                                                             )
                                                         )
