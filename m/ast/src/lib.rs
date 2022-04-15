@@ -47,7 +47,8 @@ either![
     String,
     Variable,
     Word,
-    Natural
+    Natural,
+    Invocation
 ];
 either![Path, AbsPath, RelPath, HomePath];
 either![Opt, ShortOpt, LongOpt];

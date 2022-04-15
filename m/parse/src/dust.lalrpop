@@ -45,6 +45,7 @@ InvocationArg: ast::InvocationArg<'input> = {
     String => <>.into(),
     Variable => <>.into(),
     Natural => <>.into(),
+    "(" <Invocation> ")" => <>.into(),
 }
 InvocationCwd: ast::Path<'input> = "@" <Path>;
 InvocationEnv: ast::InvocationEnv<'input> = <IDENT_NO_EQ> "=" <InvocationArg>;

@@ -251,7 +251,7 @@ pub trait Compilers<'i> {
     fn invocation_output_redirection() -> S<RedirectOutput<'i>> {
         |_cmp, node| match node {
             RedirectOutput((Redirect::Path(_path),)) => todo!(),
-            RedirectOutput((Redirect::Invocation(invc),)) => todo!(),
+            RedirectOutput((Redirect::Invocation(_invc),)) => todo!(),
             RedirectOutput((Redirect::Variable(_id),)) => todo!(),
             RedirectOutput((Redirect::Dereference(_deref),)) => todo!(),
         }
@@ -339,6 +339,7 @@ pub trait Compilers<'i> {
                 },
                 A::Path(path) => cmp.compile(path),
                 A::Natural(n) => cmp.compile(n),
+                A::Invocation(invc) => cmp.compile(invc),
                 other => panic!("{:?}", other),
             }
         }

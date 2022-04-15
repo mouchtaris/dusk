@@ -81,8 +81,7 @@ impl Job {
     pub fn as_buffer_mut(&mut self) -> Result<&mut Buffer> {
         Ok(match self {
             Self::Buffer(buf) => buf,
-            sys @ Self::System(_) => te!(sys.made_buffer().and_then(Self::as_buffer_mut)),
-            other => temg!("Internal error: {:?}", other),
+            other => te!(other.made_buffer().and_then(Self::as_buffer_mut)),
         })
     }
 

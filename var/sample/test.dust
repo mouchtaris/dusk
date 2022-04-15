@@ -38,9 +38,8 @@ cont;
 !echo FOO = 12 FOO;
 !printenv FOO = 12 FOO;
 
-src _ = !xs-compile var/sample/test.dust;
-src _ = !xs-call <$_ - cont2;
-!cat <$_;
+def bye2 = !xs-write_out --echo BYE3;
+!xs-write_out --echo (bye2);
 
 ## !echo
 ##     >/dev/null
@@ -54,16 +53,3 @@ src _ = !xs-call <$_ - cont2;
 ##     <./var/sample/test.dust
 ##     | xs-call
 ##
-##
-## ;
-##
-## !xs-call
-##     <${
-##     xs-compile
-##        <${cat
-##           <${cat var/sample/test.dust}
-##         }
-##     }
-## ;
-##
-#m!xs-compile var/sample/test.dust

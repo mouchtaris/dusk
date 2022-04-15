@@ -3,7 +3,6 @@
 def install::make_bin_release_tar = {
     !tar
         --create
-        --verbose
         -C $_INSTALL_PREFIX
         --file bin-release.tar
         bin/xs-compile
@@ -39,7 +38,7 @@ def install::root_file = {
     let srce = arg_get 1 $args;
     let dest = arg_get 2 $args;
     !sudo cp -av $srce $dest;
-    !sudo chown -v root:root $dest;
+    !sudo chown root:root $dest;
 }
 
 def install::user_file = {
