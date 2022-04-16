@@ -122,6 +122,7 @@ pub trait CompileUtil: Borrow<Compiler> + BorrowMut<Compiler> {
             }
         })
     }
+
     fn emit_cleanup<C>(&mut self, clns: C, sinfo: &SymInfo) -> Result<()>
     where
         C: FnOnce(usize) -> i,

@@ -4,13 +4,6 @@ stages:
   - package
 image: dr.test.x/dust:3-arch-install
 
-build:
-  stage: build
-  script:
-    - id
-    - . $HOME/.cargo/env
-    - rustup run nightly cargo build --release --all-targets
-
 test:
   stage: test
   script:

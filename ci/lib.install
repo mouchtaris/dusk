@@ -73,6 +73,31 @@ def install::local-bin = {
     install::user_file $srce $dest;
 }
 
+def install::compile-dustbin =
+    !xs-make-self-exec
+        <(!xs-compile (p bin/ $args))
+        -
+        (p "#!" $_INSTALL_PREFIX "/bin/xs-run")
+;
+
+def install::system-dustbin = {
+    src target = _dest $args;
+    src bin = install::compile-dustbin $args;
+
+    install::root_parentdir $target;
+    !sudo <$bin xs-write_in $target;
+    !sudo chmod -v 755 $target;
+}
+
+def install::local-dustbin = {
+    src target = _dest $args;
+    src bin = install::compile-dustbin $args;
+
+    install::user_parentdir $target;
+    !xs-write_in <$bin $target;
+    !chmod -v 755 $target;
+}
+
 def _srce = p $args;
 def _dest = p $_INSTALL_PREFIX / $args;
 
@@ -128,6 +153,9 @@ def install::system = {
 
     def a = install::system-bin-alias $args;
     a xs-write_out xs-write_in;
+
+    def d = install::system-dustbin $args;
+    d dusk-ctrl-here;
 }
 
 def install::local = {
@@ -146,6 +174,9 @@ def install::local = {
 
     def a = install::local-bin-alias $args;
     a xs-write_out xs-write_in;
+
+    def d = install::local-dustbin $args;
+    d dusk-ctrl-here;
 }
 
 def install::lib = {
@@ -192,6 +223,7 @@ def uninstall::local = {
     src xs-make-self-exec = bin xs-make-self-exec;
     src xs-call = bin xs-call;
     src xs-write_out = bin xs-write_out;
+    src dusk-ctrl-here = bin dusk-ctrl-here;
 
     !rm -rfv
         $include_
@@ -203,6 +235,7 @@ def uninstall::local = {
         $xs-make-self-exec
         $xs-call
         $xs-write_out
+        $dusk-ctrl-here
     ;
 }
 
@@ -220,6 +253,7 @@ def uninstall::system = {
     src xs-make-self-exec = bin xs-make-self-exec;
     src xs-call = bin xs-call;
     src xs-write_out = bin xs-write_out;
+    src dusk-ctrl-here = bin dusk-ctrl-here;
 
     !sudo rm -rfv
         $include_
@@ -231,5 +265,6 @@ def uninstall::system = {
         $xs-make-self-exec
         $xs-call
         $xs-write_out
+        $dusk-ctrl-here
     ;
 }

@@ -1,23 +1,25 @@
 use {
     error::te,
-    std::{env, fs, io},
+    main::Result,
+    std::{env, io},
 };
 
-error::Error! {
-    Io = io::Error
-}
-
 fn main() -> Result<()> {
-    let mut argv = env::args().skip(1);
-    let inp_path: String = te!(argv.next(), "missing input_path");
-    let header: String = te!(argv.next(), "missing header");
+    let argv = env::args().skip(1).collect::<Vec<_>>();
 
-    let inp: Vec<u8> = te!(std::fs::read(&inp_path), "read {}", inp_path);
-    let mut file: fs::File = te!(fs::File::create(&inp_path), "write {}", inp_path);
+    // TODO switch order
+    let mut input = te!(main::args_get_input(argv.iter()));
+    let header: &String = te!(argv.get(1), "missing header");
+
+    let mut inp = <_>::default();
+    te!(io::Read::read_to_end(&mut input, &mut inp));
+
+    // !! Important: AFTER INPUT or the input file might become empty.
+    let mut output = te!(main::args_get_output(argv.iter()));
 
     use io::Write;
-    te!(write!(file, "{}\n", header));
-    te!(file.write_all(&inp));
+    te!(write!(output, "{}\n", header));
+    te!(output.write_all(&inp));
 
     Ok(())
 }

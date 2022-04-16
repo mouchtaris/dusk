@@ -22,6 +22,18 @@ def ci::build_aba = {
     ide::dusk-build $libci ci/config var/aba;
 }
 
+def ci::build_grammar = {
+    ide::compile grammar/ci.dust;
+}
+
+def ci::build_ctrl_here = {
+    ide::compile bin/dusk-ctrl-here;
+}
+
+def ci::build_ci = {
+    ide::compile ci/lib;
+}
+
 def ci::compile_all = {
     ci::build;
 
@@ -51,10 +63,6 @@ def ci::bootstrap-system = {
     install::system;
     ci::compile_all;
     install::make_bin_release_tar;
-}
-
-def ci::build_grammar = {
-    ide::compile grammar/ci.dust;
 }
 
 def ci::test-spec = {

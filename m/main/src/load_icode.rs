@@ -76,3 +76,25 @@ pub fn list_func(cmp: &compile::Compiler) -> impl Iterator<Item = &str> {
         .sorted()
         .into_iter()
 }
+
+pub fn args_get_input<A>(args: A) -> Result<Box<dyn io::Read>>
+where
+    A: IntoIterator,
+    A::Item: AsRef<str>,
+{
+    Ok(match args.into_iter().next().as_ref().map(<_>::as_ref) {
+        Some("-") | None => Box::new(io::stdin()),
+        Some(path) => te!(fs::File::open(path).map(Box::new), "input path: {}", path),
+    })
+}
+
+pub fn args_get_output<A>(args: A) -> Result<Box<dyn io::Write>>
+where
+    A: IntoIterator,
+    A::Item: AsRef<str>,
+{
+    Ok(match args.into_iter().next().as_ref().map(<_>::as_ref) {
+        Some("-") | None => Box::new(io::stdout()),
+        Some(path) => te!(fs::File::open(path).map(Box::new), "output path: {}", path),
+    })
+}

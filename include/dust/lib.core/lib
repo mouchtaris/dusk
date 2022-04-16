@@ -11,9 +11,16 @@ def p = fmt "%s" $args;
 def p0 = fmt "%s\x00" $args;
 def join = fmt "%s " $args;
 
-def dirname = { src _ = !dirname $args; !tr <$_ -d "\n" }
-def basename = { src _ = !basename $args; !tr <$_ -d "\n" }
-def cwd = { src _ = !pwd; !tr <$_ -d "\n" }
+def dirname = !tr <(!dirname $args) -d "\n";
+def basename = !tr <(!basename $args) -d "\n";
+def cwd = !tr <(!pwd) -d "\n";
+def env = !tr <(!printenv $args) -d "\n";
+
+def HOME = env HOME;
+
+def cwd/ = p (cwd) / $args;
+
+def unpack = !base64 <(p $args) -d;
 
 def arg_get = {
     #
@@ -35,4 +42,16 @@ def arg_get = {
     src _ = !tr <$_ -d "\000";
 
     !cat <$_
+}
+
+def cp_mkdir = {
+    let flags = arg_get 1 $args;
+    let source = arg_get 2 $args;
+    let dest = arg_get 3 $args;
+
+    let dir = dirname $dest;
+
+    !mkdir $flags $dir;
+    !cp $flags $source $dest;
+    !xs-write_out --echo $dir
 }

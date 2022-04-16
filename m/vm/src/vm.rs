@@ -361,14 +361,7 @@ impl Vm {
             let instruction = &icode.instructions[vm.instr_ptr];
             te!(vm.wait_debugger(instruction));
             vm.instr_ptr += 1;
-            let mut success = instruction.borrow().operate_on(vm);
-            #[cfg(feature = "vm_stack_trace")]
-            {
-                if let Err(_) = &success {
-                    te!(vm.write_to(Ok(std::io::stderr())))
-                }
-            }
-            success = success; // for compile warning
+            let success = instruction.borrow().operate_on(vm);
             te!(success);
         }
         Ok(())

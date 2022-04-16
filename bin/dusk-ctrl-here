@@ -1,0 +1,60 @@
+# vim: ft=ruby et ts=4 sw=4
+
+#
+# Define dummy settings for lib.ide, as we only
+# need ide::fzf.
+#
+def _.lib.ide/target_path = "/dev/null";
+def _.lib.ide/context_path = "/dev/null";
+def _INSTALL_PREFIX = "/usr/local";
+include ../include/dust/lib.ide/lib;
+
+def cache/ = p $HOME / .cache/dusk-ctrl-here/bucket/ $args;
+def fzf = !tr <(ide::fzf $args) -d "\000";
+
+# Find all *.dusk files under the CWD.
+# let _ = !find . -iname "*.dusk" -type f -print0;
+let _ =
+    !find .
+        -iname "*.dusk"
+        "(" -type f -o -type l ")"
+        -print0;
+let scripts = !cat <$_;
+
+# Prompt the operator to select one.
+let _ = fzf "~ ScriptZ ~" "Select a scriptz:" (!base64 <$scripts);
+let script_path = !cat <$_;
+
+# Calculate the SHA256 sum of the script's file contents.
+let _ = !openssl <(!cat $script_path) sha256;
+let _ = !sed <$_ -E -e "s/\(stdin\)= +//";
+let _ = !tr <$_ -d "\n";
+let script_id = !cat <$_;
+
+###
+### Build (if needed) the script into the object cache.
+###
+# Target path under the cache/ dir.
+let target_path = cache/ $script_id;
+# Synthetic makefile, in order to build conditionally.
+src makefile = p $target_path ": " (cwd/ $script_path) "
+	xs-compile $< $@
+";
+# Create parent dir.
+!mkdir -pv (cache/);
+# Build with make.
+# FIXME: get a proper stable hash from xs-compiler
+!rm -rvf $target_path;
+!make <$makefile -f -;
+
+# List functions from the object artifact.
+let _ = !xsi-list-func $target_path;
+let funcs = !base64 <$_;
+
+# Prompt the operator to select one.
+let _ = fzf "~ FuncZ ~" "Select a funcz:" $funcs;
+let func_name = !cat <$_;
+
+# Call the selected function from the selected script's object file,
+# also passing over any command line args.
+!xs-call $target_path $func_name $args;
