@@ -8,7 +8,7 @@ pub trait Compile<T>: Sized {
 
 pub type CompileEv<T, R> = fn(&mut Compiler, T) -> Result<R>;
 
-macro_rules! compile {
+macro_rules! compile_rt {
     ($($t:ident, $rt:ty, $c:expr),*) => {
         $(
         impl <'i> Compile<ast::$t<'i>> for Compiler {
@@ -19,50 +19,45 @@ macro_rules! compile {
             }
         }
         )*
-    }
+    };
 }
+
+macro_rules! compile {
+    ($($t:ident, $c:expr),*) => {
+        compile_rt![ $( $t, SymInfo, $c ),* ];
+    };
+}
+
 compile![
     Natural,
-    SymInfo,
     cmps::natural(),
     String,
-    SymInfo,
     cmps::string(),
     Path,
-    SymInfo,
     cmps::path(),
     Expr,
-    SymInfo,
     cmps::expr(),
     InvocationTarget,
-    SymInfo,
     cmps::invocation_target(),
+    InvocationCwd,
+    cmps::invocation_cwd(),
     InvocationInputRedirection,
-    SymInfo,
     cmps::invocation_input_redirection(),
     InvocationOutputRedirection,
-    SymInfo,
     cmps::invocation_output_redirection(),
     InvocationArg,
-    SymInfo,
     cmps::invocation_arg(),
     Opt,
-    SymInfo,
     cmps::invocation_option(),
     Invocation,
-    SymInfo,
     cmps::invocation(),
     Item,
-    SymInfo,
     cmps::item(),
     Module,
-    SymInfo,
     cmps::module(),
     Block,
-    SymInfo,
     cmps::block(),
     Body,
-    SymInfo,
     cmps::body()
 ];
 

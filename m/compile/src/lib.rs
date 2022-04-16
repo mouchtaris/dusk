@@ -1,3 +1,4 @@
+#![feature(box_into_inner)]
 pub const VERSION: &str = "0.0.1";
 use {
     ::show::Show,

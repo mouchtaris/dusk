@@ -1,5 +1,7 @@
 # vim: ft=ruby et ts=4 sw=4
 def p = !printf "%s\n" $args;
+def nl = "
+";
 
 src a = !echo a;
 src b = !cat <$a;
@@ -39,7 +41,15 @@ cont;
 !printenv FOO = 12 FOO;
 
 def bye2 = !xs-write_out --echo BYE3;
-!xs-write_out --echo (bye2);
+!xs-write_out --echo (bye2) --echo $nl;
+
+!pwd @/;
+!pwd @/tmp;
+def bob = "/dev";
+!pwd @$bob;
+!pwd @$bob;
+def bob/ = p "/" $args;
+!pwd @(bob/ tmp);
 
 ## !echo
 ##     >/dev/null

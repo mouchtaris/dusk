@@ -17,9 +17,9 @@ Item: ast::Item<'input> = {
 }
 
 pub Expr: ast::Expr<'input> = {
-    <String> => <>.into(),
-    <Natural> => <>.into(),
-    <Invocation> => <>.into(),
+    String => <>.into(),
+    Natural => <>.into(),
+    Invocation => <>.into(),
 }
 
 pub Invocation: ast::Invocation<'input> = {
@@ -47,7 +47,11 @@ InvocationArg: ast::InvocationArg<'input> = {
     Natural => <>.into(),
     "(" <Invocation> ")" => <>.into(),
 }
-InvocationCwd: ast::Path<'input> = "@" <Path>;
+InvocationCwd: ast::InvocationCwd<'input> = {
+    "@" <Path> => <>.into(),
+    "@" <Variable> => <>.into(),
+    "@" "(" <Box<Invocation>> ")" => <>.into(),
+}
 InvocationEnv: ast::InvocationEnv<'input> = <IDENT_NO_EQ> "=" <InvocationArg>;
 
 InvocationInputRedirection: ast::InvocationInputRedirection<'input> = {

@@ -10,24 +10,30 @@ pub trait CompileUtil: Borrow<Compiler> + BorrowMut<Compiler> {
         self.borrow()
     }
 
-    fn lookup_local_var<S>(&self, name: S) -> Result<&sym::Local>
-    where
-        S: AsRef<str>,
-    {
-        let cmp = self.cmp_ref();
-        let name = name.as_ref();
+    fn capture_call_to_local_var(&mut self, name: &str) -> Result<SymInfo> {
+        let cmp = self.cmp();
 
-        let sinfo = te!(cmp.lookup(name));
-        if sinfo.scope_id != cmp.scope_id() {
+        let letstmt = ast::src_stmt(&name, ast::invoc(&name));
+        let local_si: SymInfo = te!(cmp.compile(letstmt)).to_owned();
+        error::ldebug!("capture call to {} in {:?}", name, local_si);
+        error::ldebug!("new {}: {:?}", name, te!(cmp.lookup(name)));
+
+        Ok(local_si)
+    }
+
+    fn ensure_local_scope(&self, var: &str, sinfo: &SymInfo) -> Result<SymInfo> {
+        let cmp = self.cmp_ref();
+        let SymInfo { scope_id, .. } = sinfo;
+        if *scope_id == cmp.scope_id() {
+            Ok(sinfo.to_owned())
+        } else {
             temg!(
-                "{} is in different scope {} than {}",
-                name,
-                sinfo.scope_id,
+                "{} is in scope {} instead of {}",
+                var,
+                scope_id,
                 cmp.scope_id()
             )
         }
-        let sinfo = te!(sinfo.as_local_ref(), "{}", name);
-        Ok(sinfo)
     }
 
     fn emit_from_symbol(&mut self, push_or_retval: bool, sinfo: &SymInfo) -> Result<()> {

@@ -205,6 +205,29 @@ pub trait Compilers<'i> {
         }
     }
 
+    fn invocation_cwd() -> S<InvocationCwd<'i>> {
+        use InvocationCwd as C;
+        |cmp, node| match node {
+            C::Path(path) => cmp.compile(path),
+            C::Variable(ast::Variable((var,))) => match te!(cmp.lookup(var)) {
+                &SymInfo {
+                    typ: sym::Typ::Address(_),
+                    ..
+                } => cmp.capture_call_to_local_var(var),
+                sinfo @ &SymInfo {
+                    typ: sym::Typ::Local(_),
+                    ..
+                } => cmp.ensure_local_scope(var, sinfo),
+                sinfo @ SymInfo {
+                    typ: sym::Typ::Literal(_),
+                    ..
+                } => Ok(sinfo.to_owned()),
+            },
+            C::BoxInvocation(invc) => cmp.compile(Box::into_inner(invc)),
+            other => panic!("{:?}", other),
+        }
+    }
+
     fn invocation_input_redirection() -> S<RedirectInput<'i>> {
         |cmp, node| match node {
             RedirectInput((Redirect::Path(_path),)) => todo!(),
@@ -214,30 +237,11 @@ pub trait Compilers<'i> {
                     &SymInfo {
                         typ: sym::Typ::Address(_),
                         ..
-                    } => {
-                        let name = var;
-                        let letstmt = ast::src_stmt(&name, ast::invoc(&name));
-                        let local_si: SymInfo = te!(cmp.compile(letstmt)).to_owned();
-                        error::ldebug!("capture call to {} in {:?}", name, local_si);
-                        error::ldebug!("new {}: {:?}", name, te!(cmp.lookup(name)));
-
-                        Ok(local_si)
-                    }
+                    } => cmp.capture_call_to_local_var(var),
                     sinfo @ SymInfo {
                         typ: sym::Typ::Local(_),
-                        scope_id,
-                    } => {
-                        if *scope_id == cmp.scope_id() {
-                            Ok(sinfo.to_owned())
-                        } else {
-                            temg!(
-                                "{} is in scope {} instead of {}",
-                                var,
-                                scope_id,
-                                cmp.scope_id()
-                            )
-                        }
-                    }
+                        ..
+                    } => cmp.ensure_local_scope(var, sinfo),
                     sinfo @ SymInfo {
                         typ: sym::Typ::Literal(_),
                         ..
@@ -311,31 +315,12 @@ pub trait Compilers<'i> {
                     } => Ok(sinfo.to_owned()),
                     sinfo @ SymInfo {
                         typ: sym::Typ::Local(_),
-                        scope_id,
-                    } => {
-                        if *scope_id == cmp.scope_id() {
-                            Ok(sinfo.to_owned())
-                        } else {
-                            temg!(
-                                "{} is in scope {} instead of {}",
-                                var,
-                                scope_id,
-                                cmp.scope_id()
-                            )
-                        }
-                    }
+                        ..
+                    } => cmp.ensure_local_scope(var, sinfo),
                     &SymInfo {
                         typ: sym::Typ::Address(_),
                         ..
-                    } => {
-                        let name = var;
-                        let letstmt = ast::let_stmt(&name, ast::invoc(&name));
-                        let local_si: SymInfo = te!(cmp.compile(letstmt)).to_owned();
-                        error::ldebug!("capture call to {} in {:?}", name, local_si);
-                        error::ldebug!("new {}: {:?}", name, te!(cmp.lookup(name)));
-
-                        Ok(local_si)
-                    }
+                    } => cmp.capture_call_to_local_var(var),
                 },
                 A::Path(path) => cmp.compile(path),
                 A::Natural(n) => cmp.compile(n),
