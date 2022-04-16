@@ -3,7 +3,7 @@ use super::{te, Result, TryFrom};
 macro_rules! either {
     ($($t:tt)*) => {
         either::either![
-            #[derive(Debug, Clone)]
+            #[derive(Clone, Debug)]
             pub $($t)*
         ];
     }
@@ -11,7 +11,7 @@ macro_rules! either {
 macro_rules! name {
     ($($t:tt)*) => {
         either::name![
-            #[derive(Debug, Clone)]
+            #[derive(Clone, Debug)]
             pub $($t)*
         ];
     }
@@ -19,14 +19,14 @@ macro_rules! name {
 
 either![Value, Null, LitString, DynString, Natural, Array, Job, FuncAddr];
 
-name![Job = usize];
 pub type Null = ();
-pub type Natural = usize;
 name![LitString = usize];
-name![DynString = String];
+name![DynString = usize];
+pub type Natural = usize;
+name![Job = usize];
 name![FuncAddr = usize];
 
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug)]
 pub struct Array {
     pub ptr: usize,
 }
@@ -38,6 +38,13 @@ impl Default for Value {
 }
 
 impl Value {
+    pub fn is_null(&self) -> bool {
+        match self {
+            Self::Null(_) => true,
+            _ => false,
+        }
+    }
+
     pub fn try_into<T>(self) -> Result<T>
     where
         T: TryFrom<Self, Error = Self> + ValueTypeInfo,

@@ -10,6 +10,7 @@ use {
 pub struct Vm {
     pub bin_path: Deq<String>,
     string_table: Deq<String>,
+    dynstring_table: Deq<String>,
     job_table: Deq<Job>,
     stack: Vec<Value>,
     frame_ptr: usize,
@@ -53,7 +54,8 @@ impl Vm {
         self.push_null(); // invocation target
         self.push_null(); // cwd
         for arg in revargs {
-            self.push_val(value::DynString(arg));
+            let strid = self.add_dynstring(arg);
+            self.push_val(value::DynString(strid));
         }
         self.push_val(argc); // nargs
 
@@ -521,21 +523,12 @@ impl Vm {
         Ok(())
     }
 
-    pub fn val_into_string(&self, val: Value) -> Result<String> {
-        let vm = self;
-
-        Ok(match val {
-            Value::LitString(value::LitString(id)) => te!(vm.get_string_id(id)).to_owned(),
-            Value::DynString(value::DynString(s)) => s,
-            other => error::temg!("Not a string value: {:?}", other),
-        })
-    }
     pub fn val_as_str<'a>(&'a self, val: &'a Value) -> Result<&'a str> {
         let vm = self;
 
         Ok(match val {
             &Value::LitString(value::LitString(id)) => te!(vm.get_string_id(id)),
-            Value::DynString(value::DynString(s)) => s.as_str(),
+            &Value::DynString(value::DynString(sid)) => te!(vm.get_dynstring_id(sid)),
             other => error::temg!("Not a string value: {:?}", other),
         })
     }
@@ -561,5 +554,20 @@ impl Vm {
     pub fn get_job(&self, jobid: usize) -> Result<&Job> {
         let job = self.job_table.get(jobid);
         Ok(te!(job, "jobid {}", jobid))
+    }
+
+    pub fn add_dynstring(&mut self, s: String) -> usize {
+        let Self {
+            dynstring_table: d, ..
+        } = self;
+        d.push_back(s);
+        d.len() - 1
+    }
+
+    pub fn get_dynstring_id(&self, id: usize) -> Result<&str> {
+        let Self {
+            dynstring_table: d, ..
+        } = self;
+        Ok(te!(d.get(id)))
     }
 }

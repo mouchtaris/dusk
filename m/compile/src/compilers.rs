@@ -224,7 +224,6 @@ pub trait Compilers<'i> {
                 } => Ok(sinfo.to_owned()),
             },
             C::BoxInvocation(invc) => cmp.compile(Box::into_inner(invc)),
-            other => panic!("{:?}", other),
         }
     }
 

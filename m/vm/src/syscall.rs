@@ -43,8 +43,12 @@ pub fn spawn(vm: &mut Vm) -> Result<()> {
     let mut cmd = Command::new(target);
     cmd.stdin(Stdio::null());
 
-    if let Ok(cwd) = vm.val_as_str(&cwd) {
-        cmd.current_dir(cwd);
+    if !cwd.is_null() {
+        let cwd = cwd.to_owned();
+        te!(inject_val(vm, &cwd, &mut |cwd| {
+            error::ltrace!("cwd = '{}'", cwd);
+            cmd.current_dir(cwd);
+        }));
     }
 
     // Set command args
@@ -191,10 +195,46 @@ where
             let job = te!(vm.get_job_mut(jobid));
             inject(te!(job.make_string()));
         }
-        Value::DynString(value::DynString(string)) => {
+        &Value::DynString(value::DynString(string_id)) => {
+            let string = te!(vm.get_dynstring_id(string_id));
             inject(string);
         }
         other => temg!("Cannot inject arg@{}: {:?}", arg_addr, other),
+    }
+    Ok(())
+}
+
+fn inject_val<I>(vm: &mut Vm, val: &Value, inject: &mut I) -> Result<()>
+where
+    I: FnMut(&str),
+{
+    match val {
+        &Value::LitString(value::LitString(strid)) => {
+            let val: &str = te!(vm.get_string_id(strid));
+            inject(val);
+        }
+        Value::Natural(n) => {
+            let mut sbuf = [0u8; 256];
+            use {std::io::Write, std::str::from_utf8};
+            te!(write!(sbuf.as_mut_slice(), "{}", n));
+            inject(te!(from_utf8(sbuf.as_slice())));
+        }
+        &Value::Job(value::Job(jobid)) => {
+            let job = te!(vm.get_job_mut(jobid));
+            inject(te!(job.make_string()));
+        }
+        &Value::DynString(value::DynString(string_id)) => {
+            let string = te!(vm.get_dynstring_id(string_id));
+            inject(string);
+        }
+        &Value::Array(value::Array { ptr }) => {
+            let &arrlen: &usize = te!(vm.stack_get(ptr));
+            for i in 1..=arrlen {
+                let val = vm.stack_get_val(ptr + i).to_owned();
+                te!(inject_val(vm, &val, inject));
+            }
+        }
+        other => temg!("Not supported as to-string: {:?}", other),
     }
     Ok(())
 }

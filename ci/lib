@@ -53,6 +53,14 @@ def ci::bootstrap-system = {
     install::make_bin_release_tar;
 }
 
+def ci::build_grammar = {
+    ide::compile grammar/ci.dust;
+}
+
+def ci::test-spec = {
+    !xs-run <(!xs-compile spec/spec);
+}
+
 def test = {
     ;
 }

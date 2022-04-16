@@ -1,0 +1,37 @@
+# vim: ft=scala et ts=4 sw=4
+include ../ci/config;
+include ../include/dust/lib.ide/lib;
+
+def __FILE__ = "ci.dust";
+
+def p = !printf "%s" $args;
+
+def proj/ = p "./grammar/" $args;
+
+def trg/ = p /,/dust-grammar-cmake/ $args;
+
+def trg/.mkdir  = {
+    src trg = trg/ $args;
+    !mkdir -pv $trg;
+    p $trg
+}
+
+def cmake.preflight = {
+    !echo cmake "@" $trg/ $proj/;
+}
+
+def cmake = cmake.preflight;
+
+def ci::build_grammar = {
+    ide::compile (proj/ $__FILE__);
+}
+
+def ci::run =
+    !xs-call
+        (ide::target_path (proj/ $__FILE__))
+        (!tr
+            <(ide::select_func)
+            -d "\000"
+        )
+        $args
+;

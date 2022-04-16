@@ -57,7 +57,7 @@ def ide::fzf = {
     src opts = !base64 <$opts64 -d;
 
     !fzf <$opts
-        --height "100%"
+        --height "60%"
         --layout=reverse
         --border=sharp
         "--margin=15%"

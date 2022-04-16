@@ -75,7 +75,8 @@ WORKDIR /home/bob
 ###$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 FROM arch-base as arch-build-base
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs --output rustup.sh
-RUN bash rustup.sh -y --verbose
+RUN bash rustup.sh -y --verbose \
+    --default-toolchain nightly
 RUN $HOME/.cargo/bin/cargo install \
     --bin dev_workspace \
     --git https://gitlab.com/gvz/rs/ --branch main

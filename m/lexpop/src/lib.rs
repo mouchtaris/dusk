@@ -174,7 +174,13 @@ where
 impl Prop for char {
     fn prop(&mut self, range: Range) -> Option<usize> {
         match range {
-            &[c, ..] if c == *self => Some(1),
+            _ if (*self as u8) == 0 => None,
+            &[c, ..] if c == *self => {
+                // Destroy self so that the match length
+                // is always at most 1.
+                *self = 0 as char;
+                Some(1)
+            }
             _ => None,
         }
     }

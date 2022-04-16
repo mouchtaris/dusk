@@ -22,7 +22,8 @@ error::Error! {
     Message = String
     Var = std::env::VarError
     Io = io::Error
-    Utf8Error = std::string::FromUtf8Error
+    FromUtf8 = std::string::FromUtf8Error
+    Utf8 = std::str::Utf8Error
     Job = job::Error
     Debugger = debugger::Error
     Fmt = std::fmt::Error

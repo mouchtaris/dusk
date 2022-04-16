@@ -165,12 +165,7 @@ extern {
     }
 }
 
-//match {
-//    "let",
-//    "def",
-//} else {
 //    r"[a-zA-Z_][a-zA-Z0-9:.,_/-]*" => IDENT_NO_EQ,
-//} else {
 //    r"--[a-zA-Z0-9:.,_=/-]*" => LONG_OPT,
 //    r"\./[a-zA-Z0-9:.,_=/-]*" => REL_PATH,
 //    r"/[a-zA-Z0-9:.,_=/-]*" => ABS_PATH,
@@ -179,17 +174,5 @@ extern {
 //    r#""[^"]*""# => DOUBLE_QUOTE_RAW_STRING,
 //    r#"'[^']*'"# => SINGLE_QUOTE_RAW_STRING,
 //    r"#.*" => DOC_COMMENT,
-//    "=",
-//    "$",
-//    "\"",
-//    ";",
-//    "@",
-//    "<",
-//    ">",
-//    "!",
-//} else {
 //    r"-[a-zA-Z0-9:.,_=/-]*" => SHORT_OPT,
-//} else {
 //    r"[a-zA-Z0-9:.,_=+/-]*" => WORD,
-//}
-

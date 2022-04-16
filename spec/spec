@@ -21,8 +21,10 @@ def test =  {
     !cat <$_
 }
 
-test "./spec/environment";
-test "./spec/current_working_directory";
-test "./spec/collection_time";
-test "./spec/binding_capture_scope";
-test "./spec/input_redirection_to_method";
+test ./spec/environment;
+test ./spec/current_working_directory;
+test ./spec/collection_time;
+test ./spec/binding_capture_scope;
+test ./spec/input_redirection_to_method;
+test ./spec/lex_symbol_tokens_closing_seq_parsing;
+test ./spec/cwd_from_variable;
