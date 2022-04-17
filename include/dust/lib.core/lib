@@ -17,6 +17,7 @@ def cwd = !tr <(!pwd) -d "\n";
 def env = !tr <(!printenv $args) -d "\n";
 
 def HOME = env HOME;
+def HOME/ = p $HOME / $args;
 
 def cwd/ = p (cwd) / $args;
 

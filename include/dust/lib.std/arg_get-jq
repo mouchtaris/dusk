@@ -1,0 +1,10 @@
+# vim: et ft=scala ts=4 sw=4
+
+def _arg = {
+    include ./jq;
+    jq r#".
+        | $ARGS.positional as $args
+        | ($args[0] | tonumber) as $num
+        | $args[$num]
+    "# $args;
+}

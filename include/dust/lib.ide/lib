@@ -9,7 +9,7 @@ def ide::target_path =
     p $_target_path / $args;
 
 def ide::list_lib = {
-    !find $_target_path -type f -print0
+    !find $_target_path "(" -name lib -o -name pkg ")" -print0
 }
 
 def ide::list_func = {
