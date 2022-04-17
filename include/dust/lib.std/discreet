@@ -1,6 +1,2 @@
-# vim: ft=scala et ts=4 sw=4
-include ./arg_get-jq;
-
-def _p = !printf "%s" $args;
-def _env = !tr <(!printenv $args) -d "\n";
-def _HOME = _env HOME;
+# vim: et ft=scala ts=4 sw=4
+include ../lib.core/discreet;

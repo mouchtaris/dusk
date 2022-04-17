@@ -1,0 +1,56 @@
+# vim: et ft=scala ts=4 sw=4
+
+def _nl = "
+";
+
+def _fmt = !printf $args;
+
+def _p = _fmt "%s" $args;
+def _p0 = _fmt "%s\x00" $args;
+def _join = _fmt "%s " $args;
+
+def _dirname = !tr <(!dirname $args) -d "\n";
+def _basename = !tr <(!basename $args) -d "\n";
+def _cwd = !tr <(!pwd) -d "\n";
+def _env = !tr <(!printenv $args) -d "\n";
+
+def _HOME = _env HOME;
+def _HOME/ = _p $_HOME / $args;
+
+def _cwd/ = _p (_cwd) / $args;
+
+def _unpack = !base64 <(_p $args) -d;
+
+def _arg_get = {
+    #
+    # Get first argument, n, index (from 1) of argument to echo
+    #
+    src _ = _p0 $args;
+    src _ = !tail <$_ -z -n "+1"; # Some attempt to empty the stream and avoid deadlocks
+    src _ = !head <$_ -z -n "+1"; # No need to tail this because it's already length 1
+    src _ = !tr <$_ -d "\000";
+    let n = !cat <$_;
+
+    #
+    # Get the actual argument n
+    #
+    src _ = _p0 $args;
+    src _ = !tail <$_ -z -n "+2";
+    src _ = !head <$_ -z -n $n;
+    src _ = !tail <$_ -z -n "-1";
+    src _ = !tr <$_ -d "\000";
+
+    !cat <$_
+}
+
+def _cp_mkdir = {
+    let flags = _arg_get 1 $args;
+    let source = _arg_get 2 $args;
+    let dest = _arg_get 3 $args;
+
+    let dir = _dirname $dest;
+
+    !mkdir $flags $dir;
+    !cp $flags $source $dest;
+    !xs-write_out --echo $dir
+}
