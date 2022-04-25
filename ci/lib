@@ -26,10 +26,6 @@ def ci::build_grammar = {
     ide::compile grammar/ci.dust;
 }
 
-def ci::build_ctrl_here = {
-    ide::compile bin/dusk-ctrl-here;
-}
-
 def ci::build_ci = {
     ide::compile ci/lib;
 }

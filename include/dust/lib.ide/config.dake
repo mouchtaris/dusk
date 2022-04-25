@@ -1,0 +1,14 @@
+# vim: ft=ruby et ts=4 sw=4
+
+include ../lib.std/discreet;
+
+#
+# Predefined dake convention of this configuration.
+#
+def _target/ = _HOME/ .cache/dusk/ (_cwd) / $args;
+def _dusk/ = _target/ dusk/ $args;
+
+def _.lib.ide/target_path = _dusk/;
+def _.lib.ide/context_path = _target/ dust-ctx;
+def _INSTALL_PREFIX = "/usr/local";
+include ../lib.ide/lib;

@@ -31,6 +31,7 @@ def install::build = {
         --bin xs-make-self-exec
         --bin xs-write_out
         --bin xsi-list-func
+        --bin xs2
     ;
 }
 
@@ -156,6 +157,7 @@ def install::system = {
 
     def d = install::system-dustbin $args;
     d dusk-ctrl-here;
+    d dake;
 }
 
 def install::local = {
@@ -177,6 +179,7 @@ def install::local = {
 
     def d = install::local-dustbin $args;
     d dusk-ctrl-here;
+    d dake;
 }
 
 def install::lib = {
@@ -224,6 +227,7 @@ def uninstall::local = {
     src xs-call = bin xs-call;
     src xs-write_out = bin xs-write_out;
     src dusk-ctrl-here = bin dusk-ctrl-here;
+    src dake = bin dake;
 
     !rm -rfv
         $include_
@@ -236,6 +240,7 @@ def uninstall::local = {
         $xs-call
         $xs-write_out
         $dusk-ctrl-here
+        $dake
     ;
 }
 
@@ -254,6 +259,7 @@ def uninstall::system = {
     src xs-call = bin xs-call;
     src xs-write_out = bin xs-write_out;
     src dusk-ctrl-here = bin dusk-ctrl-here;
+    src dake = bin dake;
 
     !sudo rm -rfv
         $include_
@@ -266,5 +272,6 @@ def uninstall::system = {
         $xs-call
         $xs-write_out
         $dusk-ctrl-here
+        $dake
     ;
 }

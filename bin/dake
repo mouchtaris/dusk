@@ -1,0 +1,17 @@
+# vim: ft=ruby et ts=4 sw=4
+
+include /usr/local/include/dust/lib.ide/config.dake;
+
+let _dake_path =
+    "/usr/local/include/dust/lib.ide/dake";
+
+def _lib =
+    _dusk/ $_dake_path;
+
+ide::compile $_dake_path;
+
+ide::dusk-build $_lib "dake/config.local" dake;
+
+!lsd --tree $_dusk/;
+
+# ide::select_ctx;
