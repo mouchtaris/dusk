@@ -1,0 +1,3 @@
+def MODULES = p0
+    machinectl
+;

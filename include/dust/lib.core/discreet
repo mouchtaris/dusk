@@ -1,4 +1,4 @@
-# vim: et ft=scala ts=4 sw=4
+# vim: et ts=4 sw=4
 
 def _nl = "
 ";
@@ -13,6 +13,7 @@ def _dirname = !tr <(!dirname $args) -d "\n";
 def _basename = !tr <(!basename $args) -d "\n";
 def _cwd = !tr <(!pwd) -d "\n";
 def _env = !tr <(!printenv $args) -d "\n";
+def _size = !tr <(!wc <(_p $args) -c) -d "\n";
 
 def _HOME = _env HOME;
 def _HOME/ = _p $_HOME / $args;
@@ -20,6 +21,15 @@ def _HOME/ = _p $_HOME / $args;
 def _cwd/ = _p (_cwd) / $args;
 
 def _unpack = !base64 <(_p $args) -d;
+
+def _uid = !tr <(!id -u) -d "\n";
+def _gid = !tr <(!id -g) -d "\n";
+
+def _remkdir = {
+    !rm -rf $args;
+    !mkdir -p $args;
+    _p $args
+}
 
 def _arg_get = {
     #

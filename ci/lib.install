@@ -185,9 +185,11 @@ def install::local = {
 def install::lib = {
     def f = install::system-file $args;
     f include/dust/hashi;
+    f include/dust/systemd;
     f include/dust/docker;
     f include/dust/package;
     f include/dust/lib.docker;
+    f include/dust/lib.sudo;
     f include/dust/lib.ide;
     f include/dust/lib.ux;
     f include/dust/lib.term;
@@ -200,9 +202,11 @@ def install::lib = {
 def install::local-lib = {
     def f = install::local-file $args;
     f include/dust/hashi;
+    f include/dust/systemd;
     f include/dust/docker;
     f include/dust/package;
     f include/dust/lib.docker;
+    f include/dust/lib.sudo;
     f include/dust/lib.ide;
     f include/dust/lib.ux;
     f include/dust/lib.term;

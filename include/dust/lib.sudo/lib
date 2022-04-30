@@ -1,0 +1,3 @@
+include ../lib.std/discreet;
+def _nosudo =
+    !sudo -u $_uid -- -u root -- $args;

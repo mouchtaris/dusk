@@ -1,0 +1,7 @@
+def mctl.mch.list0 =
+    !tr <( !sed <( !head <( !tail <( !machinectl
+        list)
+        -n "+2")
+        -n "-2")
+        -r -e "s,([^[:space:]]+).*,\1,")
+        "\n" "\000";

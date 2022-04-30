@@ -35,6 +35,7 @@ def ci::compile_all = {
 
     src config = "./ci/config";
     ide::dusk-build $libci $config ./include/dust/hashi;
+    ide::dusk-build $libci $config ./include/dust/systemd;
 
     !lsd
         --color always
