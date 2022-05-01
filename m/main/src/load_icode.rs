@@ -58,7 +58,7 @@ pub fn make_vm_call(
         None => temg!("Function not found: {}", func_addr),
         Some((_, _, sinfo)) => {
             let addr = te!(sinfo.as_addr_ref()).addr;
-            vm.init(args);
+            te!(vm.init(args));
             vm.jump(addr);
             te!(vm.eval_icode(&cmp.icode));
             te!(vm::Instr::CleanUp(0).operate_on(vm));

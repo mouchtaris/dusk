@@ -39,7 +39,7 @@ impl Vm {
         self.instr_ptr = 0;
     }
 
-    pub fn init(&mut self, revargs: Vec<String>) {
+    pub fn init(&mut self, revargs: Vec<String>) -> Result<()> {
         // synthetic call context
         // - RetVal
         // - # input redirs
@@ -48,20 +48,22 @@ impl Vm {
         // - Args + argn
         let argc = revargs.len();
         self.allocate(6 + argc);
-        self.push_null(); // retval allocation
-        self.push_val(0); // # env var settings
-        self.push_val(0); // # input redirections
-        self.push_null(); // invocation target
-        self.push_null(); // cwd
+        te!(self.push_null()); // retval allocation
+        te!(self.push_val(0)); // # env var settings
+        te!(self.push_val(0)); // # input redirections
+        te!(self.push_null()); // invocation target
+        te!(self.push_null()); // cwd
         for arg in revargs {
             let strid = self.add_dynstring(arg);
-            self.push_val(value::DynString(strid));
+            te!(self.push_val(value::DynString(strid)));
         }
-        self.push_val(argc); // nargs
+        te!(self.push_val(argc)); // nargs
 
         self.instr_ptr = usize::max_value();
-        self.prepare_call();
+        te!(self.prepare_call());
         self.instr_ptr = 0;
+
+        Ok(())
     }
 
     /// The current instruction address pointer
@@ -116,15 +118,19 @@ impl Vm {
     pub fn ret_fp_addr(&self) -> usize {
         *self.stack_get(self.frame_ptr - 2).unwrap()
     }
-    pub fn prepare_call(&mut self) {
+    pub fn prepare_call(&mut self) -> Result<()> {
         let vm = self;
 
         let frame = vm.call_stack_data();
         vm.allocate(frame.len());
-        frame.iter().for_each(|&v| vm.push_val(v));
+        for &v in frame.iter() {
+            te!(vm.push_val(v));
+        }
+
         ltrace!("save stack [fp, rti]: {:?}", frame);
 
         vm.frame_ptr = vm.stack_ptr;
+        Ok(())
     }
     pub fn nargs(&self) -> Result<usize> {
         let vm = self;
@@ -159,12 +165,12 @@ impl Vm {
     pub fn ret_cell_mut(&mut self) -> Result<&mut Value> {
         let vm = self;
         let addr = te!(vm.ret_cell_addr());
-        Ok(vm.stack_get_val_mut(addr))
+        vm.stack_get_val_mut(addr)
     }
     pub fn set_ret_val_from_local(&mut self, fp_off: usize) -> Result<()> {
         let vm = self;
 
-        let retval_src: Value = mem::take(vm.frame_get_val_mut(fp_off));
+        let retval_src: Value = mem::take(te!(vm.frame_get_val_mut(fp_off)));
         ltrace!(
             "return local {:?} to {}",
             retval_src,
@@ -197,42 +203,41 @@ impl Vm {
         Ok(())
     }
 
-    pub fn stack_get_val(&self, addr: usize) -> &Value {
-        &self.stack[addr]
+    pub fn stack_get_val(&self, addr: usize) -> Result<&Value> {
+        Ok(te!(self.stack.get(addr)))
     }
-    pub fn stack_get_val_mut(&mut self, addr: usize) -> &mut Value {
-        if addr < self.stack.len() {
+    pub fn stack_get_val_mut(&mut self, addr: usize) -> Result<&mut Value> {
+        Ok(if addr < self.stack.len() {
             self.stack.get_mut(addr).unwrap()
         } else {
-            eprintln!("== vm ==");
-            self.write_to(Ok(std::io::stderr())).unwrap_or(());
-            panic!("invalid stack access {}[{}]", self.stack.len(), addr);
-        }
+            temg!("invalid stack access {}[{}]", self.stack.len(), addr)
+        })
     }
-    pub fn stack_set<V: Into<Value>>(&mut self, addr: usize, val: V) {
+    pub fn stack_set<V: Into<Value>>(&mut self, addr: usize, val: V) -> Result<()> {
         let cell = self.stack_get_val_mut(addr);
-        *cell = val.into();
+        *te!(cell) = val.into();
+        Ok(())
     }
     pub fn stack_get<T>(&self, addr: usize) -> Result<&T>
     where
         for<'r> &'r T: TryFrom<&'r Value, Error = &'r Value> + ValueTypeInfo,
     {
-        self.stack_get_val(addr).try_ref()
+        te!(self.stack_get_val(addr)).try_ref()
     }
     pub fn stack_get_mut<T>(&mut self, addr: usize) -> Result<&mut T>
     where
         for<'r> &'r mut T: TryFrom<&'r mut Value, Error = &'r mut Value> + ValueTypeInfo,
     {
-        self.stack_get_val_mut(addr).try_mut()
+        te!(self.stack_get_val_mut(addr)).try_mut()
     }
 
-    pub fn frame_get_val(&self, offset: usize) -> &Value {
+    pub fn frame_get_val(&self, offset: usize) -> Result<&Value> {
         self.stack_get_val(self.frame_addr(offset))
     }
-    pub fn frame_get_val_mut(&mut self, offset: usize) -> &mut Value {
+    pub fn frame_get_val_mut(&mut self, offset: usize) -> Result<&mut Value> {
         self.stack_get_val_mut(self.frame_addr(offset))
     }
-    pub fn frame_set<V>(&mut self, offset: usize, v: V)
+    pub fn frame_set<V>(&mut self, offset: usize, v: V) -> Result<()>
     where
         V: Into<Value> + ValueTypeInfo,
     {
@@ -242,20 +247,20 @@ impl Vm {
     where
         for<'s> &'s T: TryFrom<&'s Value, Error = &'s Value> + ValueTypeInfo,
     {
-        self.frame_get_val(offset).try_ref()
+        te!(self.frame_get_val(offset)).try_ref()
     }
     pub fn frame_get_mut<T>(&mut self, offset: usize) -> Result<&mut T>
     where
         for<'s> &'s mut T: TryFrom<&'s mut Value, Error = &'s mut Value> + ValueTypeInfo,
     {
-        self.frame_get_val_mut(offset).try_mut()
+        te!(self.frame_get_val_mut(offset)).try_mut()
     }
 
     pub fn arg_get_val(&self, argn: usize) -> Result<&Value> {
-        Ok(self.stack_get_val(te!(self.arg_addr(argn))))
+        self.stack_get_val(te!(self.arg_addr(argn)))
     }
     pub fn arg_get_val_mut(&mut self, argn: usize) -> Result<&mut Value> {
-        Ok(self.stack_get_val_mut(te!(self.arg_addr(argn))))
+        self.stack_get_val_mut(te!(self.arg_addr(argn)))
     }
     pub fn arg_get<T>(&self, argn: usize) -> Result<&T>
     where
@@ -270,34 +275,34 @@ impl Vm {
         te!(self.arg_get_val_mut(argn)).try_mut()
     }
 
-    pub fn push_val<T>(&mut self, src: T)
+    pub fn push_val<T>(&mut self, src: T) -> Result<()>
     where
         T: Into<Value>,
     {
         let addr = self.stackp_next();
-        self.stack_set(addr, src);
+        te!(self.stack_set(addr, src));
+        Ok(())
     }
 
-    pub fn push_null(&mut self) {
-        self.push_val(());
+    pub fn push_null(&mut self) -> Result<()> {
+        self.push_val(())
     }
 
-    pub fn push_lit_str(&mut self, strid: usize) {
-        self.push_val(value::LitString(strid));
+    pub fn push_lit_str(&mut self, strid: usize) -> Result<()> {
+        self.push_val(value::LitString(strid))
     }
 
     // Pushes an array of all arguments passed to this call
     pub fn push_args(&mut self) -> Result<()> {
         self.push_val(value::Array {
             ptr: te!(self.arg_addr(0)),
-        });
-        Ok(())
+        })
     }
 
     // Pushes local var #
-    pub fn push_local(&mut self, fp_off: usize) {
-        let val = self.frame_get_val(fp_off).clone();
-        self.push_val(val);
+    pub fn push_local(&mut self, fp_off: usize) -> Result<()> {
+        let val = te!(self.frame_get_val(fp_off)).clone();
+        self.push_val(val)
     }
 
     /// Grow the stack by `size`
@@ -501,17 +506,21 @@ impl Vm {
     {
         let vm = self;
 
-        let val = vm.frame_get_val_mut(fp_off);
+        let val = te!(vm.frame_get_val_mut(fp_off));
         match val {
             &mut Value::Job(value::Job(proc_id)) => {
                 let job: &mut Job = te!(vm.job_table.get_mut(proc_id), "Proc {}", proc_id);
                 te!(cln(job));
             }
-            v @ (Value::FuncAddr(_) | Value::LitString(_) | Value::Null(_) | Value::Natural(_)) => {
+            v @ (Value::ArrayView(_)
+            | Value::FuncAddr(_)
+            | Value::LitString(_)
+            | Value::Null(_)
+            | Value::Natural(_)) => {
                 ltrace!("No cleanup: {:?}", v);
                 // No cleanup
             }
-            other => panic!("{:?}", other),
+            other => temg!("{:?}", other),
         }
         Ok(())
     }

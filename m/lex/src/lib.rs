@@ -265,12 +265,16 @@ fn ident_init(c: char) -> bool {
     c.is_alphabetic() || c == '_' || c == '.'
 }
 
+fn ident_rest_punc(c: char) -> bool {
+    ":.,_/+-".find(c).is_some()
+}
+
 fn ident_rest(c: char) -> bool {
-    ident_init(c) || c.is_digit(10) || ":.,_=/-".find(c).is_some()
+    ident_init(c) || c.is_digit(10) || ident_rest_punc(c) || c == '='
 }
 
 fn ident_rest_no_eq(c: char) -> bool {
-    ident_init(c) || c.is_digit(10) || ":.,_/-".find(c).is_some()
+    ident_init(c) || c.is_digit(10) || ident_rest_punc(c)
 }
 
 fn eq(c: char) -> impl Fn(char) -> bool {

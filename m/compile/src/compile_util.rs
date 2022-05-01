@@ -88,7 +88,7 @@ pub trait CompileUtil: Borrow<Compiler> + BorrowMut<Compiler> {
             &SymInfo {
                 typ:
                     sym::Typ::Literal(sym::Literal {
-                        lit_type: sym::LitType::Null,
+                        lit_type: sym::LitType::Null | sym::LitType::Syscall,
                         ..
                     }),
                 ..

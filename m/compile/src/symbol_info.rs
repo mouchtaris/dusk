@@ -32,6 +32,7 @@ pub enum LitType {
     Natural,
     String,
     Null,
+    Syscall,
 }
 
 impl Info {
@@ -59,6 +60,16 @@ impl Info {
             typ: Typ::Literal(Literal {
                 id,
                 lit_type: LitType::Natural,
+            }),
+        }
+    }
+
+    pub fn syscall(id: usize) -> Self {
+        Self {
+            scope_id: 0,
+            typ: Typ::Literal(Literal {
+                id,
+                lit_type: LitType::Syscall,
             }),
         }
     }

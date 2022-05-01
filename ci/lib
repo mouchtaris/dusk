@@ -1,4 +1,4 @@
-# vim: et ft=ruby ts=4 sw=4
+# vim: et ts=4 sw=4
 
 include ./config;
 
@@ -13,25 +13,12 @@ include ./lib.docker;
 
 def libci = ide::target_path ci/lib;
 
-def ci::build = {
-    ide::compile ci/lib;
-    ide::dusk-build $libci var/web-app/config.local var/web-app;
-}
-
-def ci::build_aba = {
-    ide::dusk-build $libci ci/config var/aba;
-}
-
-def ci::build_grammar = {
-    ide::compile grammar/ci.dust;
-}
-
 def ci::build_ci = {
     ide::compile ci/lib;
 }
 
-def ci::compile_all = {
-    ci::build;
+def ci::build_all = {
+    ci::build_ci;
 
     src config = "./ci/config";
     ide::dusk-build $libci $config ./include/dust/hashi;
@@ -50,7 +37,7 @@ def ci::bootstrap-local = {
     uninstall::local;
     install::local-lib;
     install::local;
-    ci::compile_all;
+    ci::build_all;
     install::make_bin_release_tar;
 }
 
@@ -58,7 +45,7 @@ def ci::bootstrap-system = {
     uninstall::system;
     install::lib;
     install::system;
-    ci::compile_all;
+    ci::build_all;
     install::make_bin_release_tar;
 }
 

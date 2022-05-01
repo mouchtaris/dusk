@@ -17,7 +17,7 @@ macro_rules! name {
     }
 }
 
-either![Value, Null, LitString, DynString, Natural, Array, Job, FuncAddr];
+either![Value, Null, LitString, DynString, Natural, Array, Job, FuncAddr, SysCallId, ArrayView];
 
 pub type Null = ();
 name![LitString = usize];
@@ -25,11 +25,17 @@ name![DynString = usize];
 pub type Natural = usize;
 name![Job = usize];
 name![FuncAddr = usize];
+name![SysCallId = usize];
 
-#[derive(Clone, Debug)]
+#[derive(Copy, Clone, Debug, Default)]
 pub struct Array {
     pub ptr: usize,
 }
+
+mod signed;
+pub use signed::{Signed, Signed::Minus, Signed::Plus};
+mod array_view;
+pub use array_view::ArrayView;
 
 impl Default for Value {
     fn default() -> Self {
@@ -127,6 +133,8 @@ impl RuntimeTypeInfo for Value {
             Value::Job(_) => "job",
             Value::DynString(_) => "dyn-string",
             Value::FuncAddr(_) => "func-addr",
+            Value::SysCallId(_) => "syscall-id",
+            Value::ArrayView(_) => "array-view",
         }
     }
 }
@@ -196,5 +204,10 @@ impl ValueTypeInfo for DynString {
 impl ValueTypeInfo for FuncAddr {
     fn type_info_name() -> &'static str {
         "FuncAddr"
+    }
+}
+impl ValueTypeInfo for ArrayView {
+    fn type_info_name() -> &'static str {
+        "ArrayView"
     }
 }

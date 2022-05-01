@@ -22,7 +22,7 @@ fn main() -> Result<()> {
     let icode = te!(main::load_icode(&input_path));
 
     let mut vm = te!(main::make_vm());
-    vm.init(args);
+    te!(vm.init(args));
     te!(vm.debug_icode(&icode));
 
     #[cfg(feature = "debug")]

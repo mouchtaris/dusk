@@ -2,18 +2,18 @@ pub const VERSION: &str = "0.0.1";
 
 pub mod lex;
 
-pub fn as_fn<P: Prop>(mut prop: P) -> impl FnMut(Range) -> Option<usize> {
+pub fn as_fn<P: Prop>(mut prop: P) -> impl for<'r> FnMut(Range<'r>) -> Option<usize> {
     move |r| prop.prop(r)
 }
 
-pub fn fnr<F>(mut f: F) -> impl FnMut(Range) -> Option<usize>
+pub fn fnr<F>(mut f: F) -> impl for<'r> FnMut(Range<'r>) -> Option<usize>
 where
     F: FnMut(&char) -> bool,
 {
     fn_(move |c| f(&c))
 }
 
-pub fn fn_<F>(mut f: F) -> impl FnMut(Range) -> Option<usize>
+pub fn fn_<F>(mut f: F) -> impl for<'r> FnMut(Range<'r>) -> Option<usize>
 where
     F: FnMut(char) -> bool,
 {
@@ -23,9 +23,12 @@ where
     }
 }
 
-//  -> impl FnMut(Range) -> Option<usize> + '_ {
+//  -> impl for <'r> FnMut(Range<'r>) -> Option<usize> + '_ {
 
-pub fn either<A: Prop, B: Prop>(mut a: A, mut b: B) -> impl FnMut(Range) -> Option<usize> {
+pub fn either<A: Prop, B: Prop>(
+    mut a: A,
+    mut b: B,
+) -> impl for<'r> FnMut(Range<'r>) -> Option<usize> {
     let mut pos_a = Some(0);
     let mut pos_b = Some(0);
     let mut pos = 0;
@@ -65,7 +68,7 @@ pub fn either<A: Prop, B: Prop>(mut a: A, mut b: B) -> impl FnMut(Range) -> Opti
     }
 }
 
-pub fn one_of<I>(set: I) -> impl FnMut(Range) -> Option<usize>
+pub fn one_of<I>(set: I) -> impl for<'r> FnMut(Range<'r>) -> Option<usize>
 where
     I: IntoIterator,
     I::Item: Into<char>,
@@ -83,7 +86,7 @@ where
     }
 }
 
-pub fn any<C, B>(mut make_b: C) -> impl FnMut(Range) -> Option<usize>
+pub fn any<C, B>(mut make_b: C) -> impl for<'r> FnMut(Range<'r>) -> Option<usize>
 where
     B: Prop,
     C: FnMut() -> B,
@@ -91,7 +94,10 @@ where
     one_and_any(make_b(), make_b)
 }
 
-pub fn one_and_any<A, C, B>(mut a: A, mut make_b: C) -> impl FnMut(Range) -> Option<usize>
+pub fn one_and_any<A, C, B>(
+    mut a: A,
+    mut make_b: C,
+) -> impl for<'r> FnMut(Range<'r>) -> Option<usize>
 where
     A: Prop,
     B: Prop,
@@ -113,7 +119,7 @@ where
     }
 }
 
-pub fn exact(s: &str) -> impl FnMut(Range) -> Option<usize> + '_ {
+pub fn exact(s: &str) -> impl for<'r> FnMut(Range<'r>) -> Option<usize> + '_ {
     let mut chars = s.chars();
     let mut n = 0;
     move |r: Range| match (chars.next(), r) {

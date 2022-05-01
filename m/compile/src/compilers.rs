@@ -190,11 +190,15 @@ pub trait Compilers<'i> {
             const NOWHERE: usize = 0xffffffff;
             match invc_target_sinfo.typ {
                 sym::Typ::Address(_) => cmp.emit1(i::Call(NOWHERE)),
+                sym::Typ::Literal(sym::Literal {
+                    id,
+                    lit_type: sym::LitType::Syscall,
+                }) => cmp.emit1(i::Syscall(id)),
                 sym::Typ::Local(_)
                 | sym::Typ::Literal(sym::Literal {
                     lit_type: sym::LitType::String,
                     ..
-                }) => cmp.emit1(i::Spawn(NOWHERE)),
+                }) => cmp.emit1(i::Syscall(vm::syscall::SPAWN)),
                 sym::Typ::Literal(_) => {
                     // TODO skip everything above if this is the case
                     retval = invc_target_sinfo;
@@ -342,6 +346,7 @@ pub trait Compilers<'i> {
             use ast::InvocationTargetSystemPath as SysPath;
 
             Ok(match invocation_target {
+                TLocal(Local(("__syscall-argslice",))) => SymInfo::syscall(vm::syscall::ARG_SLICE),
                 TLocal(Local((id,))) => te!(cmp.compile_funcaddr(id)),
                 TSysName(SysName((id,))) => te!(cmp.compile_text(id)),
                 TSysPath(SysPath((path,))) => te!(cmp.compile(path)),

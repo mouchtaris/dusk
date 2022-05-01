@@ -13,7 +13,7 @@ buf::sd_struct![Local, fp_off, is_alias];
 buf::sd_struct![Address, addr];
 buf::sd_struct![Literal, lit_type, id];
 
-buf::sd_enum![LitType, Null, 0u8, String, 1u8, Natural, 2u8];
+buf::sd_enum![LitType, Null, 0u8, String, 1u8, Natural, 2u8, Syscall, 3u8];
 
 buf::sd![
     Compiler,

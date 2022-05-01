@@ -1,6 +1,8 @@
 use std::io;
 
-use super::{ltrace, soft_todo, te, terr, value, BorrowMut, Deq, Entry, Job, Map, Result, Vm};
+use super::{
+    ltrace, soft_todo, syscall, te, terr, value, BorrowMut, Deq, Entry, Job, Map, Result, Vm,
+};
 
 fn _use() {
     soft_todo!();
@@ -28,6 +30,7 @@ pub enum Instr {
     PushNat(usize),
     PushFuncAddr(usize),
     PushLocal(usize),
+    PushSysCall(usize),
     PushArgs,
 
     RetLocal(usize),
@@ -36,7 +39,7 @@ pub enum Instr {
     RetFuncAddr(usize),
 
     Call(usize),
-    Spawn(usize),
+    Syscall(usize),
     Return(usize),
 
     CleanUp(usize),
@@ -51,18 +54,20 @@ impl Instr {
             &Self::Allocate { size } => {
                 vm.allocate(size);
             }
-            &Self::PushNull => vm.push_null(),
-            &Self::PushNat(id) => vm.push_val(id),
-            &Self::PushStr(id) => vm.push_lit_str(id),
+            &Self::PushNull => te!(vm.push_null()),
+            &Self::PushNat(id) => te!(vm.push_val(id)),
+            &Self::PushStr(id) => te!(vm.push_lit_str(id)),
             &Self::Jump { addr } => vm.jump(addr),
-            &Self::Spawn(_) => te!(crate::syscall::spawn(vm)),
+            &Self::Syscall(syscall::SPAWN) => te!(syscall::spawn(vm)),
+            &Self::Syscall(_) => te!(syscall::argslice(vm)),
             &Self::Return(frame_size) => te!(vm.return_from_call(frame_size)),
             &Self::RetLocal(fp_off) => te!(vm.set_ret_val_from_local(fp_off)),
             &Self::PushArgs => te!(vm.push_args()),
-            &Self::PushLocal(fp_off) => vm.push_local(fp_off),
-            &Self::PushFuncAddr(addr) => vm.push_val(value::FuncAddr(addr)),
+            &Self::PushLocal(fp_off) => te!(vm.push_local(fp_off)),
+            &Self::PushFuncAddr(addr) => te!(vm.push_val(value::FuncAddr(addr))),
+            &Self::PushSysCall(id) => te!(vm.push_val(value::SysCallId(id))),
             &Self::Call(_) => {
-                vm.prepare_call();
+                te!(vm.prepare_call());
                 let addr = te!(vm.call_target_func_addr());
                 vm.jump(addr);
             }
@@ -116,7 +121,7 @@ impl ICode {
                     Instr::PushNull => (0x03, 0x00),
                     Instr::PushStr(strid) => (0x04, strid),
                     Instr::PushNat(val) => (0x05, val),
-                    Instr::Spawn(id) => (0x06, id),
+                    Instr::Syscall(id) => (0x06, id),
                     Instr::RetLocal(src_fp_off) => (0x07, src_fp_off),
                     Instr::PushArgs => (0x08, 0x00),
                     Instr::PushLocal(fp_off) => (0x09, fp_off),
@@ -128,6 +133,7 @@ impl ICode {
                     Instr::RetStr(id) => (0x0f, id),
                     Instr::RetNat(val) => (0x10, val),
                     Instr::RetFuncAddr(addr) => (0x11, addr),
+                    Instr::PushSysCall(id) => (0x12, id),
                 };
                 let code = u8::to_le_bytes(code);
                 let arg = usize::to_le_bytes(arg0);
@@ -164,7 +170,7 @@ impl ICode {
                     0x03 => Instr::PushNull,
                     0x04 => Instr::PushStr(val),
                     0x05 => Instr::PushNat(val),
-                    0x06 => Instr::Spawn(val),
+                    0x06 => Instr::Syscall(val),
                     0x07 => Instr::RetLocal(val),
                     0x08 => Instr::PushArgs,
                     0x09 => Instr::PushLocal(val),
@@ -176,6 +182,7 @@ impl ICode {
                     0x0f => Instr::RetStr(val),
                     0x10 => Instr::RetNat(val),
                     0x11 => Instr::RetFuncAddr(val),
+                    0x12 => Instr::PushSysCall(val),
                     other => panic!("{:?}", other),
                 };
                 icode.instructions.push_back(instr);
