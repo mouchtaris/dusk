@@ -1,6 +1,6 @@
 use std::{
     fmt,
-    ops::{Add, Range, Sub},
+    ops::{Add, Sub},
 };
 
 #[derive(Copy, Clone, Debug)]
@@ -19,15 +19,30 @@ impl<T> Signed<T> {
         }
     }
 
-    pub fn resolve<U>(&self, range: Range<U>) -> Self
+    pub fn wrap<U>(self, p: (U, U)) -> T
     where
         U: Add<T, Output = T> + Sub<T, Output = T>,
-        T: Copy,
     {
-        Plus(match self {
-            &Plus(t) => range.start + t,
-            &Minus(t) => range.end - t,
-        })
+        match self {
+            Plus(t) => p.0 + t,
+            Minus(t) => p.1 - t,
+        }
+    }
+
+    pub fn rebase<U, R>(self, p: (Signed<U>, Signed<U>)) -> Signed<R>
+    where
+        U: Add<T, Output = R> + Sub<T, Output = R>,
+    {
+        match self {
+            Plus(a) => match p.0 {
+                Plus(b) => Plus(b + a),
+                Minus(b) => Minus(b - a),
+            },
+            Minus(a) => match p.1 {
+                Plus(b) => Plus(b - a),
+                Minus(b) => Minus(b + a),
+            },
+        }
     }
 }
 

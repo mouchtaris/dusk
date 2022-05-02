@@ -200,11 +200,9 @@ where
             let string = te!(vm.get_dynstring_id(string_id));
             inject(string);
         }
-        &Value::ArrayView(mut view) => {
-            te!(view.arrlen(vm));
-            let r = te!(view.to_range());
-            for i in r {
-                te!(inject_arg(vm, inject, view.ptr(i), sbuf));
+        &Value::ArrayView(view) => {
+            for val in te!(view.collect_all(vm, &mut <_>::default())) {
+                te!(inject_val(vm, val, inject))
             }
         }
         other => temg!("Cannot inject arg@{}: {:?}", arg_addr, other),

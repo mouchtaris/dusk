@@ -48,7 +48,8 @@ either![
     Variable,
     Word,
     Natural,
-    Invocation
+    Invocation,
+    Slice
 ];
 either![InvocationCwd, Path, Variable, BoxInvocation];
 either![Path, AbsPath, RelPath, HomePath];
@@ -70,6 +71,7 @@ name![HomePath, Text];
 name![LongOpt, Text];
 name![ShortOpt, Text];
 name![Variable, Text];
+name![Slice, Text, BoxRange];
 name![Dereference, Text];
 name![Natural, Text];
 name![InvocationTargetLocal, Ident];
@@ -95,6 +97,7 @@ pub type DocComment<'i> = Text<'i>;
 pub type OptText<'i> = Option<Text<'i>>;
 pub type OptPath<'i> = Option<Path<'i>>;
 pub type OptInvocationCwd<'i> = Option<InvocationCwd<'i>>;
+pub type Range<'i> = Tupl2<Expr<'i>>;
 pub type AnyDocComment<'i> = Any<DocComment<'i>>;
 pub type AnyInvocationArg<'i> = Any<InvocationArg<'i>>;
 pub type AnyInvocationEnv<'i> = Any<InvocationEnv<'i>>;
@@ -103,6 +106,8 @@ pub type AnyInvocationOutputRedirection<'i> = Any<InvocationOutputRedirection<'i
 pub type AnyItem<'i> = Any<Item<'i>>;
 pub type BoxBody<'i> = Box<Body<'i>>;
 pub type BoxInvocation<'i> = Box<Invocation<'i>>;
+pub type BoxRange<'i> = Box<Range<'i>>;
 pub type Any<T> = Vec<T>;
 
 pub type Empty<'i> = std::marker::PhantomData<&'i ()>;
+pub type Tupl2<T> = (T, T);

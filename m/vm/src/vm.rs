@@ -6,6 +6,8 @@ use {
     std::{borrow::Borrow, fmt, io, mem, result},
 };
 
+pub const DEBUG_STACK_SIZE: usize = 45;
+
 #[derive(Default, Debug)]
 pub struct Vm {
     pub bin_path: Deq<String>,
@@ -422,10 +424,24 @@ impl Vm {
         let mut fp = vm.frame_ptr;
         let mut sp = vm.stack_ptr;
         let len = vm.stack.len();
+        let mut count = 0;
         w!(o, "=== STACK ===");
         w!(o, "fp({fp}) sp({sp}) len({l})", l = len, sp = sp, fp = fp);
         for i in 0..len {
             let i = len - 1 - i;
+
+            let too_far = sp + 3;
+            if i > too_far {
+                continue;
+            }
+            if i == too_far {
+                w!(o, "  ... (too far)");
+            }
+
+            count += 1;
+            if count > DEBUG_STACK_SIZE {
+                break;
+            }
 
             let pref = if fp < 7 {
                 "(sys)"
@@ -478,6 +494,9 @@ impl Vm {
             let cell_str = &strbuf[..explain_start];
             let explain = &strbuf[explain_start..];
             w!(o, "{:10} [{:4}] {:29} | {}", pref, i, cell_str, explain);
+        }
+        if count > DEBUG_STACK_SIZE {
+            w!(o, " ... (stack elided)");
         }
         w!(o, "=== STATE ===");
         w!(o, "- frame pointer    : {}", vm.frame_ptr);

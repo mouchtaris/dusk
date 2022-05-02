@@ -11,7 +11,7 @@ pub fn argslice(vm: &mut Vm) -> Result<()> {
         temg!("argslice START END ARGS: nargs={}", nargs);
     }
 
-    fn get_num(vm: &Vm, val: &Value) -> Result<value::Signed<u16>> {
+    fn get_num(vm: &mut Vm, val: &mut Value) -> Result<value::Signed<u16>> {
         Ok(if let Ok(n) = val.try_ref::<value::Natural>() {
             value::Plus(*n as u16)
         } else if let Ok(&value::LitString(sid)) = val.try_ref::<value::LitString>() {
@@ -21,29 +21,34 @@ pub fn argslice(vm: &mut Vm) -> Result<()> {
                 s if s.starts_with('-') => value::Minus(te!(u16::from_str(&s[1..]), "{}", s)),
                 s => value::Plus(te!(i16::from_str(s), "{}", s) as u16),
             }
-        } else if let Ok(view) = val.try_ref::<value::ArrayView>() {
-            te!(get_num(vm, te!(view.to_owned().first(vm))))
+        } else if let Ok(view) = val.try_mut::<value::ArrayView>() {
+            let mut val = te!(view.to_owned().first(vm));
+            te!(get_num(vm, &mut val))
         } else {
             temg!("{:?}", val)
         })
     }
 
-    let start = te!(get_num(vm, te!(vm.arg_get_val(1))));
-    let end = te!(get_num(vm, te!(vm.arg_get_val(2))));
+    let mut start_val = te!(vm.arg_get_val(1)).to_owned();
+    let mut end_val = te!(vm.arg_get_val(2)).to_owned();
+
+    let start = te!(get_num(vm, &mut start_val));
+    let end = te!(get_num(vm, &mut end_val));
 
     let args = te!(vm.arg_get_val_mut(3));
-    let mut slice0: value::ArrayView = <_>::default();
     let args: value::ArrayView = match args {
-        &mut Value::Array(arr) => value::ArrayView::new(arr, start, end),
-        &mut Value::ArrayView(mut slice) => {
-            te!(slice.arrlen(vm));
-            slice0 = slice.to_owned();
+        &mut Value::Array(arr) => {
+            ldebug!("from {:?}", arr);
+            value::ArrayView::new(arr, start, end)
+        }
+        &mut Value::ArrayView(slice) => {
+            ldebug!("from {:?}", slice);
             te!(from_slice(&slice, start, end))
         }
         other => temg!("{:?}", other),
     };
 
-    ldebug!("argslice {}[{}..{}] = {}", slice0, start, end, args,);
+    ldebug!("argslice [{}..{}] = {}", start, end, args,);
 
     vm.allocate(1);
     te!(vm.wait_debugger(format_args!("{:?}", args)));
@@ -56,38 +61,14 @@ pub fn argslice(vm: &mut Vm) -> Result<()> {
 
 fn from_slice(
     slice: &value::ArrayView,
-    start: value::Signed<u16>,
-    end: value::Signed<u16>,
+    rstart: value::Signed<u16>,
+    rend: value::Signed<u16>,
 ) -> Result<value::ArrayView> {
-    use value::{Minus, Plus};
+    let &value::ArrayView { arr, start, end } = slice;
 
-    let &value::ArrayView { arr, len, .. } = slice;
+    let r = (start, end);
+    let start = rstart.rebase(r);
+    let end = rend.rebase(r);
 
-    let start = match start {
-        Plus(a) => match slice.start {
-            Plus(b) => Plus(b + a),
-            Minus(b) => Minus(b - a),
-        },
-        Minus(a) => match slice.end {
-            Plus(b) => Plus(b - a),
-            Minus(b) => Minus(b + a),
-        },
-    };
-    let end = match end {
-        Plus(a) => match slice.start {
-            Plus(b) => Plus(b + a),
-            Minus(b) => Minus(b - a),
-        },
-        Minus(a) => match slice.end {
-            Plus(b) => Plus(b - a),
-            Minus(b) => Minus(b + a),
-        },
-    };
-
-    Ok(value::ArrayView {
-        arr,
-        start,
-        end,
-        len,
-    })
+    Ok(value::ArrayView { arr, start, end })
 }

@@ -54,6 +54,8 @@ impl Bugger {
             te!(recv.recv());
             te!(vm.write_to(Ok(io::stderr())).map_err(Box::new));
             eprintln!("");
+            eprintln!("");
+            eprintln!("");
             eprintln!("===== ===== =====");
             eprintln!("[BUGGER] {} {:?}", instr_id, instr);
         }

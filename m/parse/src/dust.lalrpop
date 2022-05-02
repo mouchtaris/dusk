@@ -45,6 +45,7 @@ InvocationArg: ast::InvocationArg<'input> = {
     String => <>.into(),
     Variable => <>.into(),
     Natural => <>.into(),
+    Slice => <>.into(),
     "(" <Invocation> ")" => <>.into(),
 }
 InvocationCwd: ast::InvocationCwd<'input> = {
@@ -79,7 +80,13 @@ Path: ast::Path<'input> = {
 }
 
 Variable: ast::Variable<'input> = {
-    "$" <Ident> => (<>,).into(),
+    "$" <Ident> => (<>,).into()
+}
+
+Slice: ast::Slice<'input> = {
+    "$" <i: Ident> "[" <r:(<Expr?> ".." <Expr?>)> "]" => {
+        (i, Box::new(ast::access_range(r))).into()
+    }
 }
 
 Dereference: ast::Dereference<'input> = {
@@ -123,6 +130,7 @@ extern {
         "val"                       => Tok::Kwd         (lex::Kwd           ("val"          )   ),
         "def"                       => Tok::Kwd         (lex::Kwd           ("def"          )   ),
         "src"                       => Tok::Kwd         (lex::Kwd           ("src"          )   ),
+        ".."                        => Tok::Kwd         (lex::Kwd           (".."           )   ),
         "="                         => Tok::Kwd         (lex::Kwd           ("="            )   ),
         "$"                         => Tok::Kwd         (lex::Kwd           ("$"            )   ),
         "*"                         => Tok::Kwd         (lex::Kwd           ("*"            )   ),
@@ -136,6 +144,8 @@ extern {
         "}"                         => Tok::Kwd         (lex::Kwd           ("}"            )   ),
         "("                         => Tok::Kwd         (lex::Kwd           ("("            )   ),
         ")"                         => Tok::Kwd         (lex::Kwd           (")"            )   ),
+        "["                         => Tok::Kwd         (lex::Kwd           ("["            )   ),
+        "]"                         => Tok::Kwd         (lex::Kwd           ("]"            )   ),
         "include"                   => Tok::Kwd         (lex::Kwd           ("include"      )   ),
         IDENT                       => Tok::Idnt        (lex::Idnt          (<&'input str>  )   ),
         IDENT_NO_EQ                 => Tok::IdntNe      (lex::IdntNe        (<&'input str>  )   ),

@@ -24,11 +24,5 @@ fn main() -> Result<()> {
     let mut vm = te!(main::make_vm());
     te!(vm.init(args));
     te!(vm.debug_icode(&icode));
-
-    #[cfg(feature = "debug")]
-    te!(vm.write_to(fs::File::create("./_.vm.txt")));
-
-    let _ = vm;
-
     Ok(())
 }
