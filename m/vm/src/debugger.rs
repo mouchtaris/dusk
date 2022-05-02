@@ -9,28 +9,35 @@ use {
     },
 };
 
+error::Error! {
+    Send = SendError
+    Recv = RecvError
+    Io = io::Error
+    Vm = Box<super::Error>
+    Any = String
+}
+
 type SendItem = Command;
 type SendError = mpsc::SendError<SendItem>;
 type RecvError = mpsc::RecvError;
 type Recv = Receiver<SendItem>;
 
+#[derive(Default)]
+pub struct Callbacks {
+    pub data: Vec<Box<dyn FnMut(&mut Vm, &dyn fmt::Debug) -> Result<()>>>,
+}
+
 #[derive(Debug)]
 pub struct Bugger {
-    recv: Recv,
     pub receiver_thread: JoinHandle<Result<()>>,
+    pub callbacks: Callbacks,
+    recv: Recv,
     in_system_main: bool,
 }
 
 #[derive(Debug)]
 pub enum Command {
     Echo(String),
-}
-
-error::Error! {
-    Send = SendError
-    Recv = RecvError
-    Io = io::Error
-    Vm = Box<super::Error>
 }
 
 impl Bugger {
@@ -52,12 +59,15 @@ impl Bugger {
             }
         } else {
             te!(recv.recv());
-            te!(vm.write_to(Ok(io::stderr())).map_err(Box::new));
-            eprintln!("");
-            eprintln!("");
-            eprintln!("");
-            eprintln!("===== ===== =====");
-            eprintln!("[BUGGER] {} {:?}", instr_id, instr);
+            for cb in &mut self.callbacks.data {
+                te!(cb.as_mut()(vm, &instr));
+            }
+            //te!(vm.write_to(Ok(io::stderr())).map_err(Box::new));
+            //eprintln!("");
+            //eprintln!("");
+            //eprintln!("");
+            //eprintln!("===== ===== =====");
+            //eprintln!("[BUGGER] {} {:?}", instr_id, instr);
         }
         Ok(())
     }
@@ -71,6 +81,7 @@ impl Bugger {
         Ok(Bugger {
             recv,
             in_system_main: false,
+            callbacks: <_>::default(),
             receiver_thread: thread::spawn(move || {
                 use io::BufRead;
                 loop {
@@ -83,5 +94,11 @@ impl Bugger {
                 Ok(())
             }),
         })
+    }
+}
+
+impl fmt::Debug for Callbacks {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "callb({})", self.data.len())
     }
 }

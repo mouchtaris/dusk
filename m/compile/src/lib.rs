@@ -40,7 +40,7 @@ pub use {
     file_path::{compute_include_path, FilePathExt},
     include::IncludeExt,
     symbol_info as sym,
-    symbol_table::{scopes, SymInfo, SymbolTable, SymbolTableExt},
+    symbol_table::{find_func_name, scopes, SymInfo, SymbolTable, SymbolTableExt},
 };
 
 #[derive(Default, Debug)]

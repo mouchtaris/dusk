@@ -70,12 +70,18 @@ module:
       - buf
     dep_crate:
       - log
+  vm-debug:
+    dep_mod:
+      - vm
+      - compile
+      - error
   main:
     dep_mod:
       - error
       - ast
       - parse
       - vm
+      - vm-debug
       - compile
       - collection
       - show

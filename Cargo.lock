@@ -340,6 +340,7 @@ dependencies = [
  "pretty_env_logger",
  "show",
  "vm",
+ "vm-debug",
 ]
 
 [[package]]
@@ -617,6 +618,15 @@ dependencies = [
  "job",
  "log",
  "show",
+]
+
+[[package]]
+name = "vm-debug"
+version = "0.0.1"
+dependencies = [
+ "compile",
+ "error",
+ "vm",
 ]
 
 [[package]]

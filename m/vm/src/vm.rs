@@ -31,6 +31,22 @@ impl Stack {
 }
 
 impl Vm {
+    pub fn string_table(&self) -> &Deq<String> {
+        &self.string_table
+    }
+    pub fn stack(&self) -> &Vec<Value> {
+        &self.stack
+    }
+    pub fn frame_ptr(&self) -> usize {
+        self.frame_ptr
+    }
+    pub fn stack_ptr(&self) -> usize {
+        self.stack_ptr
+    }
+    pub fn stack_len(&self) -> usize {
+        self.stack.len()
+    }
+
     /// Reset to zero state
     pub fn reset(&mut self) {
         self.string_table.clear();
@@ -333,10 +349,13 @@ impl Vm {
             .and_then(|_| self.run_instructions(icode))
     }
 
-    pub fn debug_icode(&mut self, icode: &ICode) -> Result<()> {
-        self.debugger = Some(te!(Debugger::open()));
-        self.load_icode(&icode)
-            .and_then(|_| self.run_instructions(icode))
+    pub fn debug_icode(&mut self, icode: &ICode, bugger: Debugger) -> Result<Debugger> {
+        let vm = self;
+
+        vm.debugger = Some(bugger);
+        vm.load_icode(&icode)
+            .and_then(|_| vm.run_instructions(icode))
+            .map(|_| vm.debugger.take().unwrap())
     }
 
     pub fn wait_debugger<I>(&mut self, instr: I) -> Result<()>
@@ -489,6 +508,10 @@ impl Vm {
                     te!(write!(strbuf, "{:?}", te!(vm.get_job(jobid))))
                 }
                 &Value::Natural(val) => te!(write!(strbuf, "{}", val)),
+                Value::FuncAddr(_faddr) => {
+                    let name = "";
+                    te!(write!(strbuf, "{}", name))
+                }
                 _ => (),
             };
             let cell_str = &strbuf[..explain_start];

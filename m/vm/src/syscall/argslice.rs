@@ -45,7 +45,7 @@ pub fn argslice(vm: &mut Vm) -> Result<()> {
             ldebug!("from {:?}", slice);
             te!(from_slice(&slice, start, end))
         }
-        other => temg!("{:?}", other),
+        other => temg!("Invalid argslice arg3: {:?}", other),
     };
 
     ldebug!("argslice [{}..{}] = {}", start, end, args,);

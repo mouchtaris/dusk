@@ -200,3 +200,13 @@ where
         .collect::<Vec<_>>()
         .into_iter()
 }
+
+pub fn find_func_name<'s, S: AsRef<SymbolTable>>(st: &'s S, faddr: &usize) -> Option<&'s str> {
+    scopes(st).find_map(|(_, n, i)| match i {
+        sym::Info {
+            typ: sym::Typ::Address(sym::Address { addr }),
+            ..
+        } if addr == faddr => Some(n),
+        _ => None,
+    })
+}

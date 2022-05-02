@@ -19,6 +19,7 @@ error::Error! {
     Io = io::Error
     Parse = parse::Error
     Vm = vm::Error
+    VmDebugger = vm::debugger::Error
     Compile = compile::Error
     CBor = sd::CborError
     Utf8 = std::str::Utf8Error

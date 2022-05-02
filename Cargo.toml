@@ -13,6 +13,7 @@ members = [
     './m/parse',
     './m/show',
     './m/vm',
+    './m/vm-debug',
 ]
 [patch.crates-io.ast]
 path = './m/ast'
@@ -52,3 +53,6 @@ path = './m/show'
 
 [patch.crates-io.vm]
 path = './m/vm'
+
+[patch.crates-io.vm-debug]
+path = './m/vm-debug'

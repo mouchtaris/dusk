@@ -1,0 +1,15 @@
+[package]
+name = 'vm-debug'
+version = '0.0.1'
+edition = '2021'
+[dependencies.compile]
+version = '0.0.1'
+path = '../compile'
+
+[dependencies.error]
+version = '0.0.1'
+path = '../error'
+
+[dependencies.vm]
+version = '0.0.1'
+path = '../vm'

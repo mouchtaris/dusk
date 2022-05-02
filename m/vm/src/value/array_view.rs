@@ -33,7 +33,27 @@ impl ArrayView {
         for i in 1..=len {
             let val = te!(vm.stack_get_val(arr.ptr - i)).to_owned();
             match val {
-                Value::Array(_) => error::temg!("This is suspisicious"),
+                Value::Array(arr) => {
+                    // TODO: fight infinite recursion in compiler
+                    //let mut reenter = true;
+                    //last_val = te!(Self::arr_all(arr).expand_all(vm, &mut |vm, val| {
+                    //    if !te!(callb(vm, &val)) {
+                    //        reenter = false;
+                    //    }
+                    //    Ok(reenter)
+                    //}));
+                    //if !reenter {
+                    //    break;
+                    //}
+                    let mut all = Vec::new();
+                    te!(Self::arr_all(arr).collect_all(vm, &mut all));
+                    for val in all {
+                        last_val = val;
+                        if !te!(callb(vm, &last_val)) {
+                            break;
+                        }
+                    }
+                }
                 Value::ArrayView(view) => {
                     // TODO: fight infinite recursion in compiler
                     //let mut reenter = true;
@@ -48,7 +68,10 @@ impl ArrayView {
                     let mut all = Vec::new();
                     te!(view.collect_all(vm, &mut all));
                     for val in all {
-                        te!(callb(vm, &val));
+                        last_val = val;
+                        if !te!(callb(vm, &last_val)) {
+                            break;
+                        }
                     }
                 }
                 val => {

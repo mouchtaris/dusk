@@ -1,14 +1,14 @@
 pub const VERSION: &str = "0.0.1";
+pub mod debugger;
 pub mod icode;
 pub mod syscall;
 pub mod value;
 pub use {
     icode::{ICode, Instr, StringInfo},
     value::{Value, ValueTypeInfo},
-    vm::Vm,
+    vm::{Vm, DEBUG_STACK_SIZE},
 };
 
-mod debugger;
 mod vm;
 
 use {
