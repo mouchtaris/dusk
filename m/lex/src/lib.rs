@@ -100,6 +100,7 @@ lexpop![
                                                             '>',
                                                             either(
                                                                 '!',
+                                                                either(',',
                                                                 either(
                                                                     exact("val"),
                                                                     either(
@@ -115,6 +116,7 @@ lexpop![
                                                                                     )
                                                                                 )
                                                                             )
+                                                                        )
                                                                         )
                                                                     )
                                                                 )

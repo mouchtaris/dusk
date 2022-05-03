@@ -20,6 +20,8 @@ pub Expr: ast::Expr<'input> = {
     String => <>.into(),
     Natural => <>.into(),
     Invocation => <>.into(),
+    Slice => <>.into(),
+    Variable => <>.into(),
 }
 
 pub Invocation: ast::Invocation<'input> = {
@@ -84,7 +86,7 @@ Variable: ast::Variable<'input> = {
 }
 
 Slice: ast::Slice<'input> = {
-    "$" <i: Ident> "[" <r:(<Expr?> ".." <Expr?>)> "]" => {
+    "$" <i: Ident> "[" <r:(<InvocationArg?> ";" <InvocationArg?>)> "]" => {
         (i, Box::new(ast::access_range(r))).into()
     }
 }
@@ -102,7 +104,6 @@ pub Block: ast::Block<'input> = {
     <Item*> <Expr> => ((<>,)).into(),
     <Item*> <Item> => ast::block_of_stmts(<>),
 }
-
 
 DocComment: ast::Text<'input> = DOC_COMMENT;
 IdentSimple: ast::Ident<'input> = IDENT;
@@ -130,7 +131,7 @@ extern {
         "val"                       => Tok::Kwd         (lex::Kwd           ("val"          )   ),
         "def"                       => Tok::Kwd         (lex::Kwd           ("def"          )   ),
         "src"                       => Tok::Kwd         (lex::Kwd           ("src"          )   ),
-        ".."                        => Tok::Kwd         (lex::Kwd           (".."           )   ),
+        ","                         => Tok::Kwd         (lex::Kwd           (","            )   ),
         "="                         => Tok::Kwd         (lex::Kwd           ("="            )   ),
         "$"                         => Tok::Kwd         (lex::Kwd           ("$"            )   ),
         "*"                         => Tok::Kwd         (lex::Kwd           ("*"            )   ),

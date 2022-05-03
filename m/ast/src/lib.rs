@@ -31,7 +31,7 @@ macro_rules! name {
 name![Module, Block];
 
 either![Item, Expr, LetStmt, DefStmt, SrcStmt, Include, Empty];
-either![Expr, Invocation, String, Natural];
+either![Expr, Invocation, String, Natural, Slice, Variable];
 either![Body, Block];
 either![
     InvocationTarget,
@@ -97,7 +97,7 @@ pub type DocComment<'i> = Text<'i>;
 pub type OptText<'i> = Option<Text<'i>>;
 pub type OptPath<'i> = Option<Path<'i>>;
 pub type OptInvocationCwd<'i> = Option<InvocationCwd<'i>>;
-pub type Range<'i> = Tupl2<Expr<'i>>;
+pub type Range<'i> = Tupl2<InvocationArg<'i>>;
 pub type AnyDocComment<'i> = Any<DocComment<'i>>;
 pub type AnyInvocationArg<'i> = Any<InvocationArg<'i>>;
 pub type AnyInvocationEnv<'i> = Any<InvocationEnv<'i>>;

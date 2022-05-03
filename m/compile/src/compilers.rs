@@ -72,6 +72,8 @@ pub trait Compilers<'i> {
             ast::Expr::String(s) => cmp.compile(s),
             ast::Expr::Natural(n) => cmp.compile(n),
             ast::Expr::Invocation(invc) => cmp.compile(invc),
+            ast::Expr::Variable(var) => cmp.compile_variable_as_auto(var),
+            ast::Expr::Slice(slice) => cmp.compile_slice(slice),
         }
     }
     fn block() -> S<Block<'i>> {
@@ -213,20 +215,7 @@ pub trait Compilers<'i> {
         use InvocationCwd as C;
         |cmp, node| match node {
             C::Path(path) => cmp.compile(path),
-            C::Variable(ast::Variable((var,))) => match te!(cmp.lookup(var)) {
-                &SymInfo {
-                    typ: sym::Typ::Address(_),
-                    ..
-                } => cmp.capture_call_to_local_var(var),
-                sinfo @ &SymInfo {
-                    typ: sym::Typ::Local(_),
-                    ..
-                } => cmp.ensure_local_scope(var, sinfo),
-                sinfo @ SymInfo {
-                    typ: sym::Typ::Literal(_),
-                    ..
-                } => Ok(sinfo.to_owned()),
-            },
+            C::Variable(var) => cmp.compile_variable_as_auto(var),
             C::BoxInvocation(invc) => cmp.compile(Box::into_inner(invc)),
         }
     }
@@ -235,22 +224,7 @@ pub trait Compilers<'i> {
         |cmp, node| match node {
             RedirectInput((Redirect::Path(_path),)) => todo!(),
             RedirectInput((Redirect::Invocation(invc),)) => cmp.compile(invc),
-            RedirectInput((Redirect::Variable(ast::Variable((var,))),)) => {
-                match te!(cmp.lookup(var)) {
-                    &SymInfo {
-                        typ: sym::Typ::Address(_),
-                        ..
-                    } => cmp.capture_call_to_local_var(var),
-                    sinfo @ SymInfo {
-                        typ: sym::Typ::Local(_),
-                        ..
-                    } => cmp.ensure_local_scope(var, sinfo),
-                    sinfo @ SymInfo {
-                        typ: sym::Typ::Literal(_),
-                        ..
-                    } => Ok(sinfo.to_owned()),
-                }
-            }
+            RedirectInput((Redirect::Variable(var),)) => cmp.compile_variable_as_auto(var),
             RedirectInput((Redirect::Dereference(_deref),)) => todo!(),
         }
     }
@@ -311,20 +285,8 @@ pub trait Compilers<'i> {
                     cmp.emit1(i::PushArgs);
                     Ok(sinfo)
                 }
-                A::Variable(ast::Variable((var,))) => match te!(cmp.lookup(var)) {
-                    sinfo @ SymInfo {
-                        typ: sym::Typ::Literal(_),
-                        ..
-                    } => Ok(sinfo.to_owned()),
-                    sinfo @ SymInfo {
-                        typ: sym::Typ::Local(_),
-                        ..
-                    } => cmp.ensure_local_scope(var, sinfo),
-                    &SymInfo {
-                        typ: sym::Typ::Address(_),
-                        ..
-                    } => cmp.capture_call_to_local_var(var),
-                },
+                A::Slice(slice) => cmp.compile_slice(slice),
+                A::Variable(var) => cmp.compile_variable_as_auto(var),
                 A::Path(path) => cmp.compile(path),
                 A::Natural(n) => cmp.compile(n),
                 A::Invocation(invc) => cmp.compile(invc),

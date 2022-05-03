@@ -223,7 +223,12 @@ where
             let mut sbuf = [0u8; 64];
             use {std::io::Write, std::str::from_utf8};
             te!(write!(sbuf.as_mut_slice(), "{}", n));
-            let end = sbuf.as_slice().iter().cloned().position(|b| b == 0).unwrap_or(0);
+            let end = sbuf
+                .as_slice()
+                .iter()
+                .cloned()
+                .position(|b| b == 0)
+                .unwrap_or(0);
             let subsl = &sbuf.as_slice()[0..end as usize];
             inject(te!(from_utf8(subsl)));
         }

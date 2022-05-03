@@ -33,13 +33,22 @@ pub fn block_of_stmts<'i>(mut stmts: Vec<Item<'i>>, last: Item<'i>) -> Block<'i>
 pub fn expr_nat(n: &str) -> Expr {
     Expr::Natural(Natural((n,)))
 }
+
 pub fn expr_str(s: &str) -> Expr {
     Expr::String(String((s,)))
 }
 
-pub fn access_range<'i>((a, b): Tupl2<Option<Expr<'i>>>) -> Range<'i> {
-    let z = || expr_nat("0");
-    let mz = || expr_str("-0");
+pub fn arg_nat(n: &str) -> InvocationArg {
+    InvocationArg::Natural(Natural((n,)))
+}
+
+pub fn arg_str(s: &str) -> InvocationArg {
+    InvocationArg::String(String((s,)))
+}
+
+pub fn access_range<'i>((a, b): Tupl2<Option<InvocationArg<'i>>>) -> Range<'i> {
+    let z = || arg_nat("0");
+    let mz = || arg_str("-0");
     (a.unwrap_or_else(z), b.unwrap_or_else(mz))
 }
 

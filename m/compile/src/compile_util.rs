@@ -1,5 +1,5 @@
 use super::{
-    i, sym, te, temg, Borrow, BorrowMut, Compiler, EmitExt, Result, SymInfo, SymbolTableExt,
+    facade, i, sym, te, temg, Borrow, BorrowMut, Compiler, EmitExt, Result, SymInfo, SymbolTableExt,
 };
 
 pub trait CompileUtil: Borrow<Compiler> + BorrowMut<Compiler> {
@@ -8,6 +8,44 @@ pub trait CompileUtil: Borrow<Compiler> + BorrowMut<Compiler> {
     }
     fn cmp_ref(&self) -> &Compiler {
         self.borrow()
+    }
+
+    fn compile_slice(&mut self, ast::Slice((name, br)): ast::Slice) -> Result<SymInfo> {
+        let cmp = self.cmp();
+        let ast = facade::parse_invocation(
+            r###"
+                        __syscall-argslice 0 0 $args
+                    "###,
+        );
+        let mut ast = te!(ast);
+        let args = &mut (ast.0).6;
+        let source = ast::InvocationArg::Variable(ast::Variable((name,)));
+        args.clear();
+        args.push(br.0);
+        args.push(br.1);
+        args.push(source);
+        cmp.compile(ast)
+    }
+
+    fn compile_variable_as_auto(
+        &mut self,
+        ast::Variable((var,)): ast::Variable,
+    ) -> Result<SymInfo> {
+        let cmp = self.cmp();
+        match te!(cmp.lookup(var)) {
+            sinfo @ SymInfo {
+                typ: sym::Typ::Literal(_),
+                ..
+            } => Ok(sinfo.to_owned()),
+            sinfo @ SymInfo {
+                typ: sym::Typ::Local(_),
+                ..
+            } => cmp.ensure_local_scope(var, sinfo),
+            &SymInfo {
+                typ: sym::Typ::Address(_),
+                ..
+            } => cmp.capture_call_to_local_var(var),
+        }
     }
 
     fn capture_call_to_local_var(&mut self, name: &str) -> Result<SymInfo> {
@@ -139,7 +177,7 @@ pub trait CompileUtil: Borrow<Compiler> + BorrowMut<Compiler> {
                 ..
             } => cmp.emit1(clns(fp_off)),
             &SymInfo {
-                typ: sym::Typ::Literal(_),
+                typ: sym::Typ::Literal(_) | sym::Typ::Local(sym::Local { is_alias: true, .. }),
                 ..
             } => (),
             other => panic!("{:?}", other),
