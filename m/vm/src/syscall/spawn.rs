@@ -17,9 +17,7 @@ pub fn spawn(vm: &mut Vm) -> Result<()> {
     let &inp_redir_n: &usize = te!(vm.arg_get(nargs + 3));
     let &nenvs: &usize = te!(vm.arg_get(nargs + 3 + inp_redir_n + 1));
 
-    type RV<'a> = Result<Vec<&'a Value>>;
-
-    let vmargs: RV = (0..=nargs).map(|i| vm.arg_get_val(i)).collect();
+    let vmargs: Result<Vec<_>> = (0..=nargs).map(|i| vm.arg_get_val(i)).collect();
     let vmargs = te!(vmargs);
 
     ldebug!(
@@ -94,17 +92,24 @@ pub fn spawn(vm: &mut Vm) -> Result<()> {
     }
     let mut inp_jobs: Vec<(Id, usize)> = vec![];
 
-    let inp_redirs: RV = (0..inp_redir_n)
-        .map(|i| vm.arg_get_val(nargs + 3 + 1 + i))
+    let inp_redirs: Result<Vec<Value>> = (0..inp_redir_n)
+        .map(|i| vm.arg_get_val(nargs + 3 + 1 + i).map(<_>::to_owned))
         .collect();
     let inp_redirs = te!(inp_redirs);
 
-    for redir in inp_redirs {
-        inp_jobs.push(match redir {
-            &Value::Job(value::Job(jobid)) => (Id::Job, jobid),
-            &Value::LitString(value::LitString(strid)) => (Id::Str, strid),
-            other => temg!("internal error: {:?}", other),
-        })
+    for mut redir in inp_redirs {
+        let redir_insert = loop {
+            break match redir {
+                Value::Job(value::Job(jobid)) => (Id::Job, jobid),
+                Value::LitString(value::LitString(strid)) => (Id::Str, strid),
+                Value::ArrayView(view) => {
+                    redir = te!(view.first(vm));
+                    continue;
+                }
+                other => temg!("internal error: {:?}", other),
+            };
+        };
+        inp_jobs.push(redir_insert)
     }
     for inp_job in inp_jobs {
         let inp_job = match inp_job {
