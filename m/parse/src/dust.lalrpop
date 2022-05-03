@@ -68,6 +68,7 @@ Redirect: ast::Redirect<'input> = {
     Path => <>.into(),
     Variable => <>.into(),
     Dereference => <>.into(),
+    Slice => <>.into(),
     "(" <Invocation> ")" => <>.into(),
 }
 

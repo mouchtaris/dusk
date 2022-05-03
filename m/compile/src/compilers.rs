@@ -225,6 +225,7 @@ pub trait Compilers<'i> {
             RedirectInput((Redirect::Path(_path),)) => todo!(),
             RedirectInput((Redirect::Invocation(invc),)) => cmp.compile(invc),
             RedirectInput((Redirect::Variable(var),)) => cmp.compile_variable_as_auto(var),
+            RedirectInput((Redirect::Slice(slice),)) => cmp.compile_slice(slice),
             RedirectInput((Redirect::Dereference(_deref),)) => todo!(),
         }
     }
@@ -234,6 +235,7 @@ pub trait Compilers<'i> {
             RedirectOutput((Redirect::Path(_path),)) => todo!(),
             RedirectOutput((Redirect::Invocation(_invc),)) => todo!(),
             RedirectOutput((Redirect::Variable(_id),)) => todo!(),
+            RedirectOutput((Redirect::Slice(slice),)) => todo!(),
             RedirectOutput((Redirect::Dereference(_deref),)) => todo!(),
         }
     }
