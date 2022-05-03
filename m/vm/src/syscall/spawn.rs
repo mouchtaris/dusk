@@ -86,9 +86,11 @@ pub fn spawn(vm: &mut Vm) -> Result<()> {
 
     // Connect input redirections
     //
+    #[derive(Debug)]
     enum Id {
         Job,
         Str,
+        DStr,
     }
     let mut inp_jobs: Vec<(Id, usize)> = vec![];
 
@@ -102,6 +104,7 @@ pub fn spawn(vm: &mut Vm) -> Result<()> {
             break match redir {
                 Value::Job(value::Job(jobid)) => (Id::Job, jobid),
                 Value::LitString(value::LitString(strid)) => (Id::Str, strid),
+                Value::DynString(value::DynString(strid)) => (Id::DStr, strid),
                 Value::ArrayView(view) => {
                     redir = te!(view.first(vm));
                     continue;
@@ -111,16 +114,23 @@ pub fn spawn(vm: &mut Vm) -> Result<()> {
         };
         inp_jobs.push(redir_insert)
     }
+    fn make_string_input(vm: &Vm, typ: Id, id: usize) -> Result<Job> {
+        Ok({
+            // TODO this command is filler
+            let cmd = Command::new("false");
+            let string = match typ {
+                Id::Str => te!(vm.get_string_id(id)).to_owned(),
+                Id::DStr => te!(vm.get_dynstring_id(id)).to_owned(),
+                other => temg!("Not a string: {:?}", other),
+            };
+            let buffer = job::Buffer::String(cmd, string);
+            Job::Buffer(buffer)
+        })
+    }
     for inp_job in inp_jobs {
         let inp_job = match inp_job {
             (Id::Job, jobid) => mem::take(te!(vm.get_job_mut(jobid))),
-            (Id::Str, strid) => {
-                // TODO this command is filler
-                let cmd = Command::new("false");
-                let string = te!(vm.get_string_id(strid)).to_owned();
-                let buffer = job::Buffer::String(cmd, string);
-                Job::Buffer(buffer)
-            }
+            (typ @ (Id::Str | Id::DStr), strid) => te!(make_string_input(vm, typ, strid)),
         };
         te!(job.add_input_job(inp_job));
     }
