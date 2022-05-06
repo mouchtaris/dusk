@@ -141,41 +141,52 @@ pub trait CompileUtil: Borrow<Compiler> + BorrowMut<Compiler> {
                 cmp.emit1(instr)
             }
             &SymInfo {
-                typ: sym::Typ::Local(sym::Local { fp_off, is_alias }),
+                typ:
+                    sym::Typ::Local(
+                        ref local @ sym::Local {
+                            fp_off,
+                            is_alias,
+                            size,
+                        },
+                    ),
                 scope_id,
             } => {
-                let instr = if push_or_retval {
+                let instr = |p| if push_or_retval {
                     cmp.new_local_tmp(format_args!(
-                        "copy-of-{} {}in {}",
+                        "copy-of-{}[{}/{}] {}in {}",
                         fp_off,
+                        fp_off + size as usize - p,
+                        size,
                         if is_alias { "(alias) " } else { "" },
                         scope_id
                     ));
                     i::PushLocal
                 } else {
                     i::RetLocal
-                };
+                }(p);
 
-                cmp.emit1(instr(fp_off))
+                let instr: Vec<_> = local.foreach(instr).collect();
+                cmp.emit(instr);
             }
         })
     }
 
     fn emit_cleanup<C>(&mut self, clns: C, sinfo: &SymInfo) -> Result<()>
     where
-        C: FnOnce(usize) -> i,
+        C: FnMut(usize) -> i,
     {
         let cmp = self.cmp();
 
         Ok(match sinfo {
             &SymInfo {
                 typ:
-                    sym::Typ::Local(sym::Local {
-                        fp_off,
-                        is_alias: false,
-                    }),
+                    sym::Typ::Local(
+                        ref local @ sym::Local {
+                            is_alias: false, ..
+                        },
+                    ),
                 ..
-            } => cmp.emit1(clns(fp_off)),
+            } => cmp.emit(local.foreach(clns)),
             &SymInfo {
                 typ: sym::Typ::Literal(_) | sym::Typ::Local(sym::Local { is_alias: true, .. }),
                 ..

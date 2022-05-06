@@ -1,4 +1,4 @@
-use super::{temg, Result};
+use super::{te, temg, Result};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Info {
@@ -17,6 +17,7 @@ either::either![
 pub struct Local {
     pub fp_off: usize,
     pub is_alias: bool,
+    pub size: u16,
 }
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Address {
@@ -79,7 +80,7 @@ impl Info {
         let Self { typ, .. } = self;
         match typ {
             Typ::Local(a) => Ok(a),
-            _ => temg!("Not a local variable symbol"),
+            other => temg!("Not a local variable symbol: {:?}", other),
         }
     }
     pub fn fp_off(&self) -> Result<usize> {
@@ -89,7 +90,7 @@ impl Info {
         let Self { typ, .. } = self;
         match typ {
             Typ::Address(a) => Ok(a),
-            _ => temg!("Not an address symbol"),
+            other => temg!("Not an address symbol: {:?}", other),
         }
     }
     pub fn addr(&self) -> Result<usize> {
@@ -114,6 +115,13 @@ impl Info {
         *si.val_mut() = val;
         si
     }
+    pub fn retval_size(&self) -> Result<u16> {
+        Ok(match &self.typ {
+            Typ::Address(addr) => addr.retval_size,
+            Typ::Literal(_) => 1,
+            &Typ::Local(Local { size, ..}) => size,
+        })
+    }
 }
 impl Default for Info {
     fn default() -> Self {
@@ -121,8 +129,23 @@ impl Default for Info {
             typ: Typ::Local(Local {
                 fp_off: 0,
                 is_alias: true,
+                size: 1,
             }),
             scope_id: 0,
         }
+    }
+}
+
+impl Local {
+    pub fn foreach<F, R>(&self, mut f: F) -> impl Iterator<Item = R>
+    where
+        F: FnMut(usize) -> R,
+    {
+        let &Self { size, .. } = self;
+
+        (0..size).into_iter().map(move |j| {
+            let i = (size - 1 - j) as usize;
+            f(i)
+        })
     }
 }

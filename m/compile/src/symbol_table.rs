@@ -32,12 +32,13 @@ where
         sinfo
     }
 
-    fn new_local(&mut self, name: String) -> &mut SymInfo {
+    fn new_local2(&mut self, name: String, size: u16) -> &mut SymInfo {
         let scope_id = self.scope_id();
         let scope = self.scope_mut();
         let local_var = sym::Local {
             fp_off: scope_stack_size(&scope),
             is_alias: false,
+            size,
         };
         let sinfo = SymInfo {
             scope_id,
@@ -49,7 +50,11 @@ where
             .or_insert(sinfo)
     }
 
-    fn new_local_tmp<D>(&mut self, desc: D) -> &mut SymInfo
+    fn new_local(&mut self, name: String) -> &mut SymInfo {
+        self.new_local2(name, 1)
+    }
+
+    fn new_local_tmp2<D>(&mut self, size: u16, desc: D) -> &mut SymInfo
     where
         D: fmt::Display,
     {
@@ -58,7 +63,14 @@ where
         } else {
             format!("{}:{}", self.scope_id(), self.scope().len())
         };
-        self.new_local(name)
+        self.new_local2(name, size)
+    }
+
+    fn new_local_tmp<D>(&mut self, desc: D) -> &mut SymInfo
+    where
+        D: fmt::Display,
+    {
+        self.new_local_tmp2(1, desc)
     }
 
     fn new_natural_literal_tmp(&mut self, nat: usize) -> &mut SymInfo {

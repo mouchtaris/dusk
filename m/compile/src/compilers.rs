@@ -161,10 +161,11 @@ pub trait Compilers<'i> {
 
             // === Emits ===
             // RetVal Allocation
+            let retval_size = te!(invc_target_sinfo.retval_size());
             let mut retval = cmp
-                .new_local_tmp(format_args!("retval-{}", invctrgt))
+                .new_local_tmp2(retval_size, format_args!("retval-{}", invctrgt))
                 .clone();
-            cmp.emit1(i::PushNull);
+            cmp.emit(std::iter::repeat(i::PushNull).take(retval_size as usize));
             // Environment Variables
             cmp.new_local_tmp(format_args!("nenvs-{}", invctrgt));
             for (env_name, env_var) in &envs_sinfos {

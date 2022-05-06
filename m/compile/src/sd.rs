@@ -9,7 +9,7 @@ buf::sd_struct![SymInfo, typ, scope_id];
 
 buf::sd_type![Typ, Local, 0u8, Address, 1u8, Literal, 2u8];
 
-buf::sd_struct![Local, fp_off, is_alias];
+buf::sd_struct![Local, fp_off, is_alias, size];
 buf::sd_struct![Address, addr, retval_size];
 buf::sd_struct![Literal, lit_type, id];
 
