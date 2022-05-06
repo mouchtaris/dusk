@@ -10,6 +10,22 @@ pub trait CompileUtil: Borrow<Compiler> + BorrowMut<Compiler> {
         self.borrow()
     }
 
+    fn compile_closure(&mut self, ast::Closure((items,)): ast::Closure) -> Result<SymInfo> {
+        let cmp = self.cmp();
+
+        let mut size = 0u16;
+        for item in items {
+            let si = te!(cmp.compile(item));
+            size += te!(si.retval_size());
+        }
+
+        let len = size + 1;
+        let sinfo = cmp.new_local_tmp2(len, "closure").to_owned();
+        cmp.emit1(i::PushNat(len as usize));
+
+        Ok(sinfo)
+    }
+
     fn compile_slice(&mut self, ast::Slice((name, br)): ast::Slice) -> Result<SymInfo> {
         let cmp = self.cmp();
         let ast = facade::parse_invocation(

@@ -1,4 +1,4 @@
-use super::{te, temg, Result};
+use super::{temg, Result};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Info {
@@ -119,7 +119,7 @@ impl Info {
         Ok(match &self.typ {
             Typ::Address(addr) => addr.retval_size,
             Typ::Literal(_) => 1,
-            &Typ::Local(Local { size, ..}) => size,
+            &Typ::Local(Local { size, .. }) => size,
         })
     }
 }

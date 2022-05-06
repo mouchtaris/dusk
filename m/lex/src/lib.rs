@@ -70,71 +70,17 @@ lexpop![
 ];
 lexpop![
     kwd,
-    either(
-        '[',
-        either(
-            ']',
-            either(
-                '(',
-                either(
-                    ')',
-                    either(
-                        '{',
-                        either(
-                            '}',
-                            either(
-                                '=',
-                                either(
-                                    '$',
-                                    either(
-                                        '*',
-                                        either(
-                                            '"',
-                                            either(
-                                                ';',
-                                                either(
-                                                    '@',
-                                                    either(
-                                                        '<',
-                                                        either(
-                                                            '>',
-                                                            either(
-                                                                '!',
-                                                                either(',',
-                                                                either(
-                                                                    exact("val"),
-                                                                    either(
-                                                                        exact("let"),
-                                                                        either(
-                                                                            exact("src"),
-                                                                            either(
-                                                                                exact("def"),
-                                                                                either(
-                                                                                    exact("if"),
-                                                                                    exact(
-                                                                                        "include"
-                                                                                    )
-                                                                                )
-                                                                            )
-                                                                        )
-                                                                        )
-                                                                    )
-                                                                )
-                                                            )
-                                                        )
-                                                    )
-                                                )
-                                            )
-                                        )
-                                    )
-                                )
-                            )
-                        )
-                    )
-                )
-            )
-        )
-    )
+    either(exact("new"),
+        either('!', either('@', either('<', either('>',
+        either('=', either('$', either('*',
+        either('[', either(']',
+        either('(', either(')',
+        either('{', either('}',
+        either('"', either(';', either(',',
+        either(exact("def"), either(exact("src"), either(exact("let"),
+        either(exact("val"), either(exact("if"),
+        exact("include")
+    ))))))))))))))))))))))
 ];
 
 pub const TOK_NADA: Tok<'static> = Tok::Nada(Nada(""));

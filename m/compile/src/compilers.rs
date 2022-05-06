@@ -74,6 +74,7 @@ pub trait Compilers<'i> {
             ast::Expr::Invocation(invc) => cmp.compile(invc),
             ast::Expr::Variable(var) => cmp.compile_variable_as_auto(var),
             ast::Expr::Slice(slice) => cmp.compile_slice(slice),
+            ast::Expr::Closure(closure) => cmp.compile_closure(closure),
         }
     }
     fn block() -> S<Block<'i>> {

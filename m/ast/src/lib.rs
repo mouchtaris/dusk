@@ -31,7 +31,7 @@ macro_rules! name {
 name![Module, Block];
 
 either![Item, Expr, LetStmt, DefStmt, SrcStmt, Include, Empty];
-either![Expr, Invocation, String, Natural, Slice, Variable];
+either![Expr, Invocation, String, Natural, Slice, Variable, Closure];
 either![Body, Block];
 either![
     InvocationTarget,
@@ -56,6 +56,7 @@ either![Path, AbsPath, RelPath, HomePath];
 either![Opt, ShortOpt, LongOpt];
 either![Redirect, Path, Variable, Dereference, Invocation, Slice];
 
+name![Closure, AnyExpr];
 name![Include, Path];
 name![Block, AnyItem, Expr];
 name![LetStmt, Ident, Expr];
@@ -104,6 +105,7 @@ pub type AnyInvocationEnv<'i> = Any<InvocationEnv<'i>>;
 pub type AnyInvocationInputRedirection<'i> = Any<InvocationInputRedirection<'i>>;
 pub type AnyInvocationOutputRedirection<'i> = Any<InvocationOutputRedirection<'i>>;
 pub type AnyItem<'i> = Any<Item<'i>>;
+pub type AnyExpr<'i> = Any<Expr<'i>>;
 pub type BoxBody<'i> = Box<Body<'i>>;
 pub type BoxInvocation<'i> = Box<Invocation<'i>>;
 pub type BoxRange<'i> = Box<Range<'i>>;
