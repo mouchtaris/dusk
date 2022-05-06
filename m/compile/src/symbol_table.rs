@@ -20,12 +20,12 @@ pub trait SymbolTableExt
 where
     Self: AsRef<SymbolTable> + AsMut<SymbolTable>,
 {
-    fn new_address<S: Into<String>>(&mut self, name: S, addr: usize) -> SymInfo {
+    fn new_address<S: Into<String>>(&mut self, name: S, addr: usize, retval_size: u16) -> SymInfo {
         let scope_id = self.scope_id();
         let scope = self.scope_mut();
         let sinfo = SymInfo {
             scope_id,
-            typ: SymType::Address(sym::Address { addr }),
+            typ: SymType::Address(sym::Address { addr, retval_size }),
         };
         let name = name.into();
         scope.insert(name, sinfo.clone());
@@ -204,7 +204,7 @@ where
 pub fn find_func_name<'s, S: AsRef<SymbolTable>>(st: &'s S, faddr: &usize) -> Option<&'s str> {
     scopes(st).find_map(|(_, n, i)| match i {
         sym::Info {
-            typ: sym::Typ::Address(sym::Address { addr }),
+            typ: sym::Typ::Address(sym::Address { addr, .. }),
             ..
         } if addr == faddr => Some(n),
         _ => None,

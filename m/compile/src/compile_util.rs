@@ -79,7 +79,7 @@ pub trait CompileUtil: Borrow<Compiler> + BorrowMut<Compiler> {
 
         Ok(match sinfo {
             &SymInfo {
-                typ: sym::Typ::Address(sym::Address { addr }),
+                typ: sym::Typ::Address(sym::Address { addr, .. }),
                 ..
             } => {
                 let instr = if push_or_retval {

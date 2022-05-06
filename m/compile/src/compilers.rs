@@ -52,7 +52,7 @@ pub trait Compilers<'i> {
                 let jump_target = cmp.instr_id() + 1;
                 te!(cmp.backpatch_with(jump_instr, jump_target));
 
-                let ninfo = cmp.new_address(name, jump_instr + 1);
+                let ninfo = cmp.new_address(name, jump_instr + 1, 1);
 
                 Ok(ninfo)
             }
@@ -235,7 +235,7 @@ pub trait Compilers<'i> {
             RedirectOutput((Redirect::Path(_path),)) => todo!(),
             RedirectOutput((Redirect::Invocation(_invc),)) => todo!(),
             RedirectOutput((Redirect::Variable(_id),)) => todo!(),
-            RedirectOutput((Redirect::Slice(slice),)) => todo!(),
+            RedirectOutput((Redirect::Slice(_slice),)) => todo!(),
             RedirectOutput((Redirect::Dereference(_deref),)) => todo!(),
         }
     }

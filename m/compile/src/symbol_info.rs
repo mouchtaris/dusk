@@ -21,6 +21,7 @@ pub struct Local {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Address {
     pub addr: usize,
+    pub retval_size: u16,
 }
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Literal {
@@ -96,14 +97,14 @@ impl Info {
     }
     pub fn val(&self) -> usize {
         match self.typ {
-            Typ::Address(Address { addr: v })
+            Typ::Address(Address { addr: v, .. })
             | Typ::Local(Local { fp_off: v, .. })
             | Typ::Literal(Literal { id: v, .. }) => v,
         }
     }
     pub fn val_mut(&mut self) -> &mut usize {
         match &mut self.typ {
-            Typ::Address(Address { addr: v })
+            Typ::Address(Address { addr: v, .. })
             | Typ::Local(Local { fp_off: v, .. })
             | Typ::Literal(Literal { id: v, .. }) => v,
         }

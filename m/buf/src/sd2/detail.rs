@@ -199,6 +199,7 @@ impl<'t, T: WriteOut> WriteOut for &'t T {
 }
 
 as_bytes!(u8);
+as_bytes!(u16);
 as_bytes!(usize);
 sd_as![bool, |&b| if b { 0u8 } else { 1 }, |b: u8| if b == 0u8 {
     true
