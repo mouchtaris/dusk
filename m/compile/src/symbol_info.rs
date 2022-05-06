@@ -17,12 +17,12 @@ either::either![
 pub struct Local {
     pub fp_off: usize,
     pub is_alias: bool,
-    pub size: u16,
+    pub types: Vec<Info>,
 }
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Address {
     pub addr: usize,
-    pub retval_size: u16,
+    pub ret_t: Box<Info>,
 }
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Literal {
@@ -35,6 +35,7 @@ pub enum LitType {
     String,
     Null,
     Syscall,
+    Args,
 }
 
 impl Info {
@@ -46,34 +47,28 @@ impl Info {
         }),
     };
 
+    pub fn typ(typ: Typ) -> Self {
+        Self { scope_id: 0, typ }
+    }
+
     pub fn lit_string(id: usize) -> Self {
-        Self {
-            scope_id: 0,
-            typ: Typ::Literal(Literal {
-                id,
-                lit_type: LitType::String,
-            }),
-        }
+        Self::typ(Typ::lit(id, LitType::String))
     }
 
     pub fn lit_natural(id: usize) -> Self {
-        Self {
-            scope_id: 0,
-            typ: Typ::Literal(Literal {
-                id,
-                lit_type: LitType::Natural,
-            }),
-        }
+        Self::typ(Typ::natural(id))
     }
 
     pub fn syscall(id: usize) -> Self {
-        Self {
-            scope_id: 0,
-            typ: Typ::Literal(Literal {
-                id,
-                lit_type: LitType::Syscall,
-            }),
-        }
+        Self::typ(Typ::lit(id, LitType::Syscall))
+    }
+
+    pub fn address(id: usize, ret_t: &Self) -> Self {
+        Self::typ(Typ::address(id, ret_t))
+    }
+
+    pub fn args() -> Self {
+        Self::typ(Typ::args())
     }
 
     pub fn as_local_ref(&self) -> Result<&Local> {
@@ -115,21 +110,15 @@ impl Info {
         *si.val_mut() = val;
         si
     }
-    pub fn retval_size(&self) -> Result<u16> {
-        Ok(match &self.typ {
-            Typ::Address(addr) => addr.retval_size,
-            Typ::Literal(_) => 1,
-            &Typ::Local(Local { size, .. }) => size,
-        })
-    }
 }
+
 impl Default for Info {
     fn default() -> Self {
         Self {
             typ: Typ::Local(Local {
                 fp_off: 0,
                 is_alias: true,
-                size: 1,
+                types: vec![],
             }),
             scope_id: 0,
         }
@@ -141,11 +130,70 @@ impl Local {
     where
         F: FnMut(usize) -> R,
     {
-        let &Self { size, .. } = self;
-
+        let &Self { fp_off, .. } = self;
+        let size = self.size();
         (0..size).into_iter().map(move |j| {
-            let i = (size - 1 - j) as usize;
+            let i = fp_off - (size - 1 - j) as usize;
             f(i)
+        })
+    }
+
+    pub fn size(&self) -> u16 {
+        self.types.iter().map(|t| t.typ.size()).sum()
+    }
+}
+
+impl Typ {
+    pub fn size(&self) -> u16 {
+        match self {
+            Typ::Literal(_) => 1,
+            Typ::Address(Address { ret_t, .. }) => ret_t.typ.size(),
+            Typ::Local(local) => local.size(),
+        }
+    }
+
+    pub fn local<T>(types: T, is_alias: bool, fp_off: usize) -> Self
+    where
+        T: IntoIterator,
+        T::Item: Into<Info>,
+    {
+        Self::Local(Local {
+            fp_off,
+            is_alias,
+            types: types.into_iter().map(<_>::into).collect(),
+        })
+    }
+
+    pub fn array<T>(types: T) -> Self
+    where
+        T: IntoIterator,
+        T::Item: Into<Info>,
+    {
+        Self::local(types, true, 0)
+    }
+
+    pub fn natural(id: usize) -> Self {
+        Self::Literal(Literal {
+            id,
+            lit_type: LitType::Natural,
+        })
+    }
+
+    pub fn address(addr: usize, ret_t: &Info) -> Self {
+        Self::Address(Address {
+            addr,
+            ret_t: Box::new(ret_t.to_owned()),
+        })
+    }
+
+    pub fn lit(id: usize, lit_type: LitType) -> Self {
+        Self::Literal(Literal { id, lit_type })
+    }
+
+    pub fn args() -> Self {
+        Self::Literal(Literal {
+            id: 0,
+            lit_type: LitType::Args,
         })
     }
 }

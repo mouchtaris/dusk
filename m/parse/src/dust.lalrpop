@@ -22,7 +22,7 @@ pub Expr: ast::Expr<'input> = {
     Invocation => <>.into(),
     Slice => <>.into(),
     Variable => <>.into(),
-    Closure => <>.into(),
+    Array => <>.into(),
 }
 
 pub Invocation: ast::Invocation<'input> = {
@@ -65,7 +65,7 @@ InvocationOutputRedirection: ast::InvocationOutputRedirection<'input> = {
     ">" <Redirect> => ast::RedirectOutput((<>,)).into(),
 }
 
-Closure: ast::Closure<'input> = {
+Array: ast::Array<'input> = {
   "[" <("," <Expr>)*> "]" => (<>,).into()
 }
 

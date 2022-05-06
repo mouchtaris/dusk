@@ -20,25 +20,41 @@ pub trait SymbolTableExt
 where
     Self: AsRef<SymbolTable> + AsMut<SymbolTable>,
 {
-    fn new_address<S: Into<String>>(&mut self, name: S, addr: usize, retval_size: u16) -> SymInfo {
+    fn new_array<T, N>(&mut self, types: T, name: N) -> SymInfo
+    where
+        T: IntoIterator,
+        T::Item: Into<SymInfo>,
+        N: Into<String>,
+    {
+        let mut sinfo = SymInfo::typ(sym::Typ::array(types));
+        sinfo.scope_id = self.scope_id();
+        self.scope_mut().insert(name.into(), sinfo.to_owned());
+        sinfo
+    }
+
+    fn new_address<S: Into<String>>(&mut self, name: S, addr: usize, ret_t: &SymInfo) -> SymInfo {
         let scope_id = self.scope_id();
         let scope = self.scope_mut();
         let sinfo = SymInfo {
             scope_id,
-            typ: SymType::Address(sym::Address { addr, retval_size }),
+            typ: SymType::address(addr, ret_t),
         };
         let name = name.into();
-        scope.insert(name, sinfo.clone());
+        scope.insert(name, sinfo.to_owned());
         sinfo
     }
 
-    fn new_local2(&mut self, name: String, size: u16) -> &mut SymInfo {
+    fn new_local<T>(&mut self, types: T, name: String) -> &mut SymInfo
+    where
+        T: IntoIterator,
+        T::Item: Into<SymInfo>,
+    {
         let scope_id = self.scope_id();
         let scope = self.scope_mut();
         let local_var = sym::Local {
             fp_off: scope_stack_size(&scope),
             is_alias: false,
-            size,
+            types: types.into_iter().map(<_>::into).collect(),
         };
         let sinfo = SymInfo {
             scope_id,
@@ -50,31 +66,49 @@ where
             .or_insert(sinfo)
     }
 
-    fn new_local(&mut self, name: String) -> &mut SymInfo {
-        self.new_local2(name, 1)
-    }
-
-    fn new_local_tmp2<D>(&mut self, size: u16, desc: D) -> &mut SymInfo
+    fn with_tmp_name<D, F>(&mut self, name: D, func: F) -> &mut SymInfo
     where
         D: fmt::Display,
+        F: FnOnce(&mut Self, String) -> &mut SymInfo,
     {
-        let name = if cfg!(feature = "debug") {
-            format!("t:{}:{}:{}", self.scope_id(), self.scope().len(), desc)
+        func(self, self.tmp_name_string(name))
+    }
+
+    fn tmp_name_string<D: fmt::Display>(&self, name: D) -> String {
+        self.tmp_name(name, |name| name.to_string())
+    }
+
+    fn tmp_name<D, K, R>(&self, name: D, callb: K) -> R
+    where
+        D: fmt::Display,
+        K: FnOnce(&dyn fmt::Display) -> R,
+    {
+        if cfg!(feature = "debug") {
+            callb(&format_args!(
+                "t:{}:{}:{}",
+                self.scope_id(),
+                self.scope().len(),
+                name
+            ))
         } else {
-            format!("{}:{}", self.scope_id(), self.scope().len())
-        };
-        self.new_local2(name, size)
+            callb(&format_args!("{}:{}", self.scope_id(), self.scope().len()))
+        }
     }
 
-    fn new_local_tmp<D>(&mut self, desc: D) -> &mut SymInfo
+    fn new_local_tmp<T, D>(&mut self, types: T, desc: D) -> &mut SymInfo
     where
+        T: IntoIterator,
+        T::Item: Into<SymInfo>,
         D: fmt::Display,
     {
-        self.new_local_tmp2(1, desc)
+        self.with_tmp_name(desc, |st, name| st.new_local(types, name))
     }
 
     fn new_natural_literal_tmp(&mut self, nat: usize) -> &mut SymInfo {
-        let syminfo = self.new_local_tmp(format_args!("literal-nat-{}", nat));
+        let syminfo = self.new_local_tmp(
+            [SymInfo::lit_natural(nat)],
+            format_args!("literal-nat-{}", nat),
+        );
         syminfo.typ = sym::Typ::Literal(sym::Literal {
             id: nat,
             lit_type: sym::LitType::Natural,
@@ -87,7 +121,7 @@ where
         let scope = &mut st.scopes[info.scope_id];
 
         let new_name = new_name.into();
-        let mut info = info.clone();
+        let mut info = info.to_owned();
         match &mut info.typ {
             SymType::Local(sym::Local { is_alias, .. }) => *is_alias = true,
             _ => (),

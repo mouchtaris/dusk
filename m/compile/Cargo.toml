@@ -40,3 +40,6 @@ path = '../show'
 [dependencies.vm]
 version = '0.0.1'
 path = '../vm'
+
+[features]
+debug = []

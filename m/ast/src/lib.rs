@@ -31,7 +31,7 @@ macro_rules! name {
 name![Module, Block];
 
 either![Item, Expr, LetStmt, DefStmt, SrcStmt, Include, Empty];
-either![Expr, Invocation, String, Natural, Slice, Variable, Closure];
+either![Expr, Invocation, String, Natural, Slice, Variable, Array];
 either![Body, Block];
 either![
     InvocationTarget,
@@ -56,7 +56,7 @@ either![Path, AbsPath, RelPath, HomePath];
 either![Opt, ShortOpt, LongOpt];
 either![Redirect, Path, Variable, Dereference, Invocation, Slice];
 
-name![Closure, AnyExpr];
+name![Array, AnyExpr];
 name![Include, Path];
 name![Block, AnyItem, Expr];
 name![LetStmt, Ident, Expr];

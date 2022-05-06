@@ -10,18 +10,15 @@ pub trait CompileUtil: Borrow<Compiler> + BorrowMut<Compiler> {
         self.borrow()
     }
 
-    fn compile_closure(&mut self, ast::Closure((items,)): ast::Closure) -> Result<SymInfo> {
+    fn compile_array(&mut self, ast::Array((items,)): ast::Array) -> Result<SymInfo> {
         let cmp = self.cmp();
 
-        let mut size = 0u16;
+        let mut types = Vec::new();
         for item in items {
-            let si = te!(cmp.compile(item));
-            size += te!(si.retval_size());
+            types.push(te!(cmp.compile(item)));
         }
 
-        let len = size + 1;
-        let sinfo = cmp.new_local_tmp2(len, "closure").to_owned();
-        cmp.emit1(i::PushNat(len as usize));
+        let sinfo = cmp.new_array(types, "an_array");
 
         Ok(sinfo)
     }
@@ -93,13 +90,19 @@ pub trait CompileUtil: Borrow<Compiler> + BorrowMut<Compiler> {
     fn emit_from_symbol(&mut self, push_or_retval: bool, sinfo: &SymInfo) -> Result<()> {
         let cmp = self.cmp();
 
-        Ok(match sinfo {
+        error::ldebug!(
+            "emit from symbol [{}]: {:?}",
+            if push_or_retval { "push" } else { "ret" },
+            sinfo
+        );
+        let sinfo = sinfo.to_owned();
+        Ok(match &sinfo {
             &SymInfo {
                 typ: sym::Typ::Address(sym::Address { addr, .. }),
                 ..
             } => {
                 let instr = if push_or_retval {
-                    cmp.new_local_tmp(format_args!("func-addr-{}", addr));
+                    cmp.new_local_tmp([sinfo], format_args!("func-addr-{}", addr));
                     i::PushFuncAddr
                 } else {
                     i::RetFuncAddr
@@ -115,7 +118,7 @@ pub trait CompileUtil: Borrow<Compiler> + BorrowMut<Compiler> {
                 ..
             } => {
                 let instr = if push_or_retval {
-                    cmp.new_local_tmp(format_args!("string-lit-{}", id));
+                    cmp.new_local_tmp([sinfo], format_args!("string-lit-{}", id));
                     i::PushStr
                 } else {
                     i::RetStr
@@ -131,7 +134,7 @@ pub trait CompileUtil: Borrow<Compiler> + BorrowMut<Compiler> {
                 ..
             } => {
                 let instr = if push_or_retval {
-                    cmp.new_local_tmp(format_args!("nat-lit-{}", id));
+                    cmp.new_local_tmp([sinfo], format_args!("nat-lit-{}", id));
                     i::PushNat
                 } else {
                     i::RetNat
@@ -148,7 +151,7 @@ pub trait CompileUtil: Borrow<Compiler> + BorrowMut<Compiler> {
                 ..
             } => {
                 let instr = if push_or_retval {
-                    cmp.new_local_tmp(format_args!("null-lit"));
+                    cmp.new_local_tmp([sinfo], format_args!("null-lit"));
                     i::PushNull
                 } else {
                     panic!("Return null not supported")
@@ -158,22 +161,40 @@ pub trait CompileUtil: Borrow<Compiler> + BorrowMut<Compiler> {
             }
             &SymInfo {
                 typ:
+                    sym::Typ::Literal(sym::Literal {
+                        lit_type: sym::LitType::Args,
+                        ..
+                    }),
+                ..
+            } => {
+                let instr = if push_or_retval {
+                    cmp.new_local_tmp([SymInfo::NULL], format_args!("args_for_callee"));
+                    i::PushArgs
+                } else {
+                    return temg!("Cannot return $args");
+                };
+
+                cmp.emit1(instr);
+            }
+            SymInfo {
+                typ:
                     sym::Typ::Local(
-                        ref local @ sym::Local {
+                        local @ sym::Local {
                             fp_off,
-                            is_alias,
-                            size,
+                            is_alias: false,
+                            types,
                         },
                     ),
                 scope_id,
             } => {
+                let size = local.size();
                 let instr = |p| if push_or_retval {
-                    cmp.new_local_tmp(format_args!(
-                        "copy-of-{}[{}/{}] {}in {}",
+                    let i = p - fp_off;
+                    cmp.new_local_tmp(types[i..(i+1)].iter().cloned(), format_args!(
+                        "copy-of-{}[{}/{}] in {}",
                         fp_off,
                         fp_off + size as usize - p,
                         size,
-                        if is_alias { "(alias) " } else { "" },
                         scope_id
                     ));
                     i::PushLocal
@@ -183,6 +204,19 @@ pub trait CompileUtil: Borrow<Compiler> + BorrowMut<Compiler> {
 
                 let instr: Vec<_> = local.foreach(instr).collect();
                 cmp.emit(instr);
+            }
+            SymInfo {
+                typ:
+                    sym::Typ::Local(sym::Local {
+                        is_alias: true,
+                        types,
+                        ..
+                    }),
+                ..
+            } => {
+                for typ in types {
+                    te!(cmp.emit_from_symbol(push_or_retval, typ));
+                }
             }
         })
     }

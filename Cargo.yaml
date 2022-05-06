@@ -70,6 +70,9 @@ module:
       - buf
     dep_crate:
       - log
+    inline:
+      features:
+        debug: []
   vm-debug:
     dep_mod:
       - vm

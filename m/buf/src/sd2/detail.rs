@@ -272,3 +272,11 @@ serializable![
     as_iter::<VecDeque<T>, _>,
     from_iter
 ];
+
+serializable![
+    Box<
+        T: { WriteOut + ReadIn },
+    >,
+    |bx: &Box<T>, dst| bx.as_ref().write_out(dst),
+    |inp| Ok(Box::new(te!(T::read_in(inp))))
+];

@@ -9,11 +9,11 @@ buf::sd_struct![SymInfo, typ, scope_id];
 
 buf::sd_type![Typ, Local, 0u8, Address, 1u8, Literal, 2u8];
 
-buf::sd_struct![Local, fp_off, is_alias, size];
-buf::sd_struct![Address, addr, retval_size];
+buf::sd_struct![Local, fp_off, is_alias, types];
+buf::sd_struct![Address, addr, ret_t];
 buf::sd_struct![Literal, lit_type, id];
 
-buf::sd_enum![LitType, Null, 0u8, String, 1u8, Natural, 2u8, Syscall, 3u8];
+buf::sd_enum![LitType, Null, 0u8, String, 1u8, Natural, 2u8, Syscall, 3u8, Args, 4u8];
 
 buf::sd![
     Compiler,

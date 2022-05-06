@@ -52,7 +52,7 @@ pub trait Compilers<'i> {
                 let jump_target = cmp.instr_id() + 1;
                 te!(cmp.backpatch_with(jump_instr, jump_target));
 
-                let ninfo = cmp.new_address(name, jump_instr + 1, 1);
+                let ninfo = cmp.new_address(name, jump_instr + 1, &retval);
 
                 Ok(ninfo)
             }
@@ -74,7 +74,7 @@ pub trait Compilers<'i> {
             ast::Expr::Invocation(invc) => cmp.compile(invc),
             ast::Expr::Variable(var) => cmp.compile_variable_as_auto(var),
             ast::Expr::Slice(slice) => cmp.compile_slice(slice),
-            ast::Expr::Closure(closure) => cmp.compile_closure(closure),
+            ast::Expr::Array(closure) => cmp.compile_array(closure),
         }
     }
     fn block() -> S<Block<'i>> {
@@ -162,24 +162,36 @@ pub trait Compilers<'i> {
 
             // === Emits ===
             // RetVal Allocation
-            let retval_size = te!(invc_target_sinfo.retval_size());
-            let mut retval = cmp
-                .new_local_tmp2(retval_size, format_args!("retval-{}", invctrgt))
+            let mut retval_si = cmp
+                .new_local_tmp(
+                    [invc_target_sinfo.to_owned()],
+                    format_args!("retval-{}", invctrgt),
+                )
                 .clone();
-            cmp.emit(std::iter::repeat(i::PushNull).take(retval_size as usize));
+            te!(cmp.emit_from_symbol(true, &retval_si));
             // Environment Variables
-            cmp.new_local_tmp(format_args!("nenvs-{}", invctrgt));
+            let envs_len_si = cmp
+                .new_local_tmp(
+                    [SymInfo::lit_natural(envs_len)],
+                    format_args!("nenvs-{}", invctrgt),
+                )
+                .to_owned();
             for (env_name, env_var) in &envs_sinfos {
                 te!(cmp.emit_from_symbol(true, env_var));
                 te!(cmp.emit_from_symbol(true, env_name));
             }
-            cmp.emit1(i::PushNat(envs_len));
+            te!(cmp.emit_from_symbol(true, &envs_len_si));
             // Input Redirections
             for inprdi in &inp_redir_sinfos {
                 te!(cmp.emit_from_symbol(true, inprdi));
             }
-            cmp.new_local_tmp(format_args!("inp_redir_len-{}", invctrgt));
-            cmp.emit1(i::PushNat(inp_redir_len));
+            let inp_redir_len_si = cmp
+                .new_local_tmp(
+                    [SymInfo::lit_natural(inp_redir_len)],
+                    format_args!("inp_redir_len-{}", invctrgt),
+                )
+                .to_owned();
+            te!(cmp.emit_from_symbol(true, &inp_redir_len_si));
             // Invocation target
             te!(cmp.emit_from_symbol(true, &invc_target_sinfo));
             // CWD
@@ -188,7 +200,7 @@ pub trait Compilers<'i> {
             for argi in &args_sinfos {
                 te!(cmp.emit_from_symbol(true, argi));
             }
-            cmp.new_local_tmp(format_args!("argc-{}", invctrgt));
+            let _args_si = cmp.new_local_tmp(args_sinfos, format_args!("argc-{}", invctrgt));
             cmp.emit1(i::PushNat(arg_len));
 
             const NOWHERE: usize = 0xffffffff;
@@ -205,11 +217,11 @@ pub trait Compilers<'i> {
                 }) => cmp.emit1(i::Syscall(vm::syscall::SPAWN)),
                 sym::Typ::Literal(_) => {
                     // TODO skip everything above if this is the case
-                    retval = invc_target_sinfo;
+                    retval_si = invc_target_sinfo;
                 }
             }
 
-            Ok(retval)
+            Ok(retval_si)
         }
     }
 
@@ -284,11 +296,9 @@ pub trait Compilers<'i> {
                 A::Opt(opt) => cmp.compile(opt),
                 A::String(s) => cmp.compile(s),
                 A::Ident(id) => cmp.compile_text(id),
-                A::Variable(ast::Variable(("args",))) => {
-                    let sinfo = cmp.new_local_tmp("args_for_callee").clone();
-                    cmp.emit1(i::PushArgs);
-                    Ok(sinfo)
-                }
+                A::Variable(ast::Variable(("args",))) => Ok(cmp
+                    .new_local_tmp([SymInfo::args()], "args_for_callee")
+                    .to_owned()),
                 A::Slice(slice) => cmp.compile_slice(slice),
                 A::Variable(var) => cmp.compile_variable_as_auto(var),
                 A::Path(path) => cmp.compile(path),
