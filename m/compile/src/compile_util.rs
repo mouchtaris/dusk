@@ -87,6 +87,10 @@ pub trait CompileUtil: Borrow<Compiler> + BorrowMut<Compiler> {
         }
     }
 
+    fn emit_allocation(&mut self, sinfo: &SymInfo) {
+        self.cmp().emit((0..sinfo.typ.size()).map(|_| i::PushNull))
+    }
+
     fn emit_from_symbol(&mut self, push_or_retval: bool, sinfo: &SymInfo) -> Result<()> {
         let cmp = self.cmp();
 
@@ -102,7 +106,7 @@ pub trait CompileUtil: Borrow<Compiler> + BorrowMut<Compiler> {
                 ..
             } => {
                 let instr = if push_or_retval {
-                    cmp.new_local_tmp([sinfo], format_args!("func-addr-{}", addr));
+                    cmp.new_local_tmp(sinfo, format_args!("func-addr-{}", addr));
                     i::PushFuncAddr
                 } else {
                     i::RetFuncAddr
@@ -118,7 +122,7 @@ pub trait CompileUtil: Borrow<Compiler> + BorrowMut<Compiler> {
                 ..
             } => {
                 let instr = if push_or_retval {
-                    cmp.new_local_tmp([sinfo], format_args!("string-lit-{}", id));
+                    cmp.new_local_tmp(sinfo, format_args!("string-lit-{}", id));
                     i::PushStr
                 } else {
                     i::RetStr
@@ -134,7 +138,7 @@ pub trait CompileUtil: Borrow<Compiler> + BorrowMut<Compiler> {
                 ..
             } => {
                 let instr = if push_or_retval {
-                    cmp.new_local_tmp([sinfo], format_args!("nat-lit-{}", id));
+                    cmp.new_local_tmp(sinfo, format_args!("nat-lit-{}", id));
                     i::PushNat
                 } else {
                     i::RetNat
@@ -151,7 +155,7 @@ pub trait CompileUtil: Borrow<Compiler> + BorrowMut<Compiler> {
                 ..
             } => {
                 let instr = if push_or_retval {
-                    cmp.new_local_tmp([sinfo], format_args!("null-lit"));
+                    cmp.new_local_tmp(sinfo, format_args!("null"));
                     i::PushNull
                 } else {
                     panic!("Return null not supported")
@@ -168,7 +172,7 @@ pub trait CompileUtil: Borrow<Compiler> + BorrowMut<Compiler> {
                 ..
             } => {
                 let instr = if push_or_retval {
-                    cmp.new_local_tmp([SymInfo::NULL], format_args!("args_for_callee"));
+                    cmp.new_local_tmp(sinfo, format_args!("args"));
                     i::PushArgs
                 } else {
                     return temg!("Cannot return $args");
@@ -180,27 +184,32 @@ pub trait CompileUtil: Borrow<Compiler> + BorrowMut<Compiler> {
                 typ:
                     sym::Typ::Local(
                         local @ sym::Local {
-                            fp_off,
                             is_alias: false,
+                            fp_off,
                             types,
                         },
                     ),
                 scope_id,
             } => {
                 let size = local.size();
-                let instr = |p| if push_or_retval {
-                    let i = p - fp_off;
-                    cmp.new_local_tmp(types[i..(i+1)].iter().cloned(), format_args!(
-                        "copy-of-{}[{}/{}] in {}",
-                        fp_off,
-                        fp_off + size as usize - p,
-                        size,
-                        scope_id
-                    ));
-                    i::PushLocal
-                } else {
-                    i::RetLocal
-                }(p);
+                let instr = |p| {
+                    (if push_or_retval {
+                        let i = p - fp_off;
+                        cmp.new_local_tmp(
+                            types[i..(i + 1)].iter().cloned(),
+                            format_args!(
+                                "copy-of-{}[{}/{}] in {}",
+                                fp_off,
+                                fp_off + size as usize - p,
+                                size,
+                                scope_id
+                            ),
+                        );
+                        i::PushLocal
+                    } else {
+                        i::RetLocal
+                    })(p)
+                };
 
                 let instr: Vec<_> = local.foreach(instr).collect();
                 cmp.emit(instr);
@@ -214,7 +223,7 @@ pub trait CompileUtil: Borrow<Compiler> + BorrowMut<Compiler> {
                     }),
                 ..
             } => {
-                for typ in types {
+                for typ in types.iter().rev() {
                     te!(cmp.emit_from_symbol(push_or_retval, typ));
                 }
             }

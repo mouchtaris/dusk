@@ -1,30 +1,33 @@
-use super::{temg, Result};
+use {
+    super::{temg, Result},
+    std::fmt,
+};
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq)]
 pub struct Info {
     pub typ: Typ,
     pub scope_id: usize,
 }
 
 either::either![
-    #[derive(Debug, Clone, Eq, PartialEq)]
+    #[derive(Clone, Eq, PartialEq)]
     pub Typ,
         Local,
         Address,
         Literal
 ];
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq)]
 pub struct Local {
     pub fp_off: usize,
     pub is_alias: bool,
     pub types: Vec<Info>,
 }
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq)]
 pub struct Address {
     pub addr: usize,
     pub ret_t: Box<Info>,
 }
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq)]
 pub struct Literal {
     pub id: usize,
     pub lit_type: LitType,
@@ -146,8 +149,7 @@ impl Local {
 impl Typ {
     pub fn size(&self) -> u16 {
         match self {
-            Typ::Literal(_) => 1,
-            Typ::Address(Address { ret_t, .. }) => ret_t.typ.size(),
+            Typ::Literal(_) | Typ::Address(_) => 1,
             Typ::Local(local) => local.size(),
         }
     }
@@ -195,5 +197,53 @@ impl Typ {
             id: 0,
             lit_type: LitType::Args,
         })
+    }
+}
+
+impl fmt::Debug for Info {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let Self { scope_id, typ } = self;
+        write!(f, "{:?} @{}", typ, scope_id)
+    }
+}
+
+impl fmt::Debug for Typ {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Local(local) => local.fmt(f),
+            Self::Address(addr) => addr.fmt(f),
+            Self::Literal(lit) => lit.fmt(f),
+        }
+    }
+}
+impl fmt::Debug for Local {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let Self {
+            fp_off,
+            is_alias,
+            types,
+        } = self;
+        let alias = if *is_alias { " alias" } else { "" };
+        write!(f, "${}{} :", fp_off, alias)?;
+        for typ in types {
+            write!(f, "{:?}", typ)?;
+        }
+        Ok(())
+    }
+}
+
+impl fmt::Debug for Address {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let Self { addr, ret_t } = self;
+        write!(f, "*{}: {:?}", addr, ret_t)?;
+        Ok(())
+    }
+}
+
+impl fmt::Debug for Literal {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let Self { id, lit_type } = self;
+        write!(f, "{:?}({})", lit_type, id)?;
+        Ok(())
     }
 }

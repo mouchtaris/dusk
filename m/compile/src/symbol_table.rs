@@ -95,7 +95,7 @@ where
         }
     }
 
-    fn new_local_tmp<T, D>(&mut self, types: T, desc: D) -> &mut SymInfo
+    fn new_local_tmp2<T, D>(&mut self, types: T, desc: D) -> &mut SymInfo
     where
         T: IntoIterator,
         T::Item: Into<SymInfo>,
@@ -104,9 +104,17 @@ where
         self.with_tmp_name(desc, |st, name| st.new_local(types, name))
     }
 
+    fn new_local_tmp<T, D>(&mut self, types: T, desc: D) -> &mut SymInfo
+    where
+        T: TypesMagnet,
+        D: fmt::Display,
+    {
+        self.new_local_tmp2(types.magnetize_to_types(), desc)
+    }
+
     fn new_natural_literal_tmp(&mut self, nat: usize) -> &mut SymInfo {
         let syminfo = self.new_local_tmp(
-            [SymInfo::lit_natural(nat)],
+            SymInfo::lit_natural(nat),
             format_args!("literal-nat-{}", nat),
         );
         syminfo.typ = sym::Typ::Literal(sym::Literal {
@@ -256,3 +264,37 @@ pub fn find_func_name<'s, S: AsRef<SymbolTable>>(st: &'s S, faddr: &usize) -> Op
         _ => None,
     })
 }
+
+pub trait TypesMagnet {
+    fn magnetize_to_types(self) -> Self::Types;
+
+    type Types: IntoIterator<Item = Self::Item>;
+    type Item: Into<SymInfo>;
+}
+
+impl<S> TypesMagnet for S
+where
+    S: IntoIterator,
+    S::Item: Into<SymInfo>,
+{
+    fn magnetize_to_types(self) -> Self {
+        self
+    }
+
+    type Types = Self;
+    type Item = <Self as IntoIterator>::Item;
+}
+macro_rules! types_magnet_as {
+    ($a:ty $([$($lt:lifetime),*])?, $b:ty, $c:expr) => {
+        impl
+            $(<$($lt),*>)?
+        TypesMagnet for $a
+        {
+            type Types = <$b as TypesMagnet>::Types;
+            type Item = <$b as TypesMagnet>::Item;
+            fn magnetize_to_types(self) -> Self::Types { $c(self).magnetize_to_types() }
+        }
+    }
+}
+types_magnet_as!(SymInfo, [SymInfo; 1], |s| [s]);
+types_magnet_as!(&'a SymInfo['a], SymInfo, <_>::to_owned);

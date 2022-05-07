@@ -42,6 +42,7 @@ pub trait Compilers<'i> {
                 let retval = te!(cmp.compile(body));
                 let frame_size = cmp.stack_frame_size();
 
+                error::ldebug!("return {:?}", retval);
                 te!(cmp.emit_from_symbol(false, &retval));
 
                 cmp.exit_scope();
@@ -134,7 +135,6 @@ pub trait Compilers<'i> {
             //
             // Envs
             // ---
-            let envs_len = envs.len();
             let mut envs_sinfos = vec![];
             for (env_name, env_val) in envs {
                 envs_sinfos.push((te!(cmp.compile_text(env_name)), te!(cmp.compile(env_val))))
@@ -156,42 +156,52 @@ pub trait Compilers<'i> {
                 SymInfo::NULL
             };
             // args
-            let arg_len = args.len();
             args.reverse();
             let args_sinfos = te!(cmp.compile(args));
 
             // === Emits ===
             // RetVal Allocation
-            let mut retval_si = cmp
-                .new_local_tmp(
-                    [invc_target_sinfo.to_owned()],
-                    format_args!("retval-{}", invctrgt),
-                )
-                .clone();
-            te!(cmp.emit_from_symbol(true, &retval_si));
+            let mut retval_si = match &invc_target_sinfo {
+                SymInfo {
+                    typ: sym::Typ::Address(addr),
+                    ..
+                } => cmp.new_local_tmp(addr.ret_t.as_ref(), ""),
+                SymInfo {
+                    typ:
+                        t @ sym::Typ::Literal(sym::Literal {
+                            lit_type: sym::LitType::String | sym::LitType::Syscall,
+                            ..
+                        }),
+                    ..
+                } =>
+                // Reusing the native type because it's the same allocation size (1)
+                // as a Job value (just so as not to introduce a Job type)
+                // (so this is a job-type allocation, because all Literal::String
+                // and Literal::Syscall invocation targets do return that).
+                {
+                    cmp.new_local_tmp(SymInfo::typ(t.to_owned()), "")
+                }
+                other => temg!("What invocation target is this? {:?}", other),
+            }
+            .clone();
+            cmp.emit_allocation(&retval_si);
             // Environment Variables
-            let envs_len_si = cmp
-                .new_local_tmp(
-                    [SymInfo::lit_natural(envs_len)],
-                    format_args!("nenvs-{}", invctrgt),
-                )
-                .to_owned();
             for (env_name, env_var) in &envs_sinfos {
                 te!(cmp.emit_from_symbol(true, env_var));
                 te!(cmp.emit_from_symbol(true, env_name));
             }
-            te!(cmp.emit_from_symbol(true, &envs_len_si));
+            let envs_len = envs_sinfos.len();
+            cmp.new_local_tmp(SymInfo::lit_natural(envs_len), "");
+            cmp.emit1(i::PushNat(envs_len as usize));
             // Input Redirections
             for inprdi in &inp_redir_sinfos {
                 te!(cmp.emit_from_symbol(true, inprdi));
             }
-            let inp_redir_len_si = cmp
-                .new_local_tmp(
-                    [SymInfo::lit_natural(inp_redir_len)],
-                    format_args!("inp_redir_len-{}", invctrgt),
-                )
+            let inp_redir_si = cmp
+                .new_local_tmp(inp_redir_sinfos, format_args!("inp_redir_len-{}", invctrgt))
                 .to_owned();
-            te!(cmp.emit_from_symbol(true, &inp_redir_len_si));
+            let inp_redir_len = inp_redir_si.typ.size();
+            cmp.emit1(i::PushNat(inp_redir_len as usize));
             // Invocation target
             te!(cmp.emit_from_symbol(true, &invc_target_sinfo));
             // CWD
@@ -200,7 +210,8 @@ pub trait Compilers<'i> {
             for argi in &args_sinfos {
                 te!(cmp.emit_from_symbol(true, argi));
             }
-            let _args_si = cmp.new_local_tmp(args_sinfos, format_args!("argc-{}", invctrgt));
+            let args_si = cmp.new_local_tmp(args_sinfos, format_args!("argc-{}", invctrgt));
+            let arg_len = args_si.typ.size() as usize;
             cmp.emit1(i::PushNat(arg_len));
 
             const NOWHERE: usize = 0xffffffff;
@@ -296,9 +307,7 @@ pub trait Compilers<'i> {
                 A::Opt(opt) => cmp.compile(opt),
                 A::String(s) => cmp.compile(s),
                 A::Ident(id) => cmp.compile_text(id),
-                A::Variable(ast::Variable(("args",))) => Ok(cmp
-                    .new_local_tmp([SymInfo::args()], "args_for_callee")
-                    .to_owned()),
+                A::Variable(ast::Variable(("args",))) => Ok(SymInfo::args()),
                 A::Slice(slice) => cmp.compile_slice(slice),
                 A::Variable(var) => cmp.compile_variable_as_auto(var),
                 A::Path(path) => cmp.compile(path),

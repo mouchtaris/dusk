@@ -462,39 +462,121 @@ impl Vm {
                 break;
             }
 
+            let mut _pref = String::new();
             let pref = if fp < 7 {
                 "(sys)"
             } else {
-                let nargs: usize = *te!(vm.stack[fp - 3].try_ref());
-                let n_inp_redir: usize = *te!(vm.stack[fp - 3 - nargs - 3].try_ref());
-                let nenvs: usize = *te!(vm.stack[fp - 3 - nargs - 3 - n_inp_redir - 1].try_ref());
-                match i {
-                    i if fp == i => "fp",
-                    i if fp - 1 == i => "ret instr",
-                    i if fp - 2 == i => "ret frame",
-                    i if fp - 3 == i => "nargs",
-                    i if fp - 3 - nargs <= i && fp - 3 > i => "arg",
-                    i if fp - 3 - nargs - 1 == i => "cwd",
-                    i if fp - 3 - nargs - 2 == i => "target",
-                    i if fp - 3 - nargs - 3 == i => "n inp redr",
-                    i if fp - 3 - nargs - 3 - n_inp_redir <= i && fp - 3 - nargs - 3 > i => {
-                        "inp redr"
-                    }
-                    i if fp - 3 - nargs - 3 - n_inp_redir - 1 == i => "nenvs",
-                    i if fp - 3 - nargs - 3 - n_inp_redir - 1 - 2 * nenvs <= i
-                        && fp - 3 - nargs - 3 - n_inp_redir - 1 > i =>
-                    {
-                        "env set"
-                    }
-                    i if fp - 3 - nargs - 3 - n_inp_redir - 1 - 2 * nenvs - 1 == i => {
-                        sp = *te!(vm.stack[fp - 1].try_ref());
-                        fp = *te!(vm.stack[fp - 2].try_ref());
-                        w!(o, "--- frame {} ---", fp);
-                        "retval"
-                    }
-                    i if sp == i => "sp",
-                    _ => "",
-                }
+                || -> Result<&str> {
+                    let res0 = || -> Result<&str> {
+                        Ok(match i {
+                            i if fp == i => "fp",
+                            i if fp - 1 == i => "ret instr",
+                            i if fp - 2 == i => "ret frame",
+                            i if fp - 3 == i => "nargs",
+                            _ => temg!(""),
+                        })
+                    }()
+                    .or_else(|_| {
+                        let nargs: usize = *te!(vm.stack[fp - 3].try_ref());
+                        || -> Result<&str> {
+                            Ok(match i {
+                                i if fp - 3 - nargs <= i && fp - 3 > i => "arg",
+                                i if fp - 3 - nargs - 1 == i => "cwd",
+                                i if fp - 3 - nargs - 2 == i => "target",
+                                i if fp - 3 - nargs - 3 == i => "n inp redr",
+                                _ => temg!(""),
+                            })
+                        }()
+                        .or_else(|_| {
+                            let n_inp_redir: usize = *te!(vm.stack[fp - 3 - nargs - 3].try_ref());
+                            || -> Result<&str> {
+                                Ok(match i {
+                                    i if fp - 3 - nargs - 3 - n_inp_redir <= i
+                                        && fp - 3 - nargs - 3 > i =>
+                                    {
+                                        "inp redr"
+                                    }
+                                    i if fp - 3 - nargs - 3 - n_inp_redir - 1 == i => "nenvs",
+                                    _ => temg!(""),
+                                })
+                            }()
+                            .or_else(|_| {
+                                let nenvs: usize =
+                                    *te!(vm.stack[fp - 3 - nargs - 3 - n_inp_redir - 1].try_ref());
+
+                                || -> Result<&str> {
+                                    Ok(match i {
+                                        i if fp - 3 - nargs - 3 - n_inp_redir - 1 - 2 * nenvs
+                                            <= i
+                                            && fp - 3 - nargs - 3 - n_inp_redir - 1 > i =>
+                                        {
+                                            "env set"
+                                        }
+                                        i if fp
+                                            - 3
+                                            - nargs
+                                            - 3
+                                            - n_inp_redir
+                                            - 1
+                                            - 2 * nenvs
+                                            - 1
+                                            == i =>
+                                        {
+                                            sp = *te!(vm.stack[fp - 1].try_ref());
+                                            fp = *te!(vm.stack[fp - 2].try_ref());
+                                            w!(o, "--- frame {} ---", fp);
+                                            "retval"
+                                        }
+                                        i if sp == i => "sp",
+                                        _ => "",
+                                    })
+                                }()
+                            })
+                        })
+                    });
+
+                    let _res1 = || -> Result<&str> {
+                        let nargs: usize = *te!(vm.stack[fp - 3].try_ref());
+                        let n_inp_redir: usize = *te!(vm.stack[fp - 3 - nargs - 3].try_ref());
+                        let nenvs: usize =
+                            *te!(vm.stack[fp - 3 - nargs - 3 - n_inp_redir - 1].try_ref());
+                        Ok(match i {
+                            i if fp == i => "fp",
+                            i if fp - 1 == i => "ret instr",
+                            i if fp - 2 == i => "ret frame",
+                            i if fp - 3 == i => "nargs",
+                            i if fp - 3 - nargs <= i && fp - 3 > i => "arg",
+                            i if fp - 3 - nargs - 1 == i => "cwd",
+                            i if fp - 3 - nargs - 2 == i => "target",
+                            i if fp - 3 - nargs - 3 == i => "n inp redr",
+                            i if fp - 3 - nargs - 3 - n_inp_redir <= i
+                                && fp - 3 - nargs - 3 > i =>
+                            {
+                                "inp redr"
+                            }
+                            i if fp - 3 - nargs - 3 - n_inp_redir - 1 == i => "nenvs",
+                            i if fp - 3 - nargs - 3 - n_inp_redir - 1 - 2 * nenvs <= i
+                                && fp - 3 - nargs - 3 - n_inp_redir - 1 > i =>
+                            {
+                                "env set"
+                            }
+                            i if fp - 3 - nargs - 3 - n_inp_redir - 1 - 2 * nenvs - 1 == i => {
+                                sp = *te!(vm.stack[fp - 1].try_ref());
+                                fp = *te!(vm.stack[fp - 2].try_ref());
+                                w!(o, "--- frame {} ---", fp);
+                                "retval"
+                            }
+                            i if sp == i => "sp",
+                            _ => "",
+                        })
+                    };
+
+                    res0
+                }()
+                .unwrap_or_else(|e| {
+                    _pref = format!("<corruption>: {:?}", e);
+                    _pref.as_str()
+                })
             };
             let cell = &vm.stack[i];
             strbuf.clear();
