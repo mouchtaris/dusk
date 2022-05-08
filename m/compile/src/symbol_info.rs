@@ -74,6 +74,18 @@ impl Info {
         Self::typ(Typ::args())
     }
 
+    pub fn just(val: usize) -> Self {
+        let mut si = Self::default();
+        *si.val_mut() = val;
+        si
+    }
+
+    pub fn aliased(&self) -> Self {
+        let mut typ = self.to_owned();
+        typ.typ = Typ::alias(typ.to_owned());
+        typ
+    }
+
     pub fn as_local_ref(&self) -> Result<&Local> {
         let Self { typ, .. } = self;
         match typ {
@@ -107,11 +119,6 @@ impl Info {
             | Typ::Local(Local { fp_off: v, .. })
             | Typ::Literal(Literal { id: v, .. }) => v,
         }
-    }
-    pub fn just(val: usize) -> Self {
-        let mut si = Self::default();
-        *si.val_mut() = val;
-        si
     }
 }
 
@@ -154,7 +161,22 @@ impl Typ {
         }
     }
 
-    pub fn local<T>(types: T, is_alias: bool, fp_off: usize) -> Self
+    pub fn alias<T>(typ: T) -> Self
+    where
+        T: Into<Info>,
+    {
+        Self::local2(std::iter::once(typ), true, usize::MAX)
+    }
+
+    pub fn local<T>(types: T, fp_off: usize) -> Self
+    where
+        T: IntoIterator,
+        T::Item: Into<Info>,
+    {
+        Self::local2(types, false, fp_off)
+    }
+
+    pub fn local2<T>(types: T, is_alias: bool, fp_off: usize) -> Self
     where
         T: IntoIterator,
         T::Item: Into<Info>,
@@ -171,7 +193,7 @@ impl Typ {
         T: IntoIterator,
         T::Item: Into<Info>,
     {
-        Self::local(types, true, 0)
+        Self::local2(types, true, 0)
     }
 
     pub fn natural(id: usize) -> Self {
@@ -224,7 +246,7 @@ impl fmt::Debug for Local {
             types,
         } = self;
         let alias = if *is_alias { " alias" } else { "" };
-        write!(f, "${}{} :", fp_off, alias)?;
+        write!(f, "${}{}: ", fp_off, alias)?;
         for typ in types {
             write!(f, "{:?}", typ)?;
         }

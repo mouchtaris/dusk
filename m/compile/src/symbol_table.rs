@@ -128,13 +128,7 @@ where
         let st = self.as_mut();
         let scope = &mut st.scopes[info.scope_id];
 
-        let new_name = new_name.into();
-        let mut info = info.to_owned();
-        match &mut info.typ {
-            SymType::Local(sym::Local { is_alias, .. }) => *is_alias = true,
-            _ => (),
-        }
-        scope.insert(new_name, info);
+        scope.insert(new_name.into(), info.aliased());
     }
 
     fn lookup<S>(&self, name: S) -> Result<&SymInfo>

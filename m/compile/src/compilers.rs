@@ -1,5 +1,6 @@
 use super::*;
 use ast::*;
+use error::ldebug;
 
 type S<T> = CompileEv<T, SymInfo>;
 
@@ -21,12 +22,14 @@ pub trait Compilers<'i> {
             }
             ast::Item::LetStmt(ast::LetStmt((name, expr))) => {
                 let sinfo = te!(cmp.compile(expr));
+                ldebug!("type (let) {}: {:?}", name, sinfo);
                 cmp.alias_name(name, &sinfo);
                 te!(cmp.emit_cleanup(i::Collect, &sinfo));
                 Ok(sinfo)
             }
             ast::Item::SrcStmt(ast::SrcStmt((name, expr))) => {
                 let sinfo = te!(cmp.compile(expr));
+                ldebug!("type (src) {}: {:?}", name, sinfo);
                 cmp.alias_name(name, &sinfo);
                 te!(cmp.emit_cleanup(i::Pipe, &sinfo));
                 Ok(sinfo)
@@ -42,7 +45,6 @@ pub trait Compilers<'i> {
                 let retval = te!(cmp.compile(body));
                 let frame_size = cmp.stack_frame_size();
 
-                error::ldebug!("return {:?}", retval);
                 te!(cmp.emit_from_symbol(false, &retval));
 
                 cmp.exit_scope();
@@ -54,6 +56,7 @@ pub trait Compilers<'i> {
                 te!(cmp.backpatch_with(jump_instr, jump_target));
 
                 let ninfo = cmp.new_address(name, jump_instr + 1, &retval);
+                ldebug!("type (def) {}: {:?}", name, ninfo);
 
                 Ok(ninfo)
             }
@@ -197,22 +200,23 @@ pub trait Compilers<'i> {
             for inprdi in &inp_redir_sinfos {
                 te!(cmp.emit_from_symbol(true, inprdi));
             }
-            let inp_redir_si = cmp
-                .new_local_tmp(inp_redir_sinfos, format_args!("inp_redir_len-{}", invctrgt))
-                .to_owned();
-            let inp_redir_len = inp_redir_si.typ.size();
+            let inp_redir_len = inp_redir_sinfos.len();
+            cmp.new_local_tmp(
+                SymInfo::lit_natural(inp_redir_len),
+                format_args!("inp_redir_len-{}", invctrgt),
+            );
             cmp.emit1(i::PushNat(inp_redir_len as usize));
             // Invocation target
             te!(cmp.emit_from_symbol(true, &invc_target_sinfo));
             // CWD
             te!(cmp.emit_from_symbol(true, &cwd_sinfo));
             // Arguments
+            let mut args_len = 0;
             for argi in &args_sinfos {
+                args_len += argi.typ.size();
                 te!(cmp.emit_from_symbol(true, argi));
             }
-            let args_si = cmp.new_local_tmp(args_sinfos, format_args!("argc-{}", invctrgt));
-            let arg_len = args_si.typ.size() as usize;
-            cmp.emit1(i::PushNat(arg_len));
+            te!(cmp.emit_from_symbol(true, &SymInfo::lit_natural(args_len as usize)));
 
             const NOWHERE: usize = 0xffffffff;
             match invc_target_sinfo.typ {
@@ -232,6 +236,7 @@ pub trait Compilers<'i> {
                 }
             }
 
+            ldebug!("Retval SI ({:?}): {:?}", invctrgt, retval_si);
             Ok(retval_si)
         }
     }
