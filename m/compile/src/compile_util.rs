@@ -79,10 +79,11 @@ pub trait CompileUtil: Borrow<Compiler> + BorrowMut<Compiler> {
             Ok(sinfo.to_owned())
         } else {
             temg!(
-                "{} is in scope {} instead of {}",
+                "{} is in scope {} instead of {} ({:?})",
                 var,
                 scope_id,
-                cmp.scope_id()
+                cmp.scope_id(),
+                sinfo
             )
         }
     }

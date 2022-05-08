@@ -2,7 +2,7 @@
 
 include /usr/local/include/dust/lib.ide/config.dake;
 
-let _dake_path =
+def _dake_path =
     "/usr/local/include/dust/lib.ide/dake";
 
 def _lib =

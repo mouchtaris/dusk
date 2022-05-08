@@ -80,6 +80,11 @@ impl Info {
         si
     }
 
+    pub fn in_scope(mut self, scope_id: usize) -> Self {
+        self.scope_id = scope_id;
+        self
+    }
+
     pub fn aliased(&self) -> Self {
         let mut typ = self.to_owned();
         typ.typ = Typ::alias(typ.to_owned());

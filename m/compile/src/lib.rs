@@ -156,19 +156,19 @@ impl Compiler {
         let text = text.as_ref();
         let strid = te!(cmp.add_string(text));
 
-        Ok(SymInfo::lit_string(strid))
+        Ok(SymInfo::lit_string(strid).in_scope(cmp.scope_id()))
     }
 
     fn compile_natural<S>(&mut self, text: S) -> Result<SymInfo>
     where
         S: AsRef<str>,
     {
-        let _cmp = self;
+        let cmp = self;
 
         let text = text.as_ref();
         let nat = te!(text.parse::<usize>());
 
-        Ok(SymInfo::lit_natural(nat))
+        Ok(SymInfo::lit_natural(nat).in_scope(cmp.scope_id()))
     }
 
     fn compile_funcaddr<S>(&mut self, text: S) -> Result<SymInfo>
