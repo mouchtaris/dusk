@@ -1,6 +1,7 @@
 use std::{
+    borrow::{Borrow, BorrowMut},
     fmt,
-    ops::{Add, Sub},
+    ops::{Add, AddAssign, Sub},
 };
 
 #[derive(Copy, Clone, Debug)]
@@ -59,5 +60,45 @@ impl<T: fmt::Display> fmt::Display for Signed<T> {
 impl<T: Default> Default for Signed<T> {
     fn default() -> Self {
         Plus(<_>::default())
+    }
+}
+
+impl<T, U> Add<T> for Signed<U>
+where
+    U: AddAssign<T>,
+{
+    type Output = Self;
+
+    fn add(mut self, t: T) -> Self::Output {
+        *self.as_mut() += t;
+        self
+    }
+}
+
+impl<T> Borrow<T> for Signed<T> {
+    fn borrow(&self) -> &T {
+        match self {
+            Plus(t) | Minus(t) => t,
+        }
+    }
+}
+
+impl<T> BorrowMut<T> for Signed<T> {
+    fn borrow_mut(&mut self) -> &mut T {
+        match self {
+            Plus(t) | Minus(t) => t,
+        }
+    }
+}
+
+impl<T> AsRef<T> for Signed<T> {
+    fn as_ref(&self) -> &T {
+        self.borrow()
+    }
+}
+
+impl<T> AsMut<T> for Signed<T> {
+    fn as_mut(&mut self) -> &mut T {
+        self.borrow_mut()
     }
 }

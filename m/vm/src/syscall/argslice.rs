@@ -1,17 +1,18 @@
 use {
     super::{value, Result, Value, Vm},
     error::{ldebug, te, temg},
+    std::mem,
 };
 pub fn argslice(vm: &mut Vm) -> Result<()> {
     te!(vm.prepare_call());
 
     let &nargs: &usize = te!(vm.arg_get(0));
 
-    if nargs < 3 {
-        temg!("argslice START END ARGS: nargs={}", nargs);
+    if nargs < 2 {
+        temg!("argslice START [END] ARGS: nargs={}", nargs);
     }
 
-    fn get_num(vm: &mut Vm, val: &mut Value) -> Result<value::Signed<u16>> {
+    fn get_num(vm: &mut Vm, val: &Value) -> Result<value::Signed<u16>> {
         Ok(if let Ok(n) = val.try_ref::<value::Natural>() {
             value::Plus(*n as u16)
         } else if let Ok(&value::LitString(sid)) = val.try_ref::<value::LitString>() {
@@ -21,7 +22,7 @@ pub fn argslice(vm: &mut Vm) -> Result<()> {
                 s if s.starts_with('-') => value::Minus(te!(u16::from_str(&s[1..]), "{}", s)),
                 s => value::Plus(te!(i16::from_str(s), "{}", s) as u16),
             }
-        } else if let Ok(view) = val.try_mut::<value::ArrayView>() {
+        } else if let Ok(view) = val.try_ref::<value::ArrayView>() {
             let mut val = te!(view.to_owned().first(vm));
             te!(get_num(vm, &mut val))
         } else {
@@ -29,13 +30,24 @@ pub fn argslice(vm: &mut Vm) -> Result<()> {
         })
     }
 
-    let mut start_val = te!(vm.arg_get_val(1)).to_owned();
-    let mut end_val = te!(vm.arg_get_val(2)).to_owned();
+    let start_val = te!(vm.arg_get_val(1)).to_owned();
+    let mut start = te!(get_num(vm, &start_val));
+    let mut end;
+    let args;
+    if nargs > 2 {
+        let end_val = te!(vm.arg_get_val(2)).to_owned();
+        end = te!(get_num(vm, &end_val));
 
-    let start = te!(get_num(vm, &mut start_val));
-    let end = te!(get_num(vm, &mut end_val));
+        args = te!(vm.arg_get_val_mut(3));
+    } else {
+        args = te!(vm.arg_get_val_mut(2));
 
-    let args = te!(vm.arg_get_val_mut(3));
+        end = start + 1;
+        if let value::Signed::Minus(_) = &start {
+            mem::swap(&mut start, &mut end);
+        }
+    };
+
     let args: value::ArrayView = match args {
         &mut Value::Array(arr) => {
             ldebug!("from {:?}", arr);

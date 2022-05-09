@@ -94,6 +94,9 @@ Variable: ast::Variable<'input> = {
 Slice: ast::Slice<'input> = {
     "$" <i: Ident> "[" <r:(<InvocationArg?> ";" <InvocationArg?>)> "]" => {
         (i, Box::new(ast::access_range(r))).into()
+    },
+    "$" <i: Ident> "[" <d: InvocationArg> "]" => {
+        (i, Box::new(ast::access_index(d))).into()
     }
 }
 

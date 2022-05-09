@@ -23,7 +23,7 @@ pub trait CompileUtil: Borrow<Compiler> + BorrowMut<Compiler> {
         Ok(sinfo)
     }
 
-    fn compile_slice(&mut self, ast::Slice((name, br)): ast::Slice) -> Result<SymInfo> {
+    fn compile_slice(&mut self, ast::Slice((name, box_range)): ast::Slice) -> Result<SymInfo> {
         let cmp = self.cmp();
         let ast = facade::parse_invocation(
             r###"
@@ -34,8 +34,15 @@ pub trait CompileUtil: Borrow<Compiler> + BorrowMut<Compiler> {
         let args = &mut (ast.0).6;
         let source = ast::InvocationArg::Variable(ast::Variable((name,)));
         args.clear();
-        args.push(br.0);
-        args.push(br.1);
+        match *box_range {
+            ast::Range::DoubleRange((a, b)) => {
+                args.push(a);
+                args.push(b);
+            }
+            ast::Range::Index(i) => {
+                args.push(i);
+            }
+        }
         args.push(source);
         cmp.compile(ast)
     }

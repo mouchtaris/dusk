@@ -55,6 +55,7 @@ either![InvocationCwd, Path, Variable, BoxInvocation];
 either![Path, AbsPath, RelPath, HomePath];
 either![Opt, ShortOpt, LongOpt];
 either![Redirect, Path, Variable, Dereference, Invocation, Slice];
+either![Range, DoubleRange, Index];
 
 name![Array, AnyExpr];
 name![Include, Path];
@@ -98,7 +99,8 @@ pub type DocComment<'i> = Text<'i>;
 pub type OptText<'i> = Option<Text<'i>>;
 pub type OptPath<'i> = Option<Path<'i>>;
 pub type OptInvocationCwd<'i> = Option<InvocationCwd<'i>>;
-pub type Range<'i> = Tupl2<InvocationArg<'i>>;
+pub type Index<'i> = InvocationArg<'i>;
+pub type DoubleRange<'i> = Tupl2<Index<'i>>;
 pub type AnyDocComment<'i> = Any<DocComment<'i>>;
 pub type AnyInvocationArg<'i> = Any<InvocationArg<'i>>;
 pub type AnyInvocationEnv<'i> = Any<InvocationEnv<'i>>;

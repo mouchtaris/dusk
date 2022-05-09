@@ -49,7 +49,11 @@ pub fn arg_str(s: &str) -> InvocationArg {
 pub fn access_range<'i>((a, b): Tupl2<Option<InvocationArg<'i>>>) -> Range<'i> {
     let z = || arg_nat("0");
     let mz = || arg_str("-0");
-    (a.unwrap_or_else(z), b.unwrap_or_else(mz))
+    Range::DoubleRange((a.unwrap_or_else(z), b.unwrap_or_else(mz)))
+}
+
+pub fn access_index<'i>(index: InvocationArg<'i>) -> Range<'i> {
+    Range::Index(index)
 }
 
 pub const EXPR_0: Expr = Expr::Natural(Natural(("0",)));

@@ -246,7 +246,7 @@ pub trait Compilers<'i> {
         |cmp, node| match node {
             C::Path(path) => cmp.compile(path),
             C::Variable(var) => cmp.compile_variable_as_auto(var),
-            C::BoxInvocation(invc) => cmp.compile(Box::into_inner(invc)),
+            C::BoxInvocation(invc) => cmp.compile(*invc),
         }
     }
 
