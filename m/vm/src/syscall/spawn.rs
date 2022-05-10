@@ -289,6 +289,9 @@ where
                 te!(inject_val(vm, &val, inject));
             }
         }
+        Value::ArrayView(view) => {
+            te!(view.forall(vm, |vm, val| inject_val(vm, val, inject)));
+        }
         other => temg!("Not supported as to-string: {:?}", other),
     }
     Ok(())
