@@ -116,8 +116,7 @@ pub fn spawn(vm: &mut Vm) -> Result<()> {
     }
     fn make_string_input(vm: &Vm, typ: Id, id: usize) -> Result<Job> {
         Ok({
-            // TODO this command is filler
-            let cmd = Command::new("false");
+            let cmd = Command::new("<internal string source>");
             let string = match typ {
                 Id::Str => te!(vm.get_string_id(id)).to_owned(),
                 Id::DStr => te!(vm.get_dynstring_id(id)).to_owned(),
@@ -127,12 +126,17 @@ pub fn spawn(vm: &mut Vm) -> Result<()> {
             Job::Buffer(buffer)
         })
     }
-    for inp_job in inp_jobs {
-        let inp_job = match inp_job {
-            (Id::Job, jobid) => mem::take(te!(vm.get_job_mut(jobid))),
-            (typ @ (Id::Str | Id::DStr), strid) => te!(make_string_input(vm, typ, strid)),
-        };
-        te!(job.add_input_job(inp_job));
+    for inp_job0 in inp_jobs {
+        match inp_job0 {
+            (Id::Job, jobid) => {
+                let inp_job = te!(vm.get_job_mut(jobid));
+                te!(job.add_input_job(inp_job));
+            }
+            (typ @ (Id::Str | Id::DStr), strid) => {
+                let mut inp_job = te!(make_string_input(vm, typ, strid));
+                te!(job.add_input_job(&mut inp_job));
+            }
+        }
     }
 
     // Add job to job table and get its ID.

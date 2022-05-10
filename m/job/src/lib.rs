@@ -3,7 +3,7 @@ pub const VERSION: &str = "0.0.1";
 use {
     error::{ldebug, te, temg},
     std::{
-        io, mem,
+        fmt, io, mem,
         process::{Child, Command, ExitStatus, Stdio},
         thread::JoinHandle,
     },
@@ -32,11 +32,20 @@ pub struct Spec {
 }
 
 #[derive(Debug)]
+pub enum SystemItem {
+    Child(Child),
+    Buffer(Vec<u8>),
+}
+
+#[derive(Debug)]
 pub struct System {
     pub cmd: Command,
-    pub child: Child,
+    pub item: SystemItem,
     pub cleanup: Vec<Cleanup>,
+    pub init: Vec<Init>,
 }
+
+pub struct Init(Box<dyn FnMut(&mut Child) -> Result<Cleanup>>);
 
 #[derive(Debug)]
 pub enum Cleanup {
@@ -92,9 +101,27 @@ impl Job {
         })
     }
 
-    pub fn add_input_job(&mut self, input_job: Job) -> Result<()> {
-        self.as_spec_mut()
-            .map(|Spec { input, .. }| input.push(input_job))
+    pub fn add_input_job(&mut self, input_job: &mut Job) -> Result<()> {
+        self.as_spec_mut().map(|Spec { input, .. }| {
+            let input_job = match input_job {
+                Job::Null(_) => Job::Null(()),
+                Job::Buffer(Buffer::Null) => Job::Buffer(Buffer::Null),
+
+                Job::Buffer(Buffer::Bytes(_, buf))
+                | Job::System(System {
+                    item: SystemItem::Buffer(buf),
+                    ..
+                }) => echo_buffer_job(buf),
+
+                Job::Buffer(Buffer::String(_, _)) |
+                Job::System(System {
+                    item: SystemItem::Child(_),
+                    ..
+                })
+                | Job::Spec(_) => mem::take(input_job),
+            };
+            input.push(input_job)
+        })
     }
 
     pub fn as_bytes(&self) -> Result<&[u8]> {
@@ -109,7 +136,7 @@ impl Job {
         Ok(match self {
             Self::Spec(spec) => te!(spawn_spec(spec, capture)),
             Self::System(s) => s,
-            Self::Buffer(buf) => te!(echo_buffer(buf, capture)),
+            Self::Buffer(buf) => echo_buffer(buf, capture),
             Self::Null(_) => temg!("Cannot pipe null Job"),
         })
     }
@@ -152,32 +179,24 @@ impl Job {
     }
 }
 
-fn echo_buffer(buf: Buffer, capture: bool) -> Result<System> {
-    // TODO internal piping
-    let mut cmd = Command::new("cat");
+fn echo_buffer_job<B: Byteable + ToOwned<Owned = B>>(buf: &B) -> Job {
+    Job::System(echo_buffer(
+        Buffer::Bytes(
+            Command::new("<internal input job>"),
+            buf.to_owned().into_bytes(),
+        ),
+        true,
+    ))
+}
 
-    if capture {
-        cmd.stdout(Stdio::piped());
-    } else {
-        cmd.stdout(Stdio::inherit());
-    }
-    cmd.stdin(Stdio::piped());
-
-    let mut child = te!(cmd.spawn(), "Spawning {:?}", cmd);
-    let mut stdin = te!(child.stdin.take());
-    let bytes = buf.take_bytes();
-
-    let thread = std::thread::spawn(move || -> Result<()> {
-        te!(io::Write::write_all(&mut stdin, &bytes));
-        Ok(())
-    });
-
-    let cleanup = vec![Cleanup::Thread(thread)];
+fn echo_buffer(buf: Buffer, capture: bool) -> System {
+    let cmd = Command::new("<internal pipe>");
 
     let sys = System {
         cmd,
-        child,
-        cleanup,
+        item: SystemItem::Buffer(buf.take_bytes()),
+        cleanup: <_>::default(),
+        init: <_>::default(),
     };
 
     ldebug!(
@@ -185,22 +204,25 @@ fn echo_buffer(buf: Buffer, capture: bool) -> Result<System> {
         if capture { "capturing " } else { "" },
         sys
     );
-    Ok(sys)
+    sys
 }
 
 fn collect_output(sys: System) -> Result<Buffer> {
     let System {
-        cmd,
-        child,
-        cleanup,
+        cmd, item, cleanup, ..
     } = sys;
 
-    let mut output = te!(child.wait_with_output());
+    let stdout = match item {
+        SystemItem::Child(child) => {
+            let output = te!(child.wait_with_output());
 
-    te!(check_exit_status(&cmd, output.status));
-    te!(Cleanup::all(cleanup));
+            te!(check_exit_status(&cmd, output.status));
+            te!(Cleanup::all(cleanup));
 
-    let stdout = mem::take(&mut output.stdout);
+            output.stdout
+        }
+        SystemItem::Buffer(buf) => buf,
+    };
 
     let buffer = Buffer::Bytes(cmd, stdout);
 
@@ -211,8 +233,27 @@ fn collect_output(sys: System) -> Result<Buffer> {
 fn connect_input(cmd: &mut Command, input: Job) -> Result<System> {
     let mut inp_sys = te!(input.into_pipe(true));
 
-    let inp_stdout = te!(inp_sys.child.stdout.take(), "Missing output of {:?}", cmd);
-    cmd.stdin(inp_stdout);
+    match &mut inp_sys.item {
+        SystemItem::Child(child) => {
+            let inp_stdout = te!(child.stdout.take(), "Missing output of {:?}", cmd);
+            cmd.stdin(inp_stdout);
+        }
+        SystemItem::Buffer(ref buf) => {
+            cmd.stdin(Stdio::piped());
+            let buf = buf.to_owned();
+            inp_sys.init.push(Init(Box::new(move |child| {
+                let buf = buf.to_owned(); //?
+                Ok({
+                    let mut stdin = te!(child.stdin.take(), "Missing stdin on child {:?}", child);
+                    let thread = std::thread::spawn(move || -> Result<()> {
+                        te!(io::Write::write_all(&mut stdin, &buf));
+                        Ok(())
+                    });
+                    Cleanup::Thread(thread)
+                })
+            })));
+        }
+    }
 
     ldebug!("Connect input: {:?}", inp_sys);
     Ok(inp_sys)
@@ -220,9 +261,11 @@ fn connect_input(cmd: &mut Command, input: Job) -> Result<System> {
 fn spawn_spec(Spec { mut cmd, input }: Spec, capture: bool) -> Result<System> {
     let mut cleanup: Vec<Cleanup> = <_>::default();
 
+    let mut inp_inits = Vec::new();
     for input in input {
         let inp_sys = te!(connect_input(&mut cmd, input));
-        let inp_cleanup: Vec<Cleanup> = inp_sys.into();
+        let (inp_init, inp_cleanup) = inp_sys.into_init_cleanup();
+        inp_inits.extend(inp_init);
         cleanup.extend(inp_cleanup);
     }
 
@@ -233,12 +276,16 @@ fn spawn_spec(Spec { mut cmd, input }: Spec, capture: bool) -> Result<System> {
         cmd.stdout(Stdio::inherit());
     }
 
-    let child = te!(cmd.spawn(), "Spawning {:?}", cmd);
+    let mut child = te!(cmd.spawn(), "Spawning {:?}", cmd);
+    for init in &mut inp_inits {
+        cleanup.push(te!(init.0(&mut child)));
+    }
 
     let sys = System {
         cmd,
-        child,
+        item: SystemItem::Child(child),
         cleanup,
+        init: <_>::default(),
     };
 
     ldebug!(
@@ -335,31 +382,45 @@ impl Default for Buffer {
     }
 }
 
-impl From<System> for Vec<Cleanup> {
-    fn from(
-        System {
-            cmd,
-            child,
-            mut cleanup,
-        }: System,
-    ) -> Self {
-        cleanup.push(Cleanup::Child(child, cmd));
-        cleanup
-    }
-}
-
-impl IntoIterator for System {
-    type IntoIter = <Vec<Cleanup> as IntoIterator>::IntoIter;
-    type Item = Cleanup;
-    fn into_iter(self) -> Self::IntoIter {
-        let cleanups: Vec<_> = self.into();
-        cleanups.into_iter()
-    }
-}
-
 impl System {
+    pub fn into_init_cleanup(self) -> (Vec<Init>, Vec<Cleanup>) {
+        let Self {
+            cmd,
+            item,
+            mut cleanup,
+            init,
+        } = self;
+        match item {
+            SystemItem::Child(child) => {
+                cleanup.push(Cleanup::Child(child, cmd));
+            }
+            _ => (),
+        }
+        (init, cleanup)
+    }
+
     pub fn cleanup(self) -> Result<()> {
         ldebug!("cleanup {:?}", self);
-        Cleanup::all(self)
+        Cleanup::all(self.into_init_cleanup().1)
+    }
+}
+
+impl fmt::Debug for Init {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_tuple("Init").finish()
+    }
+}
+
+pub trait Byteable {
+    fn into_bytes(self) -> Vec<u8>;
+}
+impl Byteable for Vec<u8> {
+    fn into_bytes(self) -> Vec<u8> {
+        self
+    }
+}
+impl Byteable for String {
+    fn into_bytes(self) -> Vec<u8> {
+        self.into_bytes()
     }
 }
