@@ -7,7 +7,7 @@ use {
     std::fmt,
 };
 
-#[derive(Copy, Clone, Debug, Default)]
+#[derive(Copy, Clone, Default)]
 pub struct ArrayView {
     pub start: Signed<u16>,
     pub end: Signed<u16>,
@@ -32,54 +32,8 @@ impl ArrayView {
         let mut last_val = Value::default();
         for i in 1..=len {
             let val = te!(vm.stack_get_val(arr.ptr - i)).to_owned();
-            match val {
-                Value::Array(arr) => {
-                    // TODO: fight infinite recursion in compiler
-                    //let mut reenter = true;
-                    //last_val = te!(Self::arr_all(arr).expand_all(vm, &mut |vm, val| {
-                    //    if !te!(callb(vm, &val)) {
-                    //        reenter = false;
-                    //    }
-                    //    Ok(reenter)
-                    //}));
-                    //if !reenter {
-                    //    break;
-                    //}
-                    let mut all = Vec::new();
-                    te!(Self::arr_all(arr).collect_all(vm, &mut all));
-                    for val in all {
-                        last_val = val;
-                        if !te!(callb(vm, &last_val)) {
-                            break;
-                        }
-                    }
-                }
-                Value::ArrayView(view) => {
-                    // TODO: fight infinite recursion in compiler
-                    //let mut reenter = true;
-                    //last_val = te!(view.foreach(vm, {
-                    //    &mut |vm, val| {
-                    //        if !te!(callb(vm, &val.to_owned())) {
-                    //            reenter = false;
-                    //        }
-                    //        Ok(reenter)
-                    //    }
-                    //}));
-                    let mut all = Vec::new();
-                    te!(view.collect_all(vm, &mut all));
-                    for val in all {
-                        last_val = val;
-                        if !te!(callb(vm, &last_val)) {
-                            break;
-                        }
-                    }
-                }
-                val => {
-                    if !te!(callb(vm, &val)) {
-                        last_val = val.to_owned();
-                        break;
-                    }
-                }
+            if !te!(expand_value(vm, val, &mut last_val, callb)) {
+                break;
             }
         }
         Ok(last_val)
@@ -150,5 +104,50 @@ impl fmt::Display for ArrayView {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "({}){{{}..{}}}", self.arr.ptr, self.start, self.end)?;
         Ok(())
+    }
+}
+
+impl fmt::Debug for ArrayView {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self)?;
+        Ok(())
+    }
+}
+
+fn expand_view<C>(vm: &mut Vm, view: ArrayView, last_val: &mut Value, callb: &mut C) -> Result<bool>
+where
+    C: FnMut(&mut Vm, &Value) -> Result<bool>,
+{
+    // TODO: fight infinite recursion in compiler
+    //let mut reenter = true;
+    //last_val = te!(view.foreach(vm, {
+    //    &mut |vm, val| {
+    //        if !te!(callb(vm, &val.to_owned())) {
+    //            reenter = false;
+    //        }
+    //        Ok(reenter)
+    //    }
+    //}));
+    let mut all = Vec::new();
+    te!(view.collect_all(vm, &mut all));
+
+    for val in all {
+        *last_val = val;
+        if !te!(callb(vm, &last_val)) {
+            return Ok(false);
+        }
+    }
+
+    Ok(true)
+}
+
+fn expand_value<C>(vm: &mut Vm, val: Value, last_val: &mut Value, callb: &mut C) -> Result<bool>
+where
+    C: FnMut(&mut Vm, &Value) -> Result<bool>,
+{
+    match val {
+        Value::Array(arr) => expand_view(vm, ArrayView::arr_all(arr), last_val, callb),
+        Value::ArrayView(view) => expand_view(vm, view, last_val, callb),
+        val => callb(vm, &val),
     }
 }

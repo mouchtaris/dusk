@@ -1,9 +1,7 @@
 use {
-    super::{ldebug, te, value, Job, Result, Value, Vm},
-    error::temg,
+    super::{ldebug, te, temg, value, Job, Result, Value, Vm},
     std::{
         fmt::Write,
-        mem,
         process::{Command, Stdio},
     },
 };
@@ -84,36 +82,58 @@ pub fn spawn(vm: &mut Vm) -> Result<()> {
     //
     let mut job: Job = cmd.into();
 
-    // Connect input redirections
     //
+    // ## Connect input redirections ##
+    //
+    // ---
+    // A "Job ID" that can be a Job, String or DynString id,
+    // refering to the respective object in the vm.
+    //
+    // The commonality among these is that they can all be used
+    // as a source to connect to a process' stdin.
     #[derive(Debug)]
     enum Id {
         Job,
         Str,
         DStr,
     }
+    //
+    // ---
+    // Extract (Id, id) from the arguments on the stack.
+    //
     let mut inp_jobs: Vec<(Id, usize)> = vec![];
-
+    //
+    // Collect the values from the stack.
     let inp_redirs: Result<Vec<Value>> = (0..inp_redir_n)
         .map(|i| vm.arg_get_val(nargs + 3 + 1 + i).map(<_>::to_owned))
         .collect();
     let inp_redirs = te!(inp_redirs);
-
+    //
+    // Translate each value to (Id, id).
+    ldebug!(" INP REDIRS {:?}", inp_redirs);
     for mut redir in inp_redirs {
         let redir_insert = loop {
+            // An input redirection value can only be one of the value types
+            // defined here.
             break match redir {
                 Value::Job(value::Job(jobid)) => (Id::Job, jobid),
                 Value::LitString(value::LitString(strid)) => (Id::Str, strid),
                 Value::DynString(value::DynString(strid)) => (Id::DStr, strid),
                 Value::ArrayView(view) => {
+                    // An array view (slice) means the first element of it.
                     redir = te!(view.first(vm));
+                    ldebug!("FIRST {:?} <- {:?}", redir, view);
                     continue;
                 }
-                other => temg!("internal error: {:?}", other),
+                other => temg!("Invalid value as source in input redirection: {:?}", other),
             };
         };
         inp_jobs.push(redir_insert)
     }
+    ldebug!(" INP JOBS {:?}", inp_jobs);
+    //
+    // Create a Job from a text string source type. When connected it will
+    // output the string value itself.
     fn make_string_input(vm: &Vm, typ: Id, id: usize) -> Result<Job> {
         Ok({
             let cmd = Command::new("<internal string source>");
@@ -126,6 +146,9 @@ pub fn spawn(vm: &mut Vm) -> Result<()> {
             Job::Buffer(buffer)
         })
     }
+    //
+    // Get a Job object from each (Id, id) defined as input, and add them
+    // to the target Job's input list.
     for inp_job0 in inp_jobs {
         match inp_job0 {
             (Id::Job, jobid) => {

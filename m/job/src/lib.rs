@@ -113,8 +113,8 @@ impl Job {
                     ..
                 }) => echo_buffer_job(buf),
 
-                Job::Buffer(Buffer::String(_, _)) |
-                Job::System(System {
+                Job::Buffer(Buffer::String(_, _))
+                | Job::System(System {
                     item: SystemItem::Child(_),
                     ..
                 })
