@@ -96,6 +96,7 @@ pub fn spawn(vm: &mut Vm) -> Result<()> {
         Job,
         Str,
         DStr,
+        Nat
     }
     //
     // ---
@@ -110,7 +111,6 @@ pub fn spawn(vm: &mut Vm) -> Result<()> {
     let inp_redirs = te!(inp_redirs);
     //
     // Translate each value to (Id, id).
-    ldebug!(" INP REDIRS {:?}", inp_redirs);
     for mut redir in inp_redirs {
         let redir_insert = loop {
             // An input redirection value can only be one of the value types
@@ -119,10 +119,10 @@ pub fn spawn(vm: &mut Vm) -> Result<()> {
                 Value::Job(value::Job(jobid)) => (Id::Job, jobid),
                 Value::LitString(value::LitString(strid)) => (Id::Str, strid),
                 Value::DynString(value::DynString(strid)) => (Id::DStr, strid),
+                Value::Natural(n) => (Id::Nat, n),
                 Value::ArrayView(view) => {
                     // An array view (slice) means the first element of it.
                     redir = te!(view.first(vm));
-                    ldebug!("FIRST {:?} <- {:?}", redir, view);
                     continue;
                 }
                 other => temg!("Invalid value as source in input redirection: {:?}", other),
@@ -130,7 +130,6 @@ pub fn spawn(vm: &mut Vm) -> Result<()> {
         };
         inp_jobs.push(redir_insert)
     }
-    ldebug!(" INP JOBS {:?}", inp_jobs);
     //
     // Create a Job from a text string source type. When connected it will
     // output the string value itself.
@@ -140,6 +139,7 @@ pub fn spawn(vm: &mut Vm) -> Result<()> {
             let string = match typ {
                 Id::Str => te!(vm.get_string_id(id)).to_owned(),
                 Id::DStr => te!(vm.get_dynstring_id(id)).to_owned(),
+                Id::Nat => format!("{}", id),
                 other => temg!("Not a string: {:?}", other),
             };
             let buffer = job::Buffer::String(cmd, string);
@@ -155,7 +155,7 @@ pub fn spawn(vm: &mut Vm) -> Result<()> {
                 let inp_job = te!(vm.get_job_mut(jobid));
                 te!(job.add_input_job(inp_job));
             }
-            (typ @ (Id::Str | Id::DStr), strid) => {
+            (typ @ (Id::Str | Id::DStr | Id::Nat), strid) => {
                 let mut inp_job = te!(make_string_input(vm, typ, strid));
                 te!(job.add_input_job(&mut inp_job));
             }

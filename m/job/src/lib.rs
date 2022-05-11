@@ -276,7 +276,7 @@ fn spawn_spec(Spec { mut cmd, input }: Spec, capture: bool) -> Result<System> {
         cmd.stdout(Stdio::inherit());
     }
 
-    let mut child = te!(cmd.spawn(), "Spawning {:?}", cmd);
+    let mut child = te!(cmd.spawn(), "Spawning {:?} in {:?}", cmd, cmd.get_current_dir());
     for init in &mut inp_inits {
         cleanup.push(te!(init.0(&mut child)));
     }

@@ -148,6 +148,9 @@ where
     match val {
         Value::Array(arr) => expand_view(vm, ArrayView::arr_all(arr), last_val, callb),
         Value::ArrayView(view) => expand_view(vm, view, last_val, callb),
-        val => callb(vm, &val),
+        val => {
+            *last_val = val;
+            callb(vm, &last_val)
+        }
     }
 }
