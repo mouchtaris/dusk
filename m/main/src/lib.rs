@@ -1,5 +1,6 @@
 pub const VERSION: &str = "0.0.1";
 
+pub mod errors;
 mod load_icode;
 pub mod sd;
 

@@ -96,7 +96,7 @@ pub fn spawn(vm: &mut Vm) -> Result<()> {
         Job,
         Str,
         DStr,
-        Nat
+        Nat,
     }
     //
     // ---

@@ -1,10 +1,14 @@
 use {
     ::error::te,
-    main::{sd, Result},
+    main::{errors, sd, Result},
     std::{fs, io},
 };
 
-fn main() -> Result<()> {
+fn main() {
+    errors::main(main_app);
+}
+
+fn main_app() -> Result<()> {
     te!(main::init());
 
     let args = std::env::args().collect::<Vec<_>>();
