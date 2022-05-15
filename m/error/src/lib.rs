@@ -145,6 +145,10 @@ impl<T, K> IntoResult<K, T> for Result<T, K> {
 }
 
 impl<K> Error<K> {
+    pub fn with_comment<S: Into<String>>(mut self, msg: S) -> Self {
+        self.comment(msg);
+        self
+    }
     pub fn comment<S>(&mut self, msg: S)
     where
         S: Into<String>,

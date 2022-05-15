@@ -38,7 +38,9 @@ fn main_app() -> Result<()> {
     log::info!("Compiling {}", input_path);
     let mut cmp = compile::Compiler::new();
     te!(cmp.init(&input_path));
-    te!(cmp.compile(module_ast));
+    te!(cmp
+        .compile(module_ast)
+        .map_err(|err| err.with_comment(format!("Compiling {}", input_path))));
     #[cfg(feature = "debug")]
     {
         use show::Show;

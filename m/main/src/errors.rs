@@ -1,6 +1,6 @@
 use {
     super::{Error, ErrorKind, Result},
-    std::{cmp, fmt, process},
+    std::{fmt, process},
 };
 
 pub fn main<M>(main_app: M)
@@ -15,9 +15,25 @@ where
     process::exit(1);
 }
 
+fn show_trace(trace: error::Trace) {
+    eprintln!("Source trace ({}):", trace.len());
+    for (f, l, cs) in trace {
+        let _ = (f, l);
+        for c in cs {
+            eprintln!(" - {}", c);
+        }
+    }
+}
+
+fn show_message<S: AsRef<str>>(trace: error::Trace, msg: S) {
+    show_trace(trace);
+    eprintln!("{}", msg.as_ref());
+}
+
 fn show_error(err: Error) {
-    match err.kind {
-        ErrorKind::Msg(msg) => eprintln!("{}", msg),
+    let Error { kind, trace } = err;
+    match kind {
+        ErrorKind::Msg(msg) => show_message(trace, msg),
         ErrorKind::Compile(err) => show_compile_error(err),
         ErrorKind::Parse(err) => show_parse_error(err),
         other => panic!("{:?}", other),
@@ -26,16 +42,18 @@ fn show_error(err: Error) {
 
 fn show_compile_error(err: compile::Error) {
     use compile::ErrorKind;
-    match err.kind {
-        ErrorKind::Message(msg) => eprintln!("{}", msg),
+    let compile::Error { kind, trace } = err;
+    match kind {
         ErrorKind::ParseDust(err) => show_parse_error(err),
+        ErrorKind::Message(msg) => show_message(trace, msg),
         other => panic!("{:?}", other),
     }
 }
 
 fn show_parse_error(err: parse::Error) {
     use parse::ErrorKind;
-    match err.kind {
+    let parse::Error { kind, .. } = err;
+    match kind {
         ErrorKind::Lalrpop(err) => show_lalrpop_error(err),
         other => panic!("{:?}", other),
     }
@@ -113,6 +131,19 @@ where
                 }
             })
         }
+        fn iter2(&self) -> impl Iterator<Item = T> {
+            let &Self { data, idx } = self;
+            let mut i = 0;
+            std::iter::from_fn(move || {
+                if i == idx {
+                    None
+                } else {
+                    let t = data[i];
+                    i += 1;
+                    Some(t)
+                }
+            })
+        }
     }
 
     type Cyc<'s> = Cyclon<&'s str, CTX_LEN>;
@@ -172,7 +203,7 @@ where
             }
         }
     }
-    let mut after = ctx.iter();
+    let mut after = ctx.iter2();
     if let Some(line) = after.next() {
         color((249 + CTX_LEN) as u8, line)
     }
