@@ -17,7 +17,7 @@ pub fn parse(source: &str) -> Result<ast::Module> {
 }
 
 // Necessary to kill the input lifetime
-pub fn map_err(inp: &str) -> impl FnOnce(ParseError) -> Error {
+pub fn map_err(inp: &str) -> impl FnOnce(ParseError) -> Error + '_ {
     |e| {
         use lalrpop_util::ParseError::*;
         type L = usize;
