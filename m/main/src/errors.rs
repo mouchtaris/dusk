@@ -25,9 +25,9 @@ fn show_trace(trace: error::Trace) {
     }
 }
 
-fn show_message<S: AsRef<str>>(trace: error::Trace, msg: S) {
+fn show_message<S: fmt::Display>(trace: error::Trace, msg: S) {
     show_trace(trace);
-    eprintln!("{}", msg.as_ref());
+    eprintln!("{}", msg);
 }
 
 fn show_error(err: Error) {
@@ -46,6 +46,7 @@ fn show_compile_error(err: compile::Error) {
     match kind {
         ErrorKind::ParseDust(err) => show_parse_error(err),
         ErrorKind::Message(msg) => show_message(trace, msg),
+        ErrorKind::Io(io) => show_message(trace, format_args!("{:?}", io)),
         other => panic!("{:?}", other),
     }
 }

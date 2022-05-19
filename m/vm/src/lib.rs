@@ -2,6 +2,7 @@ pub const VERSION: &str = "0.0.1";
 pub mod debugger;
 pub mod icode;
 pub mod syscall;
+pub mod to_sh;
 pub mod value;
 pub use {
     icode::{ICode, Instr, StringInfo},

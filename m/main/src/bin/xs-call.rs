@@ -21,6 +21,7 @@ fn main() -> Result<()> {
     );
 
     let mut vm = te!(main::make_vm());
-    te!(main::make_vm_call(&mut vm, &compl, &func_addr, args));
+    te!(main::make_vm_call(&mut vm, &compl, &func_addr, args)
+        .map_err(|err| err.with_comment(format!("Loading icode from {}", module_path))));
     Ok(())
 }

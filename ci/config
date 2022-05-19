@@ -1,5 +1,5 @@
 # vim: et ft=ruby ts=4 sw=4
-#
+
 def _.lib.ide/context_path      = "./run/dust.ctx/1";
 def _.lib.ide/target_path       = "./run/dust";
 
