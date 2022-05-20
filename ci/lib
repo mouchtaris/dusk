@@ -1,8 +1,7 @@
 # vim: et ts=4 sw=4
 
-include ./config;
-
 include ../include/dust/std;
+include ./config;
 include ../include/dust/lib.term/lib;
 include ../include/dust/lib.ide/lib;
 
