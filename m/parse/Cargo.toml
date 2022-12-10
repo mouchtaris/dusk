@@ -24,4 +24,4 @@ path = '../lex'
 [dependencies.log]
 version = '*'
 [build-dependencies]
-lalrpop = "0.19.6"
+lalrpop = "0.19.7"
