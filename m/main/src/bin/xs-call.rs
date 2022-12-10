@@ -1,6 +1,10 @@
 use {::error::te, main::Result};
 
-fn main() -> Result<()> {
+fn main() {
+    main::run_main(xs_call);
+}
+
+fn xs_call() -> Result<()> {
     te!(main::init());
 
     let mut args = std::env::args().skip(1).collect::<Vec<_>>();
