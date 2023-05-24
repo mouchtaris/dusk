@@ -57,6 +57,9 @@ impl ArrayView {
         let r = (0, len);
         let mut start = start.wrap(r);
         let mut end = end.wrap(r);
+        if start == end {
+            return Ok(<_>::default());
+        }
         self.expand_all(vm, &mut |vm, val| {
             if end == 0 {
                 return Ok(false);
