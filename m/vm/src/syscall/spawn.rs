@@ -97,6 +97,7 @@ pub fn spawn(vm: &mut Vm) -> Result<()> {
         Str,
         DStr,
         Nat,
+        Null,
     }
     //
     // ---
@@ -123,7 +124,13 @@ pub fn spawn(vm: &mut Vm) -> Result<()> {
                 Value::ArrayView(view) => {
                     // An array view (slice) means the first element of it.
                     redir = te!(view.first(vm));
-                    continue;
+                    if redir.is_null() && matches!(view.end, value::Signed::Minus(0)) {
+                        // As a special case, an ending, var-arg slice (`[n;]`)
+                        // can be permitted as a NULL Input Redirection Source.
+                        (Id::Null, 0)
+                    } else {
+                        continue;
+                    }
                 }
                 other => temg!("Invalid value as source in input redirection: {:?}", other),
             };
@@ -140,6 +147,7 @@ pub fn spawn(vm: &mut Vm) -> Result<()> {
                 Id::Str => te!(vm.get_string_id(id)).to_owned(),
                 Id::DStr => te!(vm.get_dynstring_id(id)).to_owned(),
                 Id::Nat => format!("{}", id),
+                Id::Null => String::new(),
                 other => temg!("Not a string: {:?}", other),
             };
             let buffer = job::Buffer::String(cmd, string);
@@ -155,7 +163,7 @@ pub fn spawn(vm: &mut Vm) -> Result<()> {
                 let inp_job = te!(vm.get_job_mut(jobid));
                 te!(job.add_input_job(inp_job));
             }
-            (typ @ (Id::Str | Id::DStr | Id::Nat), strid) => {
+            (typ @ (Id::Str | Id::DStr | Id::Nat | Id::Null), strid) => {
                 let mut inp_job = te!(make_string_input(vm, typ, strid));
                 te!(job.add_input_job(&mut inp_job));
             }
