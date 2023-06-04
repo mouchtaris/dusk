@@ -94,7 +94,6 @@ module:
       - job
     dep_crate:
       - log
-      - bio
       - pretty_env_logger
 crate:
   log: "*"

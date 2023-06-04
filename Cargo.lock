@@ -46,11 +46,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d468802bab17cbc0cc575e9b053f41e72aa36bfa6b7f55e3529ffa43161b97fa"
 
 [[package]]
-name = "bio"
-version = "0.0.1"
-source = "git+https://gitlab.com/gvz/rs?branch=b2#4e404ae861f630657128538c17e10951d25b7733"
-
-[[package]]
 name = "bit-set"
 version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -327,7 +322,6 @@ name = "main"
 version = "0.0.1"
 dependencies = [
  "ast",
- "bio",
  "collection",
  "compile",
  "either 0.0.1",

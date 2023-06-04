@@ -6,11 +6,6 @@ edition = '2021'
 version = '0.0.1'
 path = '../ast'
 
-[dependencies.bio]
-version = '*'
-git = 'https://gitlab.com/gvz/rs'
-branch = 'b2'
-
 [dependencies.collection]
 version = '0.0.1'
 path = '../collection'

@@ -36,6 +36,7 @@ fn show_error(err: Error) {
         ErrorKind::Msg(msg) => show_message(trace, msg),
         ErrorKind::Compile(err) => show_compile_error(err),
         ErrorKind::Parse(err) => show_parse_error(err),
+        ErrorKind::Io(io) => show_message(trace, format_args!("{io:?}")),
         other => panic!("{:?}", other),
     }
 }

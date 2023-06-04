@@ -25,11 +25,12 @@ where
 {
     let mut stdin = io::stdin();
     let mut stdout = io::stdout();
-    let mut buf = buffer_new();
 
     while let Some(arg) = argv.next() {
         let __ = match arg.as_ref() {
-            "--stdin" => io_copy(&mut stdin, &mut stdout, &mut buf),
+            "--stdin" =>
+                io::copy(&mut stdin, &mut stdout)
+                .map(|_| ()),
             a if a.starts_with("--echo=") => stdout.write_all(&a["--echo=".len()..].as_bytes()),
             a if a.starts_with("--echo") => {
                 let cont = te!(argv.next(), "Missing --echo arg");
@@ -54,41 +55,25 @@ where
         let file = io::BufWriter::new(file);
         files.push(file)
     }
-    let mut buf = buffer_new();
 
     let mut stdin = io::stdin();
-    while te!(buf.read_from(&mut stdin)) > 0 {
-        use bio::BufferMethods;
-        let mark = buf.mark();
+    let mut buf = vec![0u8; 256];
+
+    loop {
+        use io::{Read, Write};
+
+        let n = te!(stdin.read(&mut buf));
+
+        if n == 0 {
+            break;
+        }
+
+        let view = &buf[0..n];
+
         for file in &mut files {
-            buf.reset_to(mark.clone());
-            while buf.len() > 0 {
-                te!(buf.write_to(file));
-                buf.compact();
-            }
+            te!(file.write_all(view));
         }
     }
 
-    Ok(())
-}
-
-type Buffer = bio::Buffer<bio::Bytes1K>;
-
-fn buffer_new() -> Buffer {
-    use bio::{Buffer, Bytes1K};
-    Buffer::new(Bytes1K::new())
-}
-
-fn io_copy<I, O>(mut inp: I, mut out: O, buf: &mut Buffer) -> io::Result<()>
-where
-    I: io::Read,
-    O: io::Write,
-{
-    while buf.free() == 0 || buf.read_from(&mut inp)? > 0 {
-        while buf.len() > 0 {
-            buf.write_to(&mut out)?;
-            buf.compact();
-        }
-    }
     Ok(())
 }
