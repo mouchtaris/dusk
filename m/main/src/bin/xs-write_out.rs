@@ -28,9 +28,7 @@ where
 
     while let Some(arg) = argv.next() {
         let __ = match arg.as_ref() {
-            "--stdin" =>
-                io::copy(&mut stdin, &mut stdout)
-                .map(|_| ()),
+            "--stdin" => io::copy(&mut stdin, &mut stdout).map(|_| ()),
             a if a.starts_with("--echo=") => stdout.write_all(&a["--echo=".len()..].as_bytes()),
             a if a.starts_with("--echo") => {
                 let cont = te!(argv.next(), "Missing --echo arg");

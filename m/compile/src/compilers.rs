@@ -337,6 +337,7 @@ pub trait Compilers<'i> {
 
             Ok(match invocation_target {
                 TLocal(Local(("__syscall-argslice",))) => SymInfo::syscall(vm::syscall::ARG_SLICE),
+                TLocal(Local(("__builtin",))) => SymInfo::syscall(vm::syscall::BUILTIN),
                 TLocal(Local((id,))) => te!(cmp.compile_funcaddr(id)),
                 TSysName(SysName((id,))) => te!(cmp.compile_text(id)),
                 TSysPath(SysPath((path,))) => te!(cmp.compile(path)),

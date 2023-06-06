@@ -6,6 +6,7 @@ use {
 
 pub const SPAWN: usize = usize::MAX;
 pub const ARG_SLICE: usize = usize::MAX - 1;
+pub const BUILTIN: usize = usize::MAX - 2;
 
 mod argslice;
 mod builtin;
@@ -81,17 +82,43 @@ where
     Ok(())
 }
 
+#[derive(Debug)]
 pub struct CallArgs<Value> {
+    // Number of arguments passed at call site
     nargs: usize,
+    // Number of environment variable settings passed at call site
     nenvs: usize,
+    // Number of input stream redirections passed at call site
     ninps: usize,
+    // Number of output stream redirections passed at call site
     nouts: usize,
+    // "Call target" value
     targt: Value,
+    // Current working directory passed at call site
     cwd: Value,
+}
+impl<'v> CallArgs<&'v Value> {
+    /// Collect the values representing argument from the VM stack.
+    ///
+    /// The resulting `Vec` is always `nargs + 1` length.
+    ///
+    /// Before the actual arguments (at index `0`), the number of
+    /// total arguments (`nargs`) is included as a VM [`Value`].
+    /// This is exactly the same source of information as `nargs`,
+    /// and it is only provided in case the `Value` form is prefered.
+    ///
+    pub(self) fn vmargs(&self, vm: &'v Vm) -> Result<Vec<&'v Value>> {
+        let &Self { nargs, .. } = self;
+        (0..=nargs).map(|i| vm.arg_get_val(i)).collect()
+    }
 }
 
 impl<V> CallArgs<V> {
-    fn from_vm(vm: &Vm) -> Result<CallArgs<&Value>> {
+    /// Load from a current VM state. Immutable reads only.
+    ///
+    /// Need to call [`Vm::prepare_call()`] before this wrapping.
+    ///
+    pub(self) fn from_vm(vm: &Vm) -> Result<CallArgs<&Value>> {
         let &nargs: &usize = te!(vm.arg_get(0));
         let cwd: &Value = te!(vm.arg_get_val(nargs + 1));
         let target: &Value = te!(vm.arg_get_val(nargs + 2));
@@ -108,6 +135,8 @@ impl<V> CallArgs<V> {
         };
         Ok(call_args)
     }
+
+    /// Return an owned `V` version.
     fn to_owned(&self) -> CallArgs<V::Owned>
     where
         V: ToOwned,

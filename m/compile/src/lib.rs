@@ -46,7 +46,7 @@ pub use {
 pub struct Compiler {
     pub icode: vm::ICode,
     pub sym_table: SymbolTable,
-    pub(in crate) current_file_path: Vec<String>,
+    pub(crate) current_file_path: Vec<String>,
 }
 
 impl Compiler {
