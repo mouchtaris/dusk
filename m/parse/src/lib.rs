@@ -37,7 +37,7 @@ pub fn map_err(inp: &str) -> impl FnOnce(ParseError) -> Error + '_ {
 
         match e {
             InvalidToken { location } => error(InvalidToken { location }),
-            UnrecognizedEOF { location, expected } => error(UnrecognizedEOF { location, expected }),
+            UnrecognizedEof { location, expected } => error(UnrecognizedEof { location, expected }),
             UnrecognizedToken { token, expected } => error(UnrecognizedToken {
                 token: strip(token),
                 expected,

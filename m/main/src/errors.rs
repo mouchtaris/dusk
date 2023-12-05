@@ -70,7 +70,7 @@ fn show_lalrpop_error((inp, err): parse::SourceError) {
             show(location, None, NO_EXPECT);
             show_error_text("Invalid token");
         }
-        P::UnrecognizedEOF { location, expected } => {
+        P::UnrecognizedEof { location, expected } => {
             show(location, None, expected.as_slice());
             show_error_text("Premature EOF");
         }

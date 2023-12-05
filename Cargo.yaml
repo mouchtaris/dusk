@@ -57,6 +57,8 @@ module:
     dep_crate:
       - lalrpop-util
       - log
+    build_dep_crate:
+      - lalrpop
   compile:
     dep_mod:
       - error
@@ -98,5 +100,6 @@ module:
 crate:
   log: "*"
   lalrpop-util: "*"
+  lalrpop: "*"
   bio: { version: "*", git: "https://gitlab.com/gvz/rs", branch: "b2" }
   pretty_env_logger: "*"
