@@ -40,6 +40,18 @@ pub fn read_compiler<R: io::Read>(mut input: R) -> Result<compile::Compiler> {
     Ok(cmp)
 }
 
+pub fn compile_file(input_path: &str) -> Result<compile::Compiler> {
+    let input_text = te!(fs::read_to_string(input_path));
+    let module_ast =
+        te!(parse::parse(&input_text).map_err(|err| err.with_comment("Parsing {input_path}")));
+    let mut compiler = compile::Compiler::new();
+    te!(compiler.init(input_path));
+    te!(compiler
+        .compile(module_ast)
+        .map_err(|err| err.with_comment(format!("Compiling {input_path}"))));
+    Ok(compiler)
+}
+
 pub fn make_vm() -> Result<vm::Vm> {
     let mut vm = vm::Vm::default();
     vm.reset();
