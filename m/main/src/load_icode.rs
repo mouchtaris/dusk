@@ -78,6 +78,41 @@ pub fn make_vm_call(
     })
 }
 
+pub fn script_call_getret(
+    cmp: &compile::Compiler,
+    func_addr: &str,
+    args: Vec<String>,
+) -> Result<Vec<u8>> {
+    let vm = &mut te!(make_vm());
+    let sinfo = compile::scopes(&cmp.sym_table).find(|&(_, name, _)| name == func_addr);
+    Ok(match sinfo {
+        None => temg!("Function not found: {}", func_addr),
+        Some((_, _, sinfo)) => {
+            let addr = te!(sinfo.as_addr_ref()).addr;
+            te!(vm.init(args));
+            vm.jump(addr);
+            te!(vm.eval_icode(&cmp.icode));
+            //te!(vm::Instr::CleanUp(0).operate_on(vm));
+            match te!(vm.stack_get_val(0)) {
+                vm::Value::Null(_) => todo!(),
+                vm::Value::LitString(_) => todo!(),
+                vm::Value::DynString(_) => todo!(),
+                vm::Value::Natural(_) => todo!(),
+                vm::Value::Array(_) => todo!(),
+                &vm::Value::Job(vm::value::Job(id)) => match te!(vm.get_job_mut(id)) {
+                    job::Job::Null(_) => todo!(),
+                    job::Job::Spec(_) => todo!(),
+                    job::Job::System(_) => todo!(),
+                    job::Job::Buffer(buf) => std::mem::take(buf).take_bytes(),
+                },
+                vm::Value::FuncAddr(_) => todo!(),
+                vm::Value::SysCallId(_) => todo!(),
+                vm::Value::ArrayView(_) => todo!(),
+            }
+        }
+    })
+}
+
 pub fn list_func(cmp: &compile::Compiler) -> impl Iterator<Item = &str> {
     use collection::Recollect;
     compile::scopes(cmp)
