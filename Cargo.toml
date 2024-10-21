@@ -10,6 +10,7 @@ members = [
     './m/job',
     './m/lex',
     './m/lexpop',
+    './m/libxs',
     './m/main',
     './m/parse',
     './m/show',
@@ -42,6 +43,9 @@ path = './m/lex'
 
 [patch.crates-io.lexpop]
 path = './m/lexpop'
+
+[patch.crates-io.libxs]
+path = './m/libxs'
 
 [patch.crates-io.main]
 path = './m/main'

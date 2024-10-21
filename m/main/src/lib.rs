@@ -32,6 +32,7 @@ error::Error! {
     Utf8 = std::str::Utf8Error
     Log = log::SetLoggerError
     Var = env::VarError
+    Job = job::Error
 }
 
 pub fn init() -> Result<()> {
