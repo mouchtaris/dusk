@@ -1,0 +1,7 @@
+[package]
+name = 'libxs'
+version = '0.0.1'
+edition = '2021'
+[dependencies.main]
+version = '0.0.1'
+path = '../main'
