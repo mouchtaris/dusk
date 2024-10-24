@@ -54,7 +54,15 @@ either![
 either![InvocationCwd, Path, Variable, BoxInvocation];
 either![Path, AbsPath, RelPath, HomePath];
 either![Opt, ShortOpt, LongOpt];
-either![Redirect, Path, Variable, Dereference, Invocation, Slice];
+either![
+    Redirect,
+    Path,
+    Variable,
+    Dereference,
+    Invocation,
+    Slice,
+    String
+];
 either![Range, DoubleRange, Index];
 
 name![Array, AnyExpr];
