@@ -144,10 +144,10 @@ pub trait Compilers<'i> {
             }
             //
             // Redirections
-            let inp_redir_len = input_redirections.len();
-            if inp_redir_len > 1 {
-                temg!("More than one stdin redirections is not (yet) supported");
-            }
+            //let inp_redir_len = input_redirections.len();
+            //if inp_redir_len > 1 {
+            //    temg!("More than one stdin redirections is not (yet) supported");
+            //}
             let inp_redir_sinfos = te!(cmp.compile(input_redirections));
             // target
             let invctrgt = format!("{}", invocation_target);
