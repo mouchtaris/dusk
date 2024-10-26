@@ -1,1 +1,26 @@
-!cat <"hello" <"byr";
+!cat
+  <"ena"
+  #<"dyn"
+;
+
+!cargo build
+  --bin xs-compile
+  --bin xsi-list-func
+  --bin xs-call
+;
+
+def sip     = !dd <$args[0] "of=/dev/null" "status=none";
+def list.0  = !xargs <$args[1] -0 -I ":::" -- printf "%s%s\n" $args[0] ":::";
+
+def xc-path = ./target/debug/xs-compile $args[0];
+def xc-lf   = ./target/debug/xsi-list-func <$args[0] -;
+def xc-call = ./target/debug/xs-call <$args[0] - $args[1;];
+
+let obj = xc-path /home/bob/jctl/dust.dust;
+let funcs = !sort <(list.0 "- " (xc-lf $obj));
+
+!cat <$funcs;
+!printf "Lines: %s" (!wc <$funcs --lines);
+
+sip (!tee <$obj _.dust.dustlib);
+xc-call $obj ssh::list_hostnames.xs;
