@@ -1,0 +1,9 @@
+include ../jctl/dust/dusk.dust;
+
+def test = {
+  #!cargo run --bin xs2 -- tost.dust;
+  !cargo build --bin xs-compile --bin xs-decompile --bin xs-debug;
+  ./target/debug/xs-compile tost.dust tost.dustlib;
+  ./target/debug/xs-decompile tost.dustlib;
+  #./target/debug/xs-debug <$obj;
+}
