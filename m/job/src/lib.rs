@@ -5,7 +5,7 @@ use {
     std::{
         fmt, io, mem,
         process::{Child, Command, ExitStatus, Stdio},
-        thread::JoinHandle,
+        thread::{spawn, JoinHandle},
     },
 };
 
@@ -45,7 +45,7 @@ pub struct System {
     pub init: Vec<Init>,
 }
 
-pub struct Init(Box<dyn FnMut(&mut Child) -> Result<Cleanup>>);
+pub struct Init(Box<dyn FnOnce(&mut Child) -> Result<Cleanup>>);
 
 #[derive(Debug)]
 pub enum Cleanup {
@@ -101,6 +101,7 @@ impl Job {
         })
     }
 
+    // TODO is this on
     pub fn add_input_job(&mut self, input_job: &mut Job) -> Result<()> {
         self.as_spec_mut().map(|Spec { input, .. }| {
             let input_job = match input_job {
@@ -245,7 +246,7 @@ fn connect_input(cmd: &mut Command, input: Job) -> Result<System> {
                 let buf = buf.to_owned(); //?
                 Ok({
                     let mut stdin = te!(child.stdin.take(), "Missing stdin on child {:?}", child);
-                    let thread = std::thread::spawn(move || -> Result<()> {
+                    let thread = spawn(move || -> Result<()> {
                         te!(io::Write::write_all(&mut stdin, &buf));
                         Ok(())
                     });
@@ -282,7 +283,7 @@ fn spawn_spec(Spec { mut cmd, input }: Spec, capture: bool) -> Result<System> {
         cmd,
         cmd.get_current_dir()
     );
-    for init in &mut inp_inits {
+    for init in inp_inits {
         cleanup.push(te!(init.0(&mut child)));
     }
 
