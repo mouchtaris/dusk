@@ -45,7 +45,7 @@ pub struct System {
     pub init: Vec<Init>,
 }
 
-pub struct Init(Box<dyn FnOnce(&mut Child) -> Result<Cleanup>>);
+pub struct Init(Box<dyn FnOnce(&mut Child) -> Result<Cleanup> + Send>);
 
 #[derive(Debug)]
 pub enum Cleanup {
@@ -101,7 +101,6 @@ impl Job {
         })
     }
 
-    // TODO is this on
     pub fn add_input_job(&mut self, input_job: &mut Job) -> Result<()> {
         self.as_spec_mut().map(|Spec { input, .. }| {
             let input_job = match input_job {
@@ -236,7 +235,12 @@ fn connect_input(cmd: &mut Command, input: Job) -> Result<System> {
 
     match &mut inp_sys.item {
         SystemItem::Child(child) => {
-            let inp_stdout = te!(child.stdout.take(), "Missing output of {:?}", cmd);
+            let inp_stdout = te!(
+                child.stdout.take(),
+                "Missing output of {:?} (input for {:?})",
+                child,
+                cmd
+            );
             cmd.stdin(inp_stdout);
         }
         SystemItem::Buffer(ref buf) => {
@@ -259,18 +263,81 @@ fn connect_input(cmd: &mut Command, input: Job) -> Result<System> {
     ldebug!("Connect input: {:?}", inp_sys);
     Ok(inp_sys)
 }
-fn spawn_spec(Spec { mut cmd, input }: Spec, capture: bool) -> Result<System> {
+
+fn connect_inputs(cmd: &mut Command, inputs: Vec<Job>) -> Result<System> {
+    cmd.stdin(Stdio::piped());
+
+    let mut inp_sys = System {
+        cmd: Command::new("<internal multipipe input>"),
+        init: <_>::default(),
+        cleanup: <_>::default(),
+        item: SystemItem::Buffer(vec![]), // bogus item, unused
+    };
+
+    let systems = te!(inputs
+        .into_iter()
+        .map(|job| job.into_pipe(true))
+        .collect::<Result<Vec<_>>>());
+
+    // Systems that come from .into_pipe(), do not have any special inits.
+    // We only need to care about propagating cleanups.
+    // But cleanups spawn when finalizing the System with into_init_cleanup().
+    // So we can't propagate anything at this point.
+
+    inp_sys.init.push(Init(Box::new(|child| -> Result<Cleanup> {
+        let mut stdin = te!(child.stdin.take(), "Missing stdin for {:?}", child);
+
+        Ok(Cleanup::Thread({
+            spawn(move || -> Result<()> {
+                // Unfortunately(?, or not), we have to clean-up these systems in
+                // the handler thread.
+                for mut inp_sys in systems {
+                    match &mut inp_sys.item {
+                        SystemItem::Child(inp_child) => {
+                            let mut stdout =
+                                te!(inp_child.stdout.take(), "Missing output of {:?}", inp_child);
+                            te!(io::copy(&mut stdout, &mut stdin));
+                        }
+                        SystemItem::Buffer(bytes) => {
+                            te!(io::copy(&mut bytes.as_slice(), &mut stdin));
+                        }
+                    }
+
+                    let (inits, cleanups) = inp_sys.into_init_cleanup();
+                    assert!(inits.is_empty()); // As per the comments above
+
+                    // These clean-ups will await children. There is never another
+                    // type of clean-up, because the systems come from Job::into_pipe.
+                    for cleanup in cleanups {
+                        te!(cleanup.perform());
+                    }
+                }
+                Ok(())
+            })
+        }))
+    })));
+
+    // This system carries init/cleanup info only. Item is bogus.
+    Ok(inp_sys)
+}
+
+fn spawn_spec(Spec { mut cmd, mut input }: Spec, capture: bool) -> Result<System> {
+    let inp_sys: Option<System> = match input.as_mut_slice() {
+        [] => None,
+        [input] => Some(te!(connect_input(&mut cmd, mem::take(input)))),
+        _ => Some(te!(connect_inputs(&mut cmd, input))),
+    };
+
     let mut cleanup: Vec<Cleanup> = <_>::default();
 
-    let mut inp_inits = Vec::new();
-    for input in input {
-        let inp_sys = te!(connect_input(&mut cmd, input));
+    let inp_inits = if let Some(inp_sys) = inp_sys {
         let (inp_init, inp_cleanup) = inp_sys.into_init_cleanup();
-        inp_inits.extend(inp_init);
         cleanup.extend(inp_cleanup);
-    }
+        inp_init
+    } else {
+        vec![]
+    };
 
-    //cmd.stdin(Stdio::piped());
     if capture {
         cmd.stdout(Stdio::piped());
     } else {
@@ -283,6 +350,7 @@ fn spawn_spec(Spec { mut cmd, input }: Spec, capture: bool) -> Result<System> {
         cmd,
         cmd.get_current_dir()
     );
+
     for init in inp_inits {
         cleanup.push(te!(init.0(&mut child)));
     }

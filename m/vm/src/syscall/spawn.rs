@@ -107,6 +107,7 @@ pub fn spawn(vm: &mut Vm) -> Result<()> {
     //
     // Collect the values from the stack.
     let inp_redirs: Result<Vec<Value>> = (0..inp_redir_n)
+        .rev() // as always, pushed values are reverse (same as arguments)
         .map(|i| vm.arg_get_val(nargs + 3 + 1 + i).map(<_>::to_owned))
         .collect();
     let inp_redirs = te!(inp_redirs);
