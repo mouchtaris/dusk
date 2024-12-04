@@ -655,6 +655,17 @@ impl Vm {
         Ok(match val {
             &Value::LitString(value::LitString(id)) => te!(vm.get_string_id(id)),
             &Value::DynString(value::DynString(sid)) => te!(vm.get_dynstring_id(sid)),
+            &Value::Job(value::Job(job_id)) => match te!(vm.get_job(job_id)) {
+                Job::Buffer(buf) => te!(buf.as_str()),
+                other => error::temg!("Not a string job: {:?}", other),
+            },
+            &Value::ArrayView(value::ArrayView { start, arr, .. }) => match start {
+                value::Signed::Plus(n) => {
+                    let val = te!(vm.stack_get_val(arr.ptr - n as usize));
+                    te!(vm.val_as_str(val))
+                }
+                value::Signed::Minus(_) => panic!("Not allowed"),
+            },
             other => error::temg!("Not a string value: {:?}", other),
         })
     }

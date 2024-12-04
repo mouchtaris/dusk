@@ -45,6 +45,7 @@ pub enum Instr {
     CleanUp(usize),
     Collect(usize),
     Pipe(usize),
+    BufferString(usize),
 }
 
 impl Instr {
@@ -75,6 +76,13 @@ impl Instr {
             &Self::CleanUp(fp_off) => te!(vm.cleanup(fp_off, "", Job::cleanup)),
             &Self::Collect(fp_off) => te!(vm.cleanup(fp_off, "collect", Job::collect)),
             &Self::Pipe(fp_off) => te!(vm.cleanup(fp_off, "pipe", Job::pipe)),
+            &Self::BufferString(fp_off) => {
+                log::debug!("Collecting {:?}", te!(vm.frame_get_val(fp_off)));
+                te!(vm.cleanup(fp_off, "string_buffer", |j| -> Result<()> {
+                    te!(Job::make_string(j));
+                    Ok(())
+                }))
+            }
             &Self::RetStr(id) => te!(vm.set_ret_val(value::LitString(id))),
             &Self::RetNat(val) => te!(vm.set_ret_val(val)),
             &Self::RetFuncAddr(addr) => te!(vm.set_ret_val(value::FuncAddr(addr))),
@@ -135,6 +143,7 @@ impl ICode {
                     Instr::RetNat(val) => (0x10, val),
                     Instr::RetFuncAddr(addr) => (0x11, addr),
                     Instr::PushSysCall(id) => (0x12, id),
+                    Instr::BufferString(fp_off) => (0x13, fp_off),
                 };
                 let code = u8::to_le_bytes(code);
                 let arg = usize::to_le_bytes(arg0);
@@ -184,6 +193,7 @@ impl ICode {
                     0x10 => Instr::RetNat(val),
                     0x11 => Instr::RetFuncAddr(val),
                     0x12 => Instr::PushSysCall(val),
+                    0x13 => Instr::BufferString(val),
                     other => panic!("{:?}", other),
                 };
                 icode.instructions.push_back(instr);

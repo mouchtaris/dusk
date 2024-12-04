@@ -168,13 +168,14 @@ pub trait Compilers<'i> {
                 SymInfo {
                     typ: sym::Typ::Address(addr),
                     ..
-                } => cmp.new_local_tmp(addr.ret_t.as_ref(), ""),
+                } => cmp.new_local_tmp(addr.ret_t.as_ref(), "").to_owned(),
                 SymInfo {
                     typ:
-                        t @ sym::Typ::Literal(sym::Literal {
+                        t @ (sym::Typ::Literal(sym::Literal {
                             lit_type: sym::LitType::String | sym::LitType::Syscall,
                             ..
-                        }),
+                        })
+                        | sym::Typ::Local(_)),
                     ..
                 } =>
                 // Reusing the native type because it's the same allocation size (1)
@@ -182,7 +183,7 @@ pub trait Compilers<'i> {
                 // (so this is a job-type allocation, because all Literal::String
                 // and Literal::Syscall invocation targets do return that).
                 {
-                    cmp.new_local_tmp(SymInfo::typ(t.to_owned()), "")
+                    cmp.new_local_tmp(SymInfo::typ(t.to_owned()), "").to_owned()
                 }
                 other => temg!("What invocation target is this? {:?}", other),
             }
@@ -329,10 +330,14 @@ pub trait Compilers<'i> {
         |cmp, invocation_target| {
             use ast::InvocationTarget as T;
 
+            use T::InvocationTargetDereference as TDeref;
+            use T::InvocationTargetInvocation as TInvoc;
             use T::InvocationTargetLocal as TLocal;
             use T::InvocationTargetSystemName as TSysName;
             use T::InvocationTargetSystemPath as TSysPath;
 
+            use ast::InvocationTargetDereference as Deref;
+            use ast::InvocationTargetInvocation as Invoc;
             use ast::InvocationTargetLocal as Local;
             use ast::InvocationTargetSystemName as SysName;
             use ast::InvocationTargetSystemPath as SysPath;
@@ -343,6 +348,16 @@ pub trait Compilers<'i> {
                 TLocal(Local((id,))) => te!(cmp.compile_funcaddr(id)),
                 TSysName(SysName((id,))) => te!(cmp.compile_text(id)),
                 TSysPath(SysPath((path,))) => te!(cmp.compile(path)),
+                TDeref(Deref((Dereference((name,)),))) => {
+                    let sinfo = te!(cmp.compile_variable_as_auto(Variable((name,))));
+                    te!(cmp.emit_cleanup(i::BufferString, &sinfo));
+                    sinfo
+                }
+                TInvoc(Invoc((inv,))) => {
+                    let inv_si = te!(cmp.compile(*inv));
+                    te!(cmp.emit_cleanup(i::BufferString, &inv_si));
+                    inv_si
+                }
             })
         }
     }

@@ -12,6 +12,14 @@ impl<'i> fmt::Display for InvocationTarget<'i> {
             InvocationTarget::InvocationTargetSystemPath(InvocationTargetSystemPath((path,))) => {
                 write!(f, "!{}", path)
             }
+            InvocationTarget::InvocationTargetDereference(InvocationTargetDereference((var,))) => {
+                write!(f, "{var}")
+            }
+            InvocationTarget::InvocationTargetInvocation(InvocationTargetInvocation((
+                invocation,
+            ))) => {
+                write!(f, "{invocation}")
+            }
         }
     }
 }

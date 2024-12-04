@@ -37,7 +37,9 @@ either![
     InvocationTarget,
     InvocationTargetLocal,
     InvocationTargetSystemName,
-    InvocationTargetSystemPath
+    InvocationTargetSystemPath,
+    InvocationTargetDereference,
+    InvocationTargetInvocation
 ];
 either![
     InvocationArg,
@@ -87,6 +89,8 @@ name![Natural, Text];
 name![InvocationTargetLocal, Ident];
 name![InvocationTargetSystemName, Ident];
 name![InvocationTargetSystemPath, Path];
+name![InvocationTargetDereference, Dereference];
+name![InvocationTargetInvocation, BoxInvocation];
 name![
     Invocation,
     AnyDocComment,

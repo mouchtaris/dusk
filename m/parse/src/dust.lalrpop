@@ -39,6 +39,8 @@ InvocationTarget: ast::InvocationTarget<'input> = {
     Ident => ast::InvocationTarget::InvocationTargetLocal((<>,).into()),
     "!" <Ident> => ast::InvocationTarget::InvocationTargetSystemName((<>,).into()),
     Path => ast::InvocationTarget::InvocationTargetSystemPath((<>,).into()),
+    Dereference => ast::InvocationTarget::InvocationTargetDereference((<>,).into()),
+    "*" "(" <Box<Invocation>> ")" => ast::InvocationTarget::InvocationTargetInvocation((<>,).into()),
 }
 InvocationArg: ast::InvocationArg<'input> = {
     Ident => <>.into(),
