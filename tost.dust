@@ -1,8 +1,3 @@
-!cat
-  <"ena"
-  #<"dyn"
-;
-
 !cargo build
   --bin xs-compile
   --bin xsi-list-func
@@ -24,3 +19,9 @@ let funcs = !sort <(list.0 "- " (xc-lf $obj));
 
 sip (!tee <$obj _.dust.dustlib);
 xc-call $obj ssh::list_hostnames.xs;
+
+!cat
+  <"ena"
+  <"dyn"
+  <(!echo "Tesssssera")
+;
