@@ -36,7 +36,6 @@ mod signed;
 pub use signed::{Signed, Signed::Minus, Signed::Plus};
 mod array_view;
 pub use array_view::ArrayView;
-mod array_view_2;
 
 impl Default for Value {
     fn default() -> Self {
