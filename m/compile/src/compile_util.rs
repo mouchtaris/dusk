@@ -69,9 +69,16 @@ pub trait CompileUtil: Borrow<Compiler> + BorrowMut<Compiler> {
     }
 
     fn capture_call_to_local_var(&mut self, name: &str) -> Result<SymInfo> {
+        self.capture_call_to_local_var_with(name, ast::src_stmt)
+    }
+    fn capture_call_to_local_var_with<'i>(
+        &mut self,
+        name: &'i str,
+        capture_stmt: impl FnOnce(&'i str, ast::Expr<'i>) -> ast::Item<'i>,
+    ) -> Result<SymInfo> {
         let cmp = self.cmp();
 
-        let letstmt = ast::src_stmt(&name, ast::invoc(&name));
+        let letstmt = capture_stmt(name, ast::invoc(name).into());
         let local_si: SymInfo = te!(cmp.compile(letstmt)).to_owned();
         error::ldebug!("capture call to {} in {:?}", name, local_si);
         error::ldebug!("new {}: {:?}", name, te!(cmp.lookup(name)));
@@ -240,25 +247,28 @@ pub trait CompileUtil: Borrow<Compiler> + BorrowMut<Compiler> {
 
     fn emit_cleanup<C>(&mut self, clns: C, sinfo: &SymInfo) -> Result<()>
     where
-        C: FnMut(usize) -> i,
+        C: FnMut(usize) -> i + Copy,
     {
         let cmp = self.cmp();
 
-        Ok(match sinfo {
-            &SymInfo {
-                typ:
-                    sym::Typ::Local(
-                        ref local @ sym::Local {
-                            is_alias: false, ..
-                        },
-                    ),
-                ..
-            } => cmp.emit(local.foreach(clns)),
-            &SymInfo {
-                typ: sym::Typ::Literal(_) | sym::Typ::Local(sym::Local { is_alias: true, .. }),
-                ..
-            } => (),
-            other => panic!("{:?}", other),
+        Ok(if let Ok(local) = sinfo.as_local_ref() {
+            if !local.is_alias {
+                cmp.emit(local.foreach(clns));
+            } else {
+                for typ in local.types.iter() {
+                    te!(self.emit_cleanup(clns, typ));
+                }
+            }
+        } else {
+            match sinfo {
+                &SymInfo {
+                    typ: sym::Typ::Literal(_),
+                    ..
+                } => {
+                    log::trace!("Emit cleanup skipped for {sinfo:?}")
+                }
+                other => panic!("{:?}", other),
+            }
         })
     }
 }

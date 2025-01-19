@@ -387,7 +387,7 @@ impl Vm {
             let instruction = &icode.instructions[vm.instr_ptr];
             te!(vm.wait_debugger(instruction));
             vm.instr_ptr += 1;
-            let success = instruction.borrow().operate_on(vm);
+            let success = instruction.operate_on(vm);
             te!(success);
         }
         Ok(())

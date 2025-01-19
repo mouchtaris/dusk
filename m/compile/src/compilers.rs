@@ -357,7 +357,7 @@ pub trait Compilers<'i> {
                 TSysName(SysName((id,))) => te!(cmp.compile_text(id)),
                 TSysPath(SysPath((path,))) => te!(cmp.compile(path)),
                 TDeref(Deref((Dereference((name,)),))) => {
-                    let sinfo = te!(cmp.compile_variable_as_auto(Variable((name,))));
+                    let sinfo = te!(cmp.compile(ast::let_stmt(name, ast::Variable((name,)))));
                     te!(cmp.emit_cleanup(i::BufferString, &sinfo));
                     sinfo
                 }
