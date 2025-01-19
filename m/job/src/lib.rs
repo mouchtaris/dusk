@@ -148,6 +148,7 @@ impl Job {
         Ok(match self {
             Self::Spec(s) => te!(collect_output(te!(spawn_spec(s, true)))),
             Self::System(sys) => te!(collect_output(sys)),
+            Self::Buffer(buf) => buf,
             other => panic!("{:?}", other),
         })
     }

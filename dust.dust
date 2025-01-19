@@ -1,9 +1,47 @@
 include ../jctl/dust/dusk.dust;
 
+def build =
+  !cargo build
+    --bin xs-compile
+    --bin xs-decompile
+    --bin xs-debug
+    --bin xsi-list-func
+    --bin xs-call
+    --bin xs-run
+    --bin xs2
+    $args
+;
+
+def xc-comp = ./target/debug/xs-compile     <$args[0] $args[1;];
+def xc-decp = ./target/debug/xs-decompile   <$args[0] $args[1;];
+def xc-lifu = ./target/debug/xsi-list-func  <$args[0] $args[1;];
+def xc-call = ./target/debug/xs-call        <$args[0] $args[1;];
+
 def test = {
   #!cargo run --bin xs2 -- tost.dust;
-  !cargo build --bin xs-compile --bin xs-decompile --bin xs-debug;
   ./target/debug/xs-compile tost.dust tost.dustlib;
   ./target/debug/xs-decompile tost.dustlib;
   #./target/debug/xs-debug <$obj;
+}
+
+def spec/dynexec = {
+  !cargo build
+    --bin xs-compile
+    --bin xs-decompile
+    --bin xs-run
+    --bin xs-debug
+  ;
+
+  let lib =
+    ./target/debug/xs-compile
+      RUST_LOG = "compile=trace"
+      spec/dynamic_exec
+  ;
+
+  let decomp = ./target/debug/xs-decompile <$lib;
+  let _ = !tee <$decomp _.dynspec.txt;
+
+  ./target/debug/xs-run
+    <$lib
+    RUST_LOG = "vm::icode=trace"
 }
