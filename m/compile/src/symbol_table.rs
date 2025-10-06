@@ -211,6 +211,10 @@ where
         let sym_table = self.as_ref();
         scope_stack_size(sym_table.scope())
     }
+
+    fn scopes_mut(&mut self) -> &mut Scopes {
+        &mut self.as_mut().scopes
+    }
 }
 
 pub fn scope_stack_size(scope: &Scope) -> usize {
