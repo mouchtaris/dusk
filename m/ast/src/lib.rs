@@ -30,7 +30,7 @@ macro_rules! name {
 
 name![Module, Block];
 
-either![Item, Expr, LetStmt, DefStmt, SrcStmt, Include, Empty];
+either![Item, Expr, LetStmt, DefStmt, SrcStmt, Include, IncludeStr, Empty];
 either![Expr, Invocation, String, Natural, Slice, Variable, Array];
 either![Body, Block];
 either![
@@ -69,6 +69,7 @@ either![Range, DoubleRange, Index];
 
 name![Array, AnyExpr];
 name![Include, Path];
+name![IncludeStr, Ident, Path];
 name![Block, AnyItem, Expr];
 name![LetStmt, Ident, Expr];
 name![SrcStmt, Ident, Expr];

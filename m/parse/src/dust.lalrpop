@@ -14,6 +14,8 @@ Item: ast::Item<'input> = {
     "src" <Ident> "=" <Expr> ";" => ast::Item::SrcStmt((<>,).into()),
     "def" <Ident> "=" <Body> => ast::Item::DefStmt((<>,).into()),
     "include" <Path> ";" => ast::Item::Include((<>,).into()),
+    "include_str" <Ident> <Path> ";" => ast::Item::IncludeStr((<>,).into()),
+    //"for_each" <Ident> "in" <Expr> <Body> => ast::Item::Empty(<_>::default()),
 }
 
 pub Expr: ast::Expr<'input> = {
@@ -161,6 +163,9 @@ extern {
         "["                         => Tok::Kwd         (lex::Kwd           ("["            )   ),
         "]"                         => Tok::Kwd         (lex::Kwd           ("]"            )   ),
         "include"                   => Tok::Kwd         (lex::Kwd           ("include"      )   ),
+        "include_str"               => Tok::Kwd         (lex::Kwd           ("include_str"  )   ),
+        "for_each"                  => Tok::Kwd         (lex::Kwd           ("for_each"     )   ),
+        "in"                        => Tok::Kwd         (lex::Kwd           ("in"           )   ),
         IDENT                       => Tok::Idnt        (lex::Idnt          (<&'input str>  )   ),
         IDENT_NO_EQ                 => Tok::IdntNe      (lex::IdntNe        (<&'input str>  )   ),
         ABS_PATH                    => Tok::AbsPath     (lex::AbsPath       (<&'input str>  )   ),

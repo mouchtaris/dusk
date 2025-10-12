@@ -68,6 +68,14 @@ pub trait Compilers<'i> {
                 );
                 Ok(SymInfo::NULL)
             }
+            ast::Item::IncludeStr(ast::IncludeStr((ident, path))) => {
+                let sinfo = te!(
+                    IncludeExt::include_str(cmp, ident, path.to_string().as_str()),
+                    "Including as string: {}",
+                    path
+                );
+                Ok(sinfo)
+            }
             ast::Item::Empty(_) => Ok(SymInfo::NULL),
         }
     }

@@ -70,6 +70,7 @@ lexpop![
 ];
 lexpop![
     kwd,
+    either(exact("include_str"),
     either(exact("new"),
         either('!', either('@', either('<', either('>',
         either('=', either('$', either('*',
@@ -80,7 +81,7 @@ lexpop![
         either(exact("def"), either(exact("src"), either(exact("let"),
         either(exact("val"), either(exact("if"),
         exact("include")
-    ))))))))))))))))))))))
+    )))))))))))))))))))))))
 ];
 
 pub const TOK_NADA: Tok<'static> = Tok::Nada(Nada(""));
