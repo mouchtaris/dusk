@@ -1,18 +1,15 @@
-use {
-    super::{Compiler, Result},
-    std::iter,
-};
+use super::{iter, Compiler, Mut, Result};
 
 pub trait EmitExt
 where
-    Self: AsMut<Compiler>,
+    Self: Mut<Compiler>,
 {
     /// Emit a single instruction into the instr_table
     fn emit1<I>(&mut self, instr: I)
     where
         I: Into<vm::Instr>,
     {
-        let cmp = self.as_mut();
+        let cmp = self.borrow_mut();
         cmp.emit(iter::once(instr.into()))
     }
 
@@ -22,7 +19,7 @@ where
         I: IntoIterator,
         I::Item: Into<vm::Instr>,
     {
-        let cmp = self.as_mut();
+        let cmp = self.borrow_mut();
 
         for i in instr {
             cmp.icode.instructions.push_back(i.into());
@@ -36,7 +33,7 @@ where
         I::Item: Into<vm::Instr>,
         Self: Sized,
     {
-        let cmp = self.as_mut();
+        let cmp = self.borrow_mut();
 
         for i in instr {
             cmp.icode.instructions.push_back(i.into());
@@ -51,7 +48,7 @@ where
         I: Into<vm::Instr>,
         Self: Sized,
     {
-        let cmp = self.as_mut();
+        let cmp = self.borrow_mut();
 
         cmp.emit1(instr);
 

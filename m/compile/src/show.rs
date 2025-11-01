@@ -29,12 +29,12 @@ impl Show for SymbolTable {
     {
         Ok({
             let mut scope_id = 0;
-            for scope in &self.scopes {
+            for scope in self.scopes() {
                 writeln!(o, "-- SCOPE {}", scope_id)?;
                 scope_id += 1;
 
                 let mut buffer: Vec<(String, String)> = scope
-                    .iter()
+                    .sym_infos()
                     .map(|(name, sym_info)| {
                         let name = format!("{:?}", name);
                         let sym_info = format!("{:?}", sym_info);

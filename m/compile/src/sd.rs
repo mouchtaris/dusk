@@ -3,8 +3,6 @@ use super::{
     te, Compiler, SymInfo, SymbolTable,
 };
 
-buf::sd_struct![SymbolTable, scopes, scope_stack];
-
 buf::sd_struct![SymInfo, typ, scope_id];
 
 buf::sd_type![Typ, Local, 0u8, Address, 1u8, Literal, 2u8];

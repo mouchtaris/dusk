@@ -4,8 +4,10 @@ use {
     collection::{Deq, Map},
     error::{te, temg},
     std::{
-        borrow::{Borrow, BorrowMut},
-        io, mem, num,
+        borrow::{Borrow, Borrow as Ref, BorrowMut, BorrowMut as Mut},
+        fmt, io,
+        iter::{self, ExactSizeIterator as Seq},
+        mem, num,
     },
     vm::Instr as i,
 };
@@ -31,6 +33,7 @@ mod sd;
 mod show;
 pub mod symbol_info;
 mod symbol_table;
+use symbol_table::{SymbolTable, SymbolTableExt};
 pub use {
     crate::compile::{Compile, CompileEv},
     compile_util::CompileUtil,
@@ -39,7 +42,7 @@ pub use {
     file_path::{compute_include_path, FilePathExt},
     include::IncludeExt,
     symbol_info as sym,
-    symbol_table::{find_func_name, scopes, SymInfo, SymbolTable, SymbolTableExt},
+    symbol_table::{find_func_name, scopes, SymInfo},
 };
 
 #[derive(Default, Debug)]
@@ -189,20 +192,15 @@ impl Compiler {
     }
 }
 
-impl SymbolTableExt for Compiler {}
 impl EmitExt for Compiler {}
-impl AsRef<SymbolTable> for Compiler {
-    fn as_ref(&self) -> &SymbolTable {
+
+impl Ref<SymbolTable> for Compiler {
+    fn borrow(&self) -> &SymbolTable {
         &self.sym_table
     }
 }
-impl AsMut<SymbolTable> for Compiler {
-    fn as_mut(&mut self) -> &mut SymbolTable {
+impl Mut<SymbolTable> for Compiler {
+    fn borrow_mut(&mut self) -> &mut SymbolTable {
         &mut self.sym_table
-    }
-}
-impl AsMut<Compiler> for Compiler {
-    fn as_mut(&mut self) -> &mut Self {
-        self
     }
 }

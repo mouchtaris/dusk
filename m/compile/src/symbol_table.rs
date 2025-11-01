@@ -1,24 +1,27 @@
 use {
-    super::{sym, te, temg, Deq, Map, Result},
+    super::{fmt, sym, te, temg, Deq, Map, Mut, Ref, Result, Seq},
     error::ltrace,
-    std::{borrow::Borrow, fmt},
 };
 
-#[derive(Debug, Default)]
-pub struct SymbolTable {
-    pub(crate) scopes: Scopes,
-    pub(crate) scope_stack: ScopeStack,
-}
+mod ext;
+mod scope;
+mod scopes;
+
+pub(super) use {
+    ext::{ScopeRef, ScopesExt, ScopesRef},
+    scope::{Scope, SymID},
+    scopes::SymbolTable,
+};
 
 pub type ScopeStack = Deq<usize>;
-pub type Scope = Map<String, SymInfo>;
 pub type Scopes = Vec<Scope>;
 pub type SymInfo = sym::Info;
 pub type SymType = sym::Typ;
 
+impl<S: Ref<SymbolTable> + Mut<SymbolTable>> SymbolTableExt for S {}
 pub trait SymbolTableExt
 where
-    Self: AsRef<SymbolTable> + AsMut<SymbolTable>,
+    Self: Ref<SymbolTable> + Mut<SymbolTable>,
 {
     fn new_array<T, N>(&mut self, types: T, name: N) -> SymInfo
     where
@@ -26,22 +29,11 @@ where
         T::Item: Into<SymInfo>,
         N: Into<String>,
     {
-        let mut sinfo = SymInfo::typ(sym::Typ::array(types));
-        sinfo.scope_id = self.scope_id();
-        self.scope_mut().insert(name.into(), sinfo.to_owned());
-        sinfo
+        self.insert_to_scope(name, SymInfo::typ(sym::Typ::array(types)))
     }
 
     fn new_address<S: Into<String>>(&mut self, name: S, addr: usize, ret_t: &SymInfo) -> SymInfo {
-        let scope_id = self.scope_id();
-        let scope = self.scope_mut();
-        let sinfo = SymInfo {
-            scope_id,
-            typ: SymType::address(addr, ret_t),
-        };
-        let name = name.into();
-        scope.insert(name, sinfo.to_owned());
-        sinfo
+        self.insert_to_scope(name, SymInfo::address(addr, ret_t))
     }
 
     fn new_local<T>(&mut self, types: T, name: String) -> &mut SymInfo
@@ -49,21 +41,8 @@ where
         T: IntoIterator,
         T::Item: Into<SymInfo>,
     {
-        let scope_id = self.scope_id();
-        let scope = self.scope_mut();
-        let local_var = sym::Local {
-            fp_off: scope_stack_size(&scope),
-            is_alias: false,
-            types: types.into_iter().map(<_>::into).collect(),
-        };
-        let sinfo = SymInfo {
-            scope_id,
-            typ: SymType::Local(local_var),
-        };
-        scope
-            .entry(name)
-            .and_modify(|i| *i = sinfo.to_owned())
-            .or_insert(sinfo)
+        let fp_off = scope_stack_size(self.scope());
+        self.insert_to_scope_mut(name, SymInfo::local(fp_off, types))
     }
 
     fn with_tmp_name<D, F>(&mut self, name: D, func: F) -> &mut SymInfo
@@ -83,15 +62,13 @@ where
         D: fmt::Display,
         K: FnOnce(&dyn fmt::Display) -> R,
     {
+        let scope_id = self.current_scope_id();
+        let tmp_id = self.next_symbol_id();
+
         if cfg!(feature = "debug") {
-            callb(&format_args!(
-                "t:{}:{}:{}",
-                self.scope_id(),
-                self.scope().len(),
-                name
-            ))
+            callb(&format_args!("t:{scope_id}:{tmp_id}:{name}",))
         } else {
-            callb(&format_args!("{}:{}", self.scope_id(), self.scope().len()))
+            callb(&format_args!("{scope_id}:{tmp_id}"))
         }
     }
 
@@ -117,6 +94,7 @@ where
             SymInfo::lit_natural(nat),
             format_args!("literal-nat-{}", nat),
         );
+        // TODO why set it again -- might be redundant
         syminfo.typ = sym::Typ::Literal(sym::Literal {
             id: nat,
             lit_type: sym::LitType::Natural,
@@ -124,16 +102,14 @@ where
         syminfo
     }
 
+    #[deprecated(note = "Use `alias_in_scope`")]
     fn alias_name<S: Into<String>>(&mut self, new_name: S, info: &SymInfo) {
-        let st = self.as_mut();
-        let scope = &mut st.scopes[info.scope_id];
-
-        scope.insert(new_name.into(), info.aliased());
+        self.alias_in_scope(info, new_name);
     }
 
     fn lookup<S>(&self, name: S) -> Result<&SymInfo>
     where
-        S: Borrow<str>,
+        S: Ref<str>,
     {
         let name = name.borrow();
         let sym_table = self.as_ref();
@@ -149,7 +125,7 @@ where
     }
     fn lookup_var<S>(&self, name: S) -> Result<&sym::Local>
     where
-        S: Borrow<str>,
+        S: Ref<str>,
     {
         self.lookup(name).and_then(|i| i.as_local_ref())
     }
@@ -184,27 +160,10 @@ where
         ltrace!("scope::exit {}", self.scope_id());
     }
 
-    /// Current scope id
-    fn scope_id(&self) -> usize {
-        let sym_table = self.as_ref();
-        sym_table.scope_stack.front().cloned().unwrap_or(0)
-    }
-
-    fn next_scope_id(&mut self) -> usize {
-        let sym_table = self.as_mut();
-        sym_table.scopes.len()
-    }
-
     /// Get the current scope
     fn scope(&self) -> &Scope {
         let sym_table = self.as_ref();
         &sym_table.scopes[sym_table.scope_id()]
-    }
-
-    fn scope_mut(&mut self) -> &mut Scope {
-        let sym_table = self.as_mut();
-        let id = sym_table.scope_id();
-        &mut sym_table.scopes[id]
     }
 
     fn stack_frame_size(&self) -> usize {
@@ -217,40 +176,36 @@ where
     }
 }
 
-pub fn scope_stack_size(scope: &Scope) -> usize {
+/// Stack size requirement, according to recorded locals.
+///
+/// At the moment, each local counts as 1 cell.
+///
+pub fn scope_stack_size(scope: &(impl ScopeRef + ?Sized)) -> usize {
     scope
-        .iter()
-        .filter_map(|(_, info)| info.as_local_ref().ok().filter(|i| !i.is_alias))
+        .all_symbols_in_reverse()
+        .filter_map(|(_, info)| info.sym_info().as_local_ref().ok().filter(|i| !i.is_alias))
         .count()
 }
 
-impl SymbolTableExt for SymbolTable {}
-impl AsRef<SymbolTable> for SymbolTable {
-    fn as_ref(&self) -> &Self {
-        self
-    }
-}
-impl AsMut<SymbolTable> for SymbolTable {
-    fn as_mut(&mut self) -> &mut Self {
-        self
-    }
-}
-
+#[deprecated(note = "use a more description scopes-iterator from ScopesRef")]
 pub fn scopes<'s, S>(st: &'s S) -> impl ExactSizeIterator<Item = (usize, &'s str, &'s SymInfo)>
 where
     S: AsRef<SymbolTable>,
 {
-    st.as_ref()
-        .scopes
-        .iter()
-        .enumerate()
-        .flat_map(move |(scope_id, scope)| {
-            scope
-                .iter()
-                .map(move |(name, info)| (scope_id, name.as_str(), info))
-        })
-        .collect::<Vec<_>>()
-        .into_iter()
+    let _ = st;
+    todo!();
+    return std::iter::empty();
+    //st.as_ref()
+    //    .scopes
+    //    .iter()
+    //    .enumerate()
+    //    .flat_map(move |(scope_id, scope)| {
+    //        scope
+    //            .iter()
+    //            .map(move |(name, info)| (scope_id, name.as_str(), info))
+    //    })
+    //    .collect::<Vec<_>>()
+    //    .into_iter()
 }
 
 pub fn find_func_name<'s, S: AsRef<SymbolTable>>(st: &'s S, faddr: &usize) -> Option<&'s str> {

@@ -80,6 +80,15 @@ impl Info {
         si
     }
 
+    pub fn local<T: IntoIterator>(fp_off: usize, types: T) -> Self
+    where
+        T::Item: Into<Self>,
+    {
+        const IS_ALIAS: bool = false;
+
+        Self::typ(Typ::local2(types, IS_ALIAS, fp_off))
+    }
+
     pub fn in_scope(mut self, scope_id: usize) -> Self {
         self.scope_id = scope_id;
         self
