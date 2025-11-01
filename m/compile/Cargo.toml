@@ -44,3 +44,4 @@ path = '../vm'
 [features]
 debug = []
 funny_name_lookup = []
+default = ["funny_name_lookup"]

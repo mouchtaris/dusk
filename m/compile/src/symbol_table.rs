@@ -6,6 +6,7 @@ use {
 mod ext;
 #[cfg(feature = "funny_name_lookup")]
 mod funny_name_lookup;
+pub mod lookups;
 mod scope;
 mod scopes;
 
@@ -126,26 +127,45 @@ where
         let this = self;
         let name = name.borrow();
 
-        type X<'a> = &'a SymInfo;
-        type Stage<'a, I> = fn(I) -> Result<X<'a>>;
+        fn pred<X: Fn(&Scope) -> Result<&SymID>>(x: X) -> X {
+            x
+        }
 
+        let exact_name = pred(|scope| scope.lookup_by_name(name).into_result());
+        #[cfg(feature = "funny_name_lookup")]
+        let last_of_slash_path = pred(|scope| funny_name_lookup::accept(name)(scope));
+        #[cfg(not(feature = "funny_name_lookup"))]
+        let last_of_slash_path = pred(|_| false);
+
+        type X<'a> = &'a SymInfo;
+        type R<'a> = Result<X<'a>>;
+
+        fn stage<'a, I, X: Fn(I) -> R<'a>>(x: X) -> X {
+            x
+        }
+
+        type Stage<'a, I> = fn(I) -> Result<X<'a>>;
         fn z<'a, I>() -> Stage<'a, I> {
             |_| Err("").into_result()
         }
 
-        let a = |_| -> Result<X> {
-            Ok(te!(lookup_by_name_in_scopes(name, this.active_scopes())).sym_info())
-        };
+        let a = stage(|_| Ok(te!(lookup_by_name_in_scopes(name, this.active_scopes())).sym_info()));
         #[cfg(feature = "funny_name_lookup")]
-        let b = |_| -> Result<X> { Ok(te!(funny_name_lookup::lookup(this, name))) };
+        let b = stage(|_| Ok(te!(funny_name_lookup::lookup(this, name))));
         #[cfg(not(feature = "funny_name_lookup"))]
-        let b = z();
+        let b = stage(z());
 
-        let c = z();
-        let z = z();
-        let z = z(());
+        let w0 = {
+            let c = stage(z());
+            let z = stage(z());
+            let z = z(());
 
-        c(z).or_else(b).or_else(a)
+            c(z).or_else(b).or_else(a)
+        };
+
+        let w1 = {};
+
+        w0
     }
     /// Lookup by [SymbolTableExt::lookup] and ensure it's a local symbol.
     fn lookup_var<S>(&self, name: S) -> Result<&sym::Local>
@@ -190,16 +210,30 @@ where
     }
 }
 
+/// Lookup in the given scopes, in order, for the first `pred(..) == true`.
+pub fn lookup_by_pred_in_scopes<'a>(
+    info: impl fmt::Display,
+    pred: impl Fn(&Scope) -> Result<&SymID>,
+    mut scopes: impl Iterator<Item = &'a (impl ScopeRef + 'a)>,
+) -> Result<&'a SymID> {
+    if let Some(sid) = scopes.find_map(|scope| pred(scope.borrow()).ok()) {
+        return Ok(sid);
+    }
+    temg!("Symbol not found: {}", info)
+}
+
 /// Lookup in the given scopes, in order, for an exact name match.
 pub fn lookup_by_name_in_scopes<'a>(
     name: impl Ref<str>,
-    mut scopes: impl Iterator<Item = &'a (impl ScopeRef + 'a)>,
+    scopes: impl Iterator<Item = &'a (impl ScopeRef + 'a)>,
 ) -> Result<&'a SymID> {
     let name = name.borrow();
-    if let Some(sid) = scopes.find_map(|scope| ScopeRef::lookup_by_name(scope, name)) {
-        return Ok(sid);
-    }
-    temg!("Symbol not found: {}", name)
+
+    lookup_by_pred_in_scopes(
+        name,
+        |scope| ScopeRef::lookup_by_name(scope, name).into_result(),
+        scopes,
+    )
 }
 
 /// Stack size requirement, according to recorded locals.
