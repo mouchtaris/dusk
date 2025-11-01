@@ -1,7 +1,7 @@
 use super::*;
 
 #[derive(Default, Debug)]
-pub(crate) struct Scope {
+pub struct Scope {
     sym_info: Info,
     sym_indx: Indx,
 }
@@ -17,8 +17,8 @@ pub struct SymID {
 }
 buf::sd_struct![SymID, sym_id, sym_info];
 
-impl<S: Ref<Scope>> ApiRef for S {}
-impl<S: Mut<Scope>> ApiMut for S {}
+impl<S: Ref<Scope> + ?Sized> ApiRef for S {}
+impl<S: Mut<Scope> + ?Sized> ApiMut for S {}
 
 pub(crate) type SymDetails<'a> = (&'a str, &'a mut SymID, Option<usize>);
 

@@ -1,5 +1,6 @@
 use {
     super::{fs, io, sd, Result},
+    compile::{ScopeRef, SymbolTableExt},
     error::{ldebug, te, temg},
 };
 
@@ -78,10 +79,11 @@ pub fn make_vm_call(
     func_addr: &str,
     args: Vec<String>,
 ) -> Result<()> {
-    let sinfo = compile::scopes(&cmp.sym_table).find(|&(_, name, _)| name == func_addr);
+    let sinfo = cmp.lookup_by_name_everywhere(func_addr).ok();
     Ok(match sinfo {
         None => temg!("Function not found: {}", func_addr),
-        Some((_, _, sinfo)) => {
+        Some(sym_id) => {
+            let sinfo = sym_id.sym_info();
             let addr = te!(sinfo.as_addr_ref()).addr;
             te!(vm.init(args));
             vm.jump(addr);
@@ -97,10 +99,11 @@ pub fn script_call_getret(
     args: Vec<String>,
 ) -> Result<Vec<u8>> {
     let vm = &mut te!(make_vm());
-    let sinfo = compile::scopes(&cmp.sym_table).find(|&(_, name, _)| name == func_addr);
+    let sinfo = cmp.lookup_by_name_everywhere(func_addr).ok();
     return Ok(match sinfo {
         None => temg!("Function not found: {}", func_addr),
-        Some((_, _, sinfo)) => {
+        Some(sym_id) => {
+            let sinfo = sym_id.sym_info();
             let addr = te!(sinfo.as_addr_ref()).addr;
             te!(vm.init(args));
             vm.jump(addr);
@@ -134,10 +137,15 @@ pub fn script_call_getret(
 
 pub fn list_func(cmp: &compile::Compiler) -> impl Iterator<Item = &str> {
     use collection::Recollect;
-    compile::scopes(cmp)
-        .filter_map(|l| match l {
-            (1, name, info) if !name.starts_with('_') && info.as_addr_ref().is_ok() => Some(name),
-            _ => None,
+    cmp.global_scope_opt()
+        .iter()
+        .flat_map(|scope| scope.symbols())
+        .filter_map(|(name, sym_id)| {
+            let info = sym_id.sym_info();
+            if info.scope_id == 1 && !name.starts_with('_') && info.as_addr_ref().is_ok() {
+                return Some(name);
+            }
+            None
         })
         .sorted()
         .into_iter()

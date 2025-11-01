@@ -7,14 +7,17 @@ mod ext;
 mod scope;
 mod scopes;
 
-pub(super) use {
-    ext::{ScopeMut, ScopeRef, ScopesExt, ScopesRef, ToName},
-    scope::{Scope, SymID},
+pub use {
+    ext::{ScopeMut, ScopeRef, ToName},
     scopes::SymbolTable,
 };
 
+pub(crate) use {
+    ext::{ScopesExt, ScopesRef},
+    scope::{Scope, SymID},
+};
+
 pub type SymInfo = sym::Info;
-pub type SymType = sym::Typ;
 
 impl<S: Ref<SymbolTable> + Mut<SymbolTable>> SymbolTableExt for S {}
 pub trait SymbolTableExt
@@ -108,20 +111,17 @@ where
         ScopesExt::alias_in_scope(self, info, new_name);
     }
 
+    /// Lookup by exact name in all scopes.
+    fn lookup_by_name_everywhere(&self, name: impl Ref<str>) -> Result<&SymID> {
+        Ok(te!(lookup_by_name_in_scopes(name, self.list_all_scopes())))
+    }
+
     /// Lookup by exact name in active scopes.
     fn lookup<S>(&self, name: S) -> Result<&SymInfo>
     where
         S: Ref<str>,
     {
-        let name = name.borrow();
-
-        for scope in self.active_scopes() {
-            if let Some(sid) = scope.lookup_by_name(name) {
-                return Ok(sid.sym_info());
-            }
-        }
-
-        temg!("Symbol not found: {}", name)
+        Ok(te!(lookup_by_name_in_scopes(name, self.active_scopes())).sym_info())
     }
     /// Lookup by [SymbolTableExt::lookup] and ensure it's a local symbol.
     fn lookup_var<S>(&self, name: S) -> Result<&sym::Local>
@@ -149,13 +149,33 @@ where
     }
 
     /// Get the current scope
-    fn scope(&self) -> &impl ScopeRef {
+    fn current_scope(&self) -> &impl ScopeRef {
         ScopesRef::current_scope(self)
     }
 
     fn stack_frame_size(&self) -> usize {
-        scope_stack_size(self.scope())
+        scope_stack_size(self.current_scope())
     }
+
+    /// Global scope is scope id *`1`* !!
+    ///
+    /// Scope `0` is the system scope. Although these are runtime consideerations,
+    /// they're somehow intertwined here.
+    fn global_scope_opt(&self) -> Option<&impl ScopeRef> {
+        self.get_scope(1)
+    }
+}
+
+/// Lookup in the given scopes, in order, for an exact name match.
+pub fn lookup_by_name_in_scopes<'a>(
+    name: impl Ref<str>,
+    mut scopes: impl Iterator<Item = &'a (impl ScopeRef + 'a)>,
+) -> Result<&'a SymID> {
+    let name = name.borrow();
+    if let Some(sid) = scopes.find_map(|scope| ScopeRef::lookup_by_name(scope, name)) {
+        return Ok(sid);
+    }
+    temg!("Symbol not found: {}", name)
 }
 
 /// Stack size requirement, according to recorded locals.
@@ -172,8 +192,8 @@ pub fn scope_stack_size(scope: &(impl ScopeRef + ?Sized)) -> usize {
 /// Find a function name by function address.
 ///
 /// Looks-through *all* symbols.
-pub fn find_func_name<'s, S: AsRef<SymbolTable>>(st: &'s S, faddr: &usize) -> Option<&'s str> {
-    st.as_ref().all_symbols().find_map(|(n, i)| {
+pub fn find_func_name<'s>(st: &'s impl SymbolTableExt, faddr: &usize) -> Option<&'s str> {
+    st.all_symbols().find_map(|(n, i)| {
         let sym::Address { addr, .. } = i.sym_info().as_addr_ref().ok()?;
         if addr == faddr {
             return Some(n);

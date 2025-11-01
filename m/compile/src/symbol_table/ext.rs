@@ -1,7 +1,7 @@
 use super::*;
 
-impl<S: scope::ApiRef> ScopeRef for S {}
-impl<S: scope::ApiMut> ScopeMut for S {}
+impl<S: ?Sized + Ref<Scope>> ScopeRef for S {}
+impl<S: ?Sized + Mut<Scope>> ScopeMut for S {}
 
 impl<S: ?Sized + scopes::ApiMut + scopes::ApiRef> ScopesExt for S {}
 impl<S: ?Sized + scopes::ApiRef> ScopesRef for S {}
@@ -9,14 +9,14 @@ impl<S: ?Sized + scopes::ApiRef> ScopesRef for S {}
 impl<S: Into<String>> ToName for S {}
 impl<S: ToOwned<Owned = SymInfo>> ToSymInfo for S {}
 
-pub(crate) trait ToName: Into<String> {}
-pub(crate) trait ToSymInfo: ToOwned<Owned = SymInfo> {}
+pub trait ToName: Into<String> {}
+pub trait ToSymInfo: ToOwned<Owned = SymInfo> {}
 
 use scope::{ApiMut as ScopeApiMut, ApiRef as ScopeApiRef, SymDetails};
 
 // ----------------------------------------------------------------------------
 // Scope Ext
-pub(crate) trait ScopeRef: scope::ApiRef {
+pub trait ScopeRef: Ref<Scope> {
     fn lookup_by_name(&self, name: impl Ref<str>) -> Option<&SymID> {
         ScopeApiRef::lookup_by_name(self, name)
     }
@@ -33,7 +33,7 @@ pub(crate) trait ScopeRef: scope::ApiRef {
     }
 }
 
-pub(crate) trait ScopeMut: scope::ApiMut {}
+pub trait ScopeMut: Mut<Scope> {}
 
 // ----------------------------------------------------------------------------
 // Scopes Ext

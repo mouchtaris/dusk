@@ -1,7 +1,7 @@
 use super::*;
 
 #[derive(Default, Debug)]
-pub(crate) struct SymbolTable {
+pub struct SymbolTable {
     scopes: Scopes,
     scope_stack: ScopeStack,
 }

@@ -1,6 +1,6 @@
 use {
-    ::error::{te, temg},
-    compile::{sym, SymbolTableExt},
+    ::error::te,
+    compile::{sym, ScopeRef, SymbolTableExt},
     main::{sd, Compiler, Result},
     std::{collections::HashMap, io},
     vm::StringInfo,
@@ -21,17 +21,15 @@ fn xs_link() -> Result<()> {
     let mut cmp = Compiler::new();
     cmp.enter_scope();
     cmp.enter_scope();
+
     let module = modules.iter().fold(Ok(cmp), |cmp, a| -> Result<Compiler> {
         let mut cmp = te!(cmp);
 
         let instrs = cmp.icode.instructions.len();
 
-        let scope = te!(
-            cmp.sym_table.scopes_mut().get_mut(1),
-            "Missing global scope"
-        );
+        let adding_module = a;
 
-        let strings: HashMap<&usize, &String> = a
+        let strings: HashMap<&usize, &String> = adding_module
             .icode
             .strings
             .iter()
@@ -59,7 +57,7 @@ fn xs_link() -> Result<()> {
         };
 
         // Push instructions, translating addresses and ids
-        for instr in &a.icode.instructions {
+        for instr in &adding_module.icode.instructions {
             use vm::Instr::*;
             let instr = match *instr {
                 Jump { addr } => Jump {
@@ -74,28 +72,43 @@ fn xs_link() -> Result<()> {
             cmp.icode.instructions.push_back(instr);
         }
 
-        for (_, name, info) in compile::scopes(&a) {
-            match info {
-                sym::Info {
-                    scope_id: 1,
-                    typ: sym::Typ::Address(sym::Address { addr, ret_t }),
-                } => {
-                    // only global scope
-                    if let Some(_) = scope.insert(
-                        name.to_owned(),
-                        sym::Info {
-                            scope_id: 1,
-                            typ: sym::Typ::Address(sym::Address {
-                                addr: addr + instrs,
-                                ret_t: ret_t.to_owned(),
-                            }),
-                        },
-                    ) {
-                        temg!("Double symbol: {name}")
-                    }
-                }
-                _ => (),
+        // Insert symbols, only if they are global and refer to func-addr.
+        //
+        // Translate the function address in the process.
+        //
+        for (name, sym_id) in adding_module
+            .global_scope_opt()
+            .expect("global scope")
+            .symbols()
+        {
+            let info = sym_id.sym_info();
+
+            if let Ok(sym::Address { addr, ret_t }) = info.as_addr_ref() {
+                // Gets added to global scope anyway
+                cmp.new_address(name, addr + instrs, ret_t);
             }
+
+            //match info {
+            //    sym::Info {
+            //        scope_id: 1,
+            //        typ: sym::Typ::Address(sym::Address { addr, ret_t }),
+            //    } => {
+            //        // only global scope
+            //        if let Some(_) = scope.insert(
+            //            name.to_owned(),
+            //            sym::Info {
+            //                scope_id: 1,
+            //                typ: sym::Typ::Address(sym::Address {
+            //                    addr: addr + instrs,
+            //                    ret_t: ret_t.to_owned(),
+            //                }),
+            //            },
+            //        ) {
+            //            temg!("Double symbol: {name}")
+            //        }
+            //    }
+            //    _ => (),
+            //}
         }
         Ok(cmp)
     });

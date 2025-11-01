@@ -33,7 +33,7 @@ mod sd;
 mod show;
 pub mod symbol_info;
 mod symbol_table;
-use symbol_table::{ScopeRef, ScopesRef, SymbolTable, SymbolTableExt};
+use symbol_table::ScopesRef;
 pub use {
     crate::compile::{Compile, CompileEv},
     compile_util::CompileUtil,
@@ -42,7 +42,7 @@ pub use {
     file_path::{compute_include_path, FilePathExt},
     include::IncludeExt,
     symbol_info as sym,
-    symbol_table::{find_func_name, SymInfo},
+    symbol_table::{find_func_name, ScopeMut, ScopeRef, SymInfo, SymbolTable, SymbolTableExt},
 };
 
 #[derive(Default, Debug)]
