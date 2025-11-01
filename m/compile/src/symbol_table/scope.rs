@@ -53,15 +53,41 @@ pub(crate) trait ApiMut: Mut<Scope> {
 }
 pub(crate) trait ApiRef: Ref<Scope> {
     /// Lookup a symbol textual name by SymID
-    fn sym_name(&self, sym_id: impl Ref<SymID>) -> Option<&str> {
+    fn sym_name(&self, sym_id: &SymID) -> Option<&str> {
         let (infos, ..) = parts(self);
-        let &SymID { sym_id, .. } = sym_id.borrow();
+        let &SymID { sym_id, .. } = sym_id;
 
         infos.get(sym_id).map(|(name, _)| name.as_str())
     }
 
+    /// Lookup a symbol textual name by SymInfo.
+    ///
+    /// This is slower and less reliable that by-SymID, as it has
+    /// to traverse all symbols and compare that
+    /// `their sym_info == given sym_info`.
+    ///
+    /// Depending on the assignment of [SymInfo] this can be reliable,
+    /// if they are all completely unique. In the current implementation
+    /// they probably are.
+    ///
+    /// Also, the need for this is a remanent from when [SymID] was not
+    /// there, which assigns unique ids to symbol when inserted. After
+    /// some refactoring in client code, this should go.
+    #[deprecated(note = "use sym_name")]
+    fn sym_name_from_info(&self, info: &SymInfo) -> Option<&str> {
+        let (infos, ..) = parts(self);
+
+        infos.iter().find_map(|(n, x)| {
+            if x.sym_info() == info {
+                Some(n.as_str())
+            } else {
+                None
+            }
+        })
+    }
+
     /// All symbols within the scope, in reverse order of insertion
-    fn all_symbols_in_reverse(&self) -> impl Iterator<Item = (&str, &SymID)> {
+    fn all_symbols_in_reverse(&self) -> impl Seq<Item = (&str, &SymID)> {
         let (infos, ..) = parts(self);
         infos.iter().rev().map(|(k, v)| (k.as_str(), v))
     }
@@ -69,6 +95,20 @@ pub(crate) trait ApiRef: Ref<Scope> {
     fn next_id(&self) -> usize {
         let (infos, ..) = parts(self);
         infos.len()
+    }
+
+    /// ## Basic Lookup by name
+    ///
+    /// This is the most expected lookup in the scope:
+    /// exact name match.
+    ///
+    /// The benefit of this over bluntly looking through
+    /// [ApiRef::all_symbols_in_reverse] every time, is that this is probably
+    /// optimized by a hash-index.
+    ///
+    fn lookup_by_name(&self, name: impl Ref<str>) -> Option<&SymID> {
+        let (infos, index, ..) = parts(self);
+        index.get(name.borrow()).map(|&id| &infos[id].1)
     }
 }
 

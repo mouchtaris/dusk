@@ -16,7 +16,16 @@ use scope::{ApiMut as ScopeApiMut, ApiRef as ScopeApiRef, SymDetails};
 
 // ----------------------------------------------------------------------------
 // Scope Ext
-pub(crate) trait ScopeRef: scope::ApiRef {}
+pub(crate) trait ScopeRef: scope::ApiRef {
+    fn lookup_by_name(&self, name: impl Ref<str>) -> Option<&SymID> {
+        ScopeApiRef::lookup_by_name(self, name)
+    }
+
+    #[deprecated(note = "use lookup_by_name with SymID")]
+    fn symbol_name_from_info_alone(&self, info: &SymInfo) -> Option<&str> {
+        ScopeApiRef::sym_name_from_info(self, info)
+    }
+}
 
 pub(crate) trait ScopeMut: scope::ApiMut {}
 
@@ -24,20 +33,32 @@ pub(crate) trait ScopeMut: scope::ApiMut {}
 // Scopes Ext
 //
 pub(crate) trait ScopesRef: scopes::ApiRef {
+    fn get_scope(&self, scope_id: usize) -> Option<&impl ScopeRef> {
+        self.all_scopes().nth(scope_id)
+    }
+
     fn current_scope_id(&self) -> usize {
         scopes::ApiRef::scope_id(self)
     }
 
     // Clients can inspect scopes for custom deductions
     // (ex: stack size based on locals)
-    fn scope(&self) -> &impl ScopeRef {
+    fn current_scope(&self) -> &impl ScopeRef {
         let current = self.scope_id();
-        self.get_scope(current)
+        self.get_scope(current).expect("current scope")
     }
 
     /// The id for the next symbol within the current scope
     fn next_symbol_id(&self) -> usize {
-        self.scope().next_id()
+        self.current_scope().next_id()
+    }
+
+    /// Active scopes, inner-to-outer.
+    ///
+    /// The pinnacle of reverse-scope-based lookups.
+    ///
+    fn active_scopes(&self) -> impl Seq<Item = &impl ScopeRef> {
+        self.active_scope_stack()
     }
 
     /// The pinnacle of reverse-symbol-lookup: *active_symbols* returns
@@ -50,7 +71,13 @@ pub(crate) trait ScopesRef: scopes::ApiRef {
     /// This can be (is) used to allow referring to the "closest" symbols
     /// at the current scope point.
     fn active_symbols_in_reverse(&self) -> impl Iterator<Item = (&str, &SymID)> {
-        self.active_scope_stack()
+        self.active_scopes()
+            .flat_map(|scope| scope.all_symbols_in_reverse())
+    }
+
+    /// All symbols ever defined, in all scopes, active and hidden.
+    fn all_symbols(&self) -> impl Iterator<Item = (&str, &SymID)> {
+        self.all_scopes()
             .flat_map(|scope| scope.all_symbols_in_reverse())
     }
 }
@@ -95,8 +122,4 @@ trait ScopesExtPrivate: ScopesExt {
     }
 }
 
-trait ScopesRefPrivate: ScopesRef {
-    fn get_scope(&self, scope_id: usize) -> &impl ScopeRef {
-        self.scopes().nth(scope_id).expect("scope")
-    }
-}
+trait ScopesRefPrivate: ScopesRef {}

@@ -41,7 +41,7 @@ where
         T: IntoIterator,
         T::Item: Into<SymInfo>,
     {
-        let fp_off = scope_stack_size(self.scope());
+        let fp_off = self.stack_frame_size();
         self.insert_to_scope_mut(name, SymInfo::local(fp_off, types))
     }
 
@@ -107,72 +107,53 @@ where
         self.alias_in_scope(info, new_name);
     }
 
+    /// Lookup by exact name in active scopes.
     fn lookup<S>(&self, name: S) -> Result<&SymInfo>
     where
         S: Ref<str>,
     {
         let name = name.borrow();
-        let sym_table = self.as_ref();
 
-        for &scope_id in &sym_table.scope_stack {
-            let scope = &sym_table.scopes[scope_id];
-            match scope.get(name) {
-                Some(sinfo) => return Ok(sinfo),
-                _ => (),
+        for scope in self.active_scopes() {
+            if let Some(sid) = scope.lookup_by_name(name) {
+                return Ok(sid.sym_info());
             }
         }
+
         temg!("Symbol not found: {}", name)
     }
+    /// Lookup by [SymbolTableExt::lookup] and ensure it's a local symbol.
     fn lookup_var<S>(&self, name: S) -> Result<&sym::Local>
     where
         S: Ref<str>,
     {
         self.lookup(name).and_then(|i| i.as_local_ref())
     }
+    #[deprecated(note = "use ScopesRef::symbol_name() with SymID")]
     fn lookup_name(&self, sinfo: &SymInfo) -> Result<&str> {
-        let sym_table = self.as_ref();
-
         let scope_id = sinfo.scope_id;
-        let scope = te!(sym_table.scopes.get(scope_id), "Scope id: {:?}", scope_id);
-
-        for (name, info) in scope {
-            if info == sinfo {
-                return Ok(name);
-            }
+        let scope = te!(self.get_scope(scope_id), "Scope id: {:?}", scope_id);
+        if let Some(name) = scope.symbol_name_from_info_alone(sinfo) {
+            return Ok(name);
         }
         temg!("Name not found: {:?}", sinfo)
     }
 
-    fn enter_scope(&mut self) {
-        let sym_table = self.as_mut();
-        sym_table.scopes.push(<_>::default());
-
-        let id = sym_table.scopes.len() - 1;
-        sym_table.scope_stack.push_front(id);
-
-        ltrace!("scope::enter {}", self.scope_id());
+    fn enter_scope(&mut self) -> usize {
+        scopes::ApiMut::enter_scope(self)
     }
 
     fn exit_scope(&mut self) {
-        let sym_table = self.as_mut();
-        sym_table.scope_stack.pop_front();
-
-        ltrace!("scope::exit {}", self.scope_id());
+        scopes::ApiMut::exit_scope(self)
     }
 
     /// Get the current scope
-    fn scope(&self) -> &Scope {
-        let sym_table = self.as_ref();
-        &sym_table.scopes[sym_table.scope_id()]
+    fn scope(&self) -> &impl ScopeRef {
+        ScopesRef::current_scope(self)
     }
 
     fn stack_frame_size(&self) -> usize {
-        let sym_table = self.as_ref();
-        scope_stack_size(sym_table.scope())
-    }
-
-    fn scopes_mut(&mut self) -> &mut Scopes {
-        &mut self.as_mut().scopes
+        scope_stack_size(self.scope())
     }
 }
 
@@ -187,34 +168,16 @@ pub fn scope_stack_size(scope: &(impl ScopeRef + ?Sized)) -> usize {
         .count()
 }
 
-#[deprecated(note = "use a more description scopes-iterator from ScopesRef")]
-pub fn scopes<'s, S>(st: &'s S) -> impl ExactSizeIterator<Item = (usize, &'s str, &'s SymInfo)>
-where
-    S: AsRef<SymbolTable>,
-{
-    let _ = st;
-    todo!();
-    return std::iter::empty();
-    //st.as_ref()
-    //    .scopes
-    //    .iter()
-    //    .enumerate()
-    //    .flat_map(move |(scope_id, scope)| {
-    //        scope
-    //            .iter()
-    //            .map(move |(name, info)| (scope_id, name.as_str(), info))
-    //    })
-    //    .collect::<Vec<_>>()
-    //    .into_iter()
-}
-
+/// Find a function name by function address.
+///
+/// Looks-through *all* symbols.
 pub fn find_func_name<'s, S: AsRef<SymbolTable>>(st: &'s S, faddr: &usize) -> Option<&'s str> {
-    scopes(st).find_map(|(_, n, i)| match i {
-        sym::Info {
-            typ: sym::Typ::Address(sym::Address { addr, .. }),
-            ..
-        } if addr == faddr => Some(n),
-        _ => None,
+    st.as_ref().all_symbols().find_map(|(n, i)| {
+        let sym::Address { addr, .. } = i.sym_info().as_addr_ref().ok()?;
+        if addr == faddr {
+            return Some(n);
+        }
+        None
     })
 }
 
