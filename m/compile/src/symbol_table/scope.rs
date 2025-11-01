@@ -63,7 +63,7 @@ pub(crate) trait ApiRef: Ref<Scope> {
     /// All symbols within the scope, in reverse order of insertion
     fn all_symbols_in_reverse(&self) -> impl Iterator<Item = (&str, &SymID)> {
         let (infos, ..) = parts(self);
-        infos.iter().map(|(k, v)| (k.as_str(), v))
+        infos.iter().rev().map(|(k, v)| (k.as_str(), v))
     }
 
     fn next_id(&self) -> usize {

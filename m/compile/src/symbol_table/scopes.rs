@@ -40,6 +40,7 @@ pub(super) trait ApiRef: Ref<SymbolTable> {
 }
 
 pub(super) trait ApiMut: Mut<SymbolTable> {
+    /// All scopes -- used for indexed access
     fn scopes_mut(&mut self) -> impl Seq<Item = &mut impl scope::ApiMut> {
         let (scopes, ..) = parts_mut(self);
         scopes.iter_mut()

@@ -39,6 +39,20 @@ pub(crate) trait ScopesRef: scopes::ApiRef {
     fn next_symbol_id(&self) -> usize {
         self.scope().next_id()
     }
+
+    /// The pinnacle of reverse-symbol-lookup: *active_symbols* returns
+    /// each active symbol in the current scope, in reverse order of
+    /// appearance.
+    ///
+    /// This means that most recently added symbols are returned first,
+    /// and most long-ago added symbols are returned last.
+    ///
+    /// This can be (is) used to allow referring to the "closest" symbols
+    /// at the current scope point.
+    fn active_symbols_in_reverse(&self) -> impl Iterator<Item = (&str, &SymID)> {
+        self.active_scope_stack()
+            .flat_map(|scope| scope.all_symbols_in_reverse())
+    }
 }
 
 pub(crate) trait ScopesExt: scopes::ApiMut + scopes::ApiRef {
