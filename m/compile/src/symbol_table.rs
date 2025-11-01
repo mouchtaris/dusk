@@ -4,8 +4,6 @@ use {
 };
 
 mod ext;
-#[cfg(feature = "funny_name_lookup")]
-mod funny_name_lookup;
 pub mod lookups;
 mod scope;
 mod scopes;
@@ -127,45 +125,26 @@ where
         let this = self;
         let name = name.borrow();
 
-        fn pred<X: Fn(&Scope) -> Result<&SymID>>(x: X) -> X {
-            x
-        }
+        use lookups::*;
 
-        let exact_name = pred(|scope| scope.lookup_by_name(name).into_result());
+        let flow = default_auto();
+
         #[cfg(feature = "funny_name_lookup")]
-        let last_of_slash_path = pred(|scope| funny_name_lookup::accept(name)(scope));
-        #[cfg(not(feature = "funny_name_lookup"))]
-        let last_of_slash_path = pred(|_| false);
+        let flow = match_scope(|name, scope| {
+            let next = last_of_path_match();
+            let next = next.to_match_symbol();
+            let next = next.to_match_scope();
+            let flow = flow.or_else(next);
 
-        type X<'a> = &'a SymInfo;
-        type R<'a> = Result<X<'a>>;
-
-        fn stage<'a, I, X: Fn(I) -> R<'a>>(x: X) -> X {
+            let x = flow(name, scope);
             x
-        }
+        });
 
-        type Stage<'a, I> = fn(I) -> Result<X<'a>>;
-        fn z<'a, I>() -> Stage<'a, I> {
-            |_| Err("").into_result()
-        }
+        let flow = flow.to_match_scopes();
 
-        let a = stage(|_| Ok(te!(lookup_by_name_in_scopes(name, this.active_scopes())).sym_info()));
-        #[cfg(feature = "funny_name_lookup")]
-        let b = stage(|_| Ok(te!(funny_name_lookup::lookup(this, name))));
-        #[cfg(not(feature = "funny_name_lookup"))]
-        let b = stage(z());
+        let sym_id = flow(name, this);
 
-        let w0 = {
-            let c = stage(z());
-            let z = stage(z());
-            let z = z(());
-
-            c(z).or_else(b).or_else(a)
-        };
-
-        let w1 = {};
-
-        w0
+        sym_id.map(SymID::sym_info)
     }
     /// Lookup by [SymbolTableExt::lookup] and ensure it's a local symbol.
     fn lookup_var<S>(&self, name: S) -> Result<&sym::Local>
