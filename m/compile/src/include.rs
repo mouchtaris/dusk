@@ -1,13 +1,10 @@
-use {
-    super::{facade, te, Compiler, FilePathExt, Result, SymInfo, SymbolTableExt},
-    std::fs,
-};
+use super::{facade, fs, te, Compiler, FilePathExt, Mut, Result, SymInfo, SymbolTableExt};
 
-pub trait IncludeExt: AsMut<Compiler> {
+pub trait IncludeExt: Mut<Compiler> {
     fn include(&mut self, path: &str) -> Result<()> {
-        let cmp = self.as_mut();
+        let cmp = self.borrow_mut();
 
-        let input = te!(cmp.include_file(path));
+        let input = te!((*cmp).include_file(path));
         let block = te!(facade::parse_block(&input), "In include: {}", path);
 
         let cmp_result = cmp.compile(block);
@@ -19,9 +16,9 @@ pub trait IncludeExt: AsMut<Compiler> {
     }
 
     fn include_str(&mut self, ident: &str, path: &str) -> Result<SymInfo> {
-        let cmp = self.as_mut();
+        let cmp = self.borrow_mut();
 
-        let input = te!(cmp.include_file(path));
+        let input = te!((*cmp).include_file(path));
 
         let cmp_result = cmp.compile_text(input);
 
@@ -33,14 +30,14 @@ pub trait IncludeExt: AsMut<Compiler> {
     }
 }
 
-impl<C: AsMut<Compiler>> IncludeExt for C {}
+impl<C: Mut<Compiler>> IncludeExt for C {}
 
-trait IncludePrivate: AsMut<Compiler> {
+trait IncludePrivate: Mut<Compiler> {
     fn include_file(&mut self, path: &str) -> Result<String> {
-        let cmp = self.as_mut();
+        let cmp = self.borrow_mut();
 
         error::ltrace!("resolving include: {}", path);
-        let path = cmp.push_file_path(path);
+        let path = (*cmp).push_file_path(path);
 
         error::ldebug!("include :: {}", path);
 
@@ -48,4 +45,4 @@ trait IncludePrivate: AsMut<Compiler> {
         Ok(input)
     }
 }
-impl<C: AsMut<Compiler>> IncludePrivate for C {}
+impl<C: Mut<Compiler>> IncludePrivate for C {}

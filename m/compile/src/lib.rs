@@ -5,7 +5,7 @@ use {
     error::{te, temg},
     std::{
         borrow::{Borrow, Borrow as Ref, BorrowMut, BorrowMut as Mut},
-        fmt, io,
+        fmt, fs, io,
         iter::{self, ExactSizeIterator as Seq},
         mem, num,
     },
@@ -33,7 +33,7 @@ mod sd;
 mod show;
 pub mod symbol_info;
 mod symbol_table;
-use symbol_table::{SymbolTable, SymbolTableExt};
+use symbol_table::{ScopeRef, ScopesRef, SymbolTable, SymbolTableExt};
 pub use {
     crate::compile::{Compile, CompileEv},
     compile_util::CompileUtil,
@@ -42,7 +42,7 @@ pub use {
     file_path::{compute_include_path, FilePathExt},
     include::IncludeExt,
     symbol_info as sym,
-    symbol_table::{find_func_name, scopes, SymInfo},
+    symbol_table::{find_func_name, SymInfo},
 };
 
 #[derive(Default, Debug)]
@@ -158,7 +158,7 @@ impl Compiler {
         let text = text.as_ref();
         let strid = te!(cmp.add_string(text));
 
-        Ok(SymInfo::lit_string(strid).in_scope(cmp.scope_id()))
+        Ok(SymInfo::lit_string(strid).in_scope(cmp.current_scope_id()))
     }
 
     fn compile_natural<S>(&mut self, text: S) -> Result<SymInfo>
@@ -170,7 +170,7 @@ impl Compiler {
         let text = text.as_ref();
         let nat = te!(text.parse::<usize>());
 
-        Ok(SymInfo::lit_natural(nat).in_scope(cmp.scope_id()))
+        Ok(SymInfo::lit_natural(nat).in_scope(cmp.current_scope_id()))
     }
 
     fn compile_funcaddr<S>(&mut self, text: S) -> Result<SymInfo>

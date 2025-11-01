@@ -1,6 +1,6 @@
-use super::Compiler;
+use super::{Compiler, Mut};
 
-pub trait FilePathExt: AsMut<Compiler> {
+pub trait FilePathExt: Mut<Compiler> {
     fn push_file_path(&mut self, path: &str) -> &str {
         let paths = &mut self.cmp().current_file_path;
         let mut base = paths.last().cloned().unwrap_or_default();
@@ -14,11 +14,11 @@ pub trait FilePathExt: AsMut<Compiler> {
     }
 
     fn cmp(&mut self) -> &mut Compiler {
-        self.as_mut()
+        self.borrow_mut()
     }
 }
 
-impl<S: AsMut<Compiler>> FilePathExt for S {}
+impl<S: Mut<Compiler>> FilePathExt for S {}
 
 pub fn compute_include_path(base: &mut String, path: &str) {
     error::ltrace!("resolve path {} + {}", base, path);

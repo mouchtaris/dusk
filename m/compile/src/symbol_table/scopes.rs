@@ -7,6 +7,9 @@ pub(crate) struct SymbolTable {
 }
 buf::sd_struct![SymbolTable, scopes, scope_stack];
 
+type ScopeStack = Deq<usize>;
+type Scopes = Vec<Scope>;
+
 impl<S: ?Sized + Ref<SymbolTable>> ApiRef for S {}
 impl<S: ?Sized + Mut<SymbolTable>> ApiMut for S {}
 

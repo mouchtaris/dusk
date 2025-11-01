@@ -1,4 +1,4 @@
-use super::{io, Compiler, Show, SymbolTable};
+use super::{io, Compiler, ScopeRef, ScopesRef, Show, SymbolTable};
 
 impl Show for Compiler {
     fn write_to_impl<O>(&self, mut o: O) -> io::Result<()>
@@ -29,12 +29,12 @@ impl Show for SymbolTable {
     {
         Ok({
             let mut scope_id = 0;
-            for scope in self.scopes() {
+            for scope in self.list_all_scopes() {
                 writeln!(o, "-- SCOPE {}", scope_id)?;
                 scope_id += 1;
 
                 let mut buffer: Vec<(String, String)> = scope
-                    .sym_infos()
+                    .symbols()
                     .map(|(name, sym_info)| {
                         let name = format!("{:?}", name);
                         let sym_info = format!("{:?}", sym_info);

@@ -1,5 +1,6 @@
 use super::{
-    facade, i, sym, te, temg, Borrow, BorrowMut, Compiler, EmitExt, Result, SymInfo, SymbolTableExt,
+    facade, i, sym, te, temg, Borrow, BorrowMut, Compiler, EmitExt, Result, ScopesRef, SymInfo,
+    SymbolTableExt,
 };
 
 pub trait CompileUtil: Borrow<Compiler> + BorrowMut<Compiler> {
@@ -89,14 +90,14 @@ pub trait CompileUtil: Borrow<Compiler> + BorrowMut<Compiler> {
     fn ensure_local_scope(&self, var: &str, sinfo: &SymInfo) -> Result<SymInfo> {
         let cmp = self.cmp_ref();
         let SymInfo { scope_id, .. } = sinfo;
-        if *scope_id == cmp.scope_id() {
+        if *scope_id == cmp.current_scope_id() {
             Ok(sinfo.to_owned())
         } else {
             temg!(
                 "{} is in scope {} instead of {} ({:?})",
                 var,
                 scope_id,
-                cmp.scope_id(),
+                cmp.current_scope_id(),
                 sinfo
             )
         }

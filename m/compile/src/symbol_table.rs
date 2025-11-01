@@ -8,13 +8,11 @@ mod scope;
 mod scopes;
 
 pub(super) use {
-    ext::{ScopeRef, ScopesExt, ScopesRef},
+    ext::{ScopeMut, ScopeRef, ScopesExt, ScopesRef, ToName},
     scope::{Scope, SymID},
     scopes::SymbolTable,
 };
 
-pub type ScopeStack = Deq<usize>;
-pub type Scopes = Vec<Scope>;
 pub type SymInfo = sym::Info;
 pub type SymType = sym::Typ;
 
@@ -106,6 +104,9 @@ where
     fn alias_name<S: Into<String>>(&mut self, new_name: S, info: &SymInfo) {
         self.alias_in_scope(info, new_name);
     }
+    fn alias_in_scope(&mut self, info: &SymInfo, new_name: impl ToName) {
+        ScopesExt::alias_in_scope(self, info, new_name);
+    }
 
     /// Lookup by exact name in active scopes.
     fn lookup<S>(&self, name: S) -> Result<&SymInfo>
@@ -163,7 +164,7 @@ where
 ///
 pub fn scope_stack_size(scope: &(impl ScopeRef + ?Sized)) -> usize {
     scope
-        .all_symbols_in_reverse()
+        .symbols()
         .filter_map(|(_, info)| info.sym_info().as_local_ref().ok().filter(|i| !i.is_alias))
         .count()
 }

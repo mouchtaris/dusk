@@ -9,8 +9,8 @@ impl<S: ?Sized + scopes::ApiRef> ScopesRef for S {}
 impl<S: Into<String>> ToName for S {}
 impl<S: ToOwned<Owned = SymInfo>> ToSymInfo for S {}
 
-trait ToName: Into<String> {}
-trait ToSymInfo: ToOwned<Owned = SymInfo> {}
+pub(crate) trait ToName: Into<String> {}
+pub(crate) trait ToSymInfo: ToOwned<Owned = SymInfo> {}
 
 use scope::{ApiMut as ScopeApiMut, ApiRef as ScopeApiRef, SymDetails};
 
@@ -25,6 +25,12 @@ pub(crate) trait ScopeRef: scope::ApiRef {
     fn symbol_name_from_info_alone(&self, info: &SymInfo) -> Option<&str> {
         ScopeApiRef::sym_name_from_info(self, info)
     }
+
+    /// All symbols in the scope, in reverse order of appearance
+    /// (most recent to most old)
+    fn symbols(&self) -> impl Seq<Item = (&str, &SymID)> {
+        ScopeApiRef::all_symbols_in_reverse(self)
+    }
 }
 
 pub(crate) trait ScopeMut: scope::ApiMut {}
@@ -33,8 +39,13 @@ pub(crate) trait ScopeMut: scope::ApiMut {}
 // Scopes Ext
 //
 pub(crate) trait ScopesRef: scopes::ApiRef {
+    /// List all scopes ever defined, in order of appearance.
+    fn list_all_scopes(&self) -> impl Seq<Item = &impl ScopeRef> {
+        self.all_scopes()
+    }
+
     fn get_scope(&self, scope_id: usize) -> Option<&impl ScopeRef> {
-        self.all_scopes().nth(scope_id)
+        self.list_all_scopes().nth(scope_id)
     }
 
     fn current_scope_id(&self) -> usize {
