@@ -1,9 +1,11 @@
 use {
     super::{fmt, sym, te, temg, Deq, Map, Mut, Ref, Result, Seq},
-    error::ltrace,
+    error::{ltrace, IntoResult},
 };
 
 mod ext;
+#[cfg(feature = "funny_name_lookup")]
+mod funny_name_lookup;
 mod scope;
 mod scopes;
 
@@ -121,7 +123,29 @@ where
     where
         S: Ref<str>,
     {
-        Ok(te!(lookup_by_name_in_scopes(name, self.active_scopes())).sym_info())
+        let this = self;
+        let name = name.borrow();
+
+        type X<'a> = &'a SymInfo;
+        type Stage<'a, I> = fn(I) -> Result<X<'a>>;
+
+        fn z<'a, I>() -> Stage<'a, I> {
+            |_| Err("").into_result()
+        }
+
+        let a = |_| -> Result<X> {
+            Ok(te!(lookup_by_name_in_scopes(name, this.active_scopes())).sym_info())
+        };
+        #[cfg(feature = "funny_name_lookup")]
+        let b = |_| -> Result<X> { Ok(te!(funny_name_lookup::lookup(this, name))) };
+        #[cfg(not(feature = "funny_name_lookup"))]
+        let b = z();
+
+        let c = z();
+        let z = z();
+        let z = z(());
+
+        c(z).or_else(b).or_else(a)
     }
     /// Lookup by [SymbolTableExt::lookup] and ensure it's a local symbol.
     fn lookup_var<S>(&self, name: S) -> Result<&sym::Local>
