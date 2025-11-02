@@ -63,10 +63,9 @@ pub(super) trait ApiMut: Mut<SymbolTable> {
     }
 
     fn exit_scope(&mut self) {
-        let (scopes, stack, ..) = parts_mut(self);
+        let (_, stack, ..) = parts_mut(self);
 
         let scope_id = stack.pop_front();
-        scopes.pop();
 
         ltrace!("scope::exit {scope_id:?}")
     }
@@ -82,7 +81,7 @@ macro_rules! invariants {
             ..
         } = &*this;
 
-        assert!(scopes.len() == scope_stack.len());
+        //assert!(scopes.len() == scope_stack.len());
 
         this
     }};

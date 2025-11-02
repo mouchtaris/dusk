@@ -72,7 +72,7 @@ pub trait MatchScope: for<'r> Matcher<&'r Scope, Result<X<'r>>> {
     fn to_match_scopes<Scopes: ?Sized + ScopesRef>(&self) -> impl MatchScopes<Scopes> {
         |name, scopes| {
             lookup_by_pred_in_scopes(
-                "(match-scope)",
+                format!("(match-scope): {name}"),
                 |scope| self(name, scope),
                 scopes.active_scopes(),
             )
