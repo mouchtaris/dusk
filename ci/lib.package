@@ -34,3 +34,23 @@ def package::test.sandbox = {
   !direnv revoke $tmp;
   !rm -rvf $tmp;
 }
+
+def package::test = {
+  let tmp = mktemp -d;
+  !tar <$package::dist.tar -C $tmp --extract;
+
+  src _ =
+    *(p $tmp /xs-compile)
+      (p $cwd / $args[0])
+  ;
+  src _ =
+    *(p $tmp /xs
+      i-list-func
+      #-decompile
+    )
+      <$_
+  ;
+  !cat <$_;
+
+  !rm -rvf $tmp;
+}
