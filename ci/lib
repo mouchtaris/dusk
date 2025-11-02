@@ -6,6 +6,7 @@ include ../include/dust/lib.term/lib;
 include ../include/dust/lib.ide/lib;
 
 include ./lib.install;
+include ./lib.package;
 
 def archive = !git archive HEAD --format tar;
 include ./lib.docker;

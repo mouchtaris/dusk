@@ -1,0 +1,36 @@
+def package::build =
+  !cargo
+    build --release
+      --bin xsi
+      --bin xs-call
+      --bin xs-compile
+      --bin xs-debug
+      --bin xs-decompile
+      --bin xs-link
+      --bin xs-run
+      --bin xsi-list-func
+;
+
+def package::dist.tar = {
+  package::build;
+  !tar -C ./target/release
+    --create
+      xsi
+      xs-call
+      xs-compile
+      xs-debug
+      xs-decompile
+      xs-link
+      xs-run
+      xsi-list-func
+}
+
+def package::test.sandbox = {
+  let tmp = mktemp -d;
+  !tar <$package::dist.tar -C $tmp --extract;
+  !tee @$tmp <"PATH_add ./" .envrc;
+  !direnv allow $tmp;
+  !nvim @$tmp;
+  !direnv revoke $tmp;
+  !rm -rvf $tmp;
+}

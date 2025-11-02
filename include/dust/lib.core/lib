@@ -11,10 +11,13 @@ def p = fmt "%s" $args;
 def p0 = fmt "%s\x00" $args;
 def join = fmt "%s " $args;
 
+def trnl = !tr <$args[;] -d $nl;
 def dirname = !tr <(!dirname $args) -d "\n";
 def basename = !tr <(!basename $args) -d "\n";
 def cwd = !tr <(!pwd) -d "\n";
 def env = !tr <(!printenv $args) -d "\n";
+
+def mktemp = trnl(!mktemp $args);
 
 def HOME = env HOME;
 def HOME/ = p $HOME / $args;

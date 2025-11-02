@@ -1,4 +1,8 @@
-use super::{env, fmt, fs, io, te, Error, Result};
+use super::{env, fs, io, te, Error, Result};
+
+pub fn run_app(app: impl super::cli::Cmd) {
+    super::errors::main_app(app)
+}
 
 pub fn run_main(main: impl FnOnce() -> Result<()>) {
     match main() {

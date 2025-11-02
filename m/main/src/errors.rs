@@ -1,7 +1,16 @@
 use {
-    super::{Error, ErrorKind, Result},
+    super::{cli, init, te, Error, ErrorKind, Result},
     std::{fmt, process},
 };
+
+pub fn main_app(main_app: impl cli::Cmd) {
+    main(|| {
+        let args = std::env::args().collect::<Vec<_>>();
+        te!(init());
+        te!(main_app(args));
+        Ok(())
+    })
+}
 
 pub fn main<M>(main_app: M)
 where
