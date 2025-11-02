@@ -9,19 +9,21 @@ pub fn lookup_auto(this: &(impl ?Sized + ScopesRef), name: impl Ref<str>) -> Res
     use lookups::*;
 
     let flow = default_auto();
+    let flow = flow.to_match_scopes();
 
     #[cfg(feature = "funny_name_lookup")]
-    let flow = match_scope(|name, scope| {
+    let flow = match_scopes(|name, x| {
         let next = last_of_path_match();
         let next = next.to_match_symbol();
         let next = next.to_match_scope();
+        let next = next.to_match_scopes();
         let flow = flow.or_else(next);
 
-        let x = flow(name, scope);
+        let x = flow(name, x);
         x
     });
 
-    let flow = flow.to_match_scopes();
+    let flow = flow;
 
     let sym_id = flow(name, this);
 
@@ -62,6 +64,9 @@ pub fn matcher<T, U, X: Matcher<T, U>>(x: X) -> X {
     x
 }
 pub fn match_scope<X: MatchScope>(x: X) -> X {
+    x
+}
+pub fn match_scopes<S: ?Sized + ScopesRef, X: MatchScopes<S>>(x: X) -> X {
     x
 }
 
@@ -110,6 +115,9 @@ impl<S: for<'r> Matcher<&'r Scope, Result<X<'r>>>> MatchScope for S {}
 pub trait MatchScopes<Scopes: ?Sized + ScopesRef>:
     for<'r> Matcher<&'r Scopes, Result<X<'r>>>
 {
+    fn or_else(&self, next: impl MatchScopes<Scopes>) -> impl MatchScopes<Scopes> {
+        move |name, scopes| self(name, scopes).or_else(|_| next(name, scopes))
+    }
 }
 impl<Scopes: ?Sized + ScopesRef, S: for<'r> Matcher<&'r Scopes, Result<X<'r>>>> MatchScopes<Scopes>
     for S
