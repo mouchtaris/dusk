@@ -38,7 +38,7 @@ pub(super) trait ApiRef: Ref<SymbolTable> {
     /// Active scopes, inner-to-outer
     fn active_scope_stack(&self) -> impl Seq<Item = &impl ScopeRef> {
         let (scopes, stack, ..) = parts(self);
-        stack.iter().rev().copied().map(|id| &scopes[id])
+        stack.iter().copied().map(|id| &scopes[id])
     }
 }
 

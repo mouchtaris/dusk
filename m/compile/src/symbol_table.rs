@@ -122,29 +122,7 @@ where
     where
         S: Ref<str>,
     {
-        let this = self;
-        let name = name.borrow();
-
-        use lookups::*;
-
-        let flow = default_auto();
-
-        #[cfg(feature = "funny_name_lookup")]
-        let flow = match_scope(|name, scope| {
-            let next = last_of_path_match();
-            let next = next.to_match_symbol();
-            let next = next.to_match_scope();
-            let flow = flow.or_else(next);
-
-            let x = flow(name, scope);
-            x
-        });
-
-        let flow = flow.to_match_scopes();
-
-        let sym_id = flow(name, this);
-
-        sym_id.map(SymID::sym_info)
+        Ok(te!(lookups::lookup_auto(self, name)).sym_info())
     }
     /// Lookup by [SymbolTableExt::lookup] and ensure it's a local symbol.
     fn lookup_var<S>(&self, name: S) -> Result<&sym::Local>

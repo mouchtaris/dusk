@@ -2,6 +2,32 @@ use super::*;
 
 pub type NameMatch = fn(/*name*/ &str, /*var*/ &str) -> bool;
 
+/// The main entry-point for auto-name lookups.
+pub fn lookup_auto(this: &(impl ?Sized + ScopesRef), name: impl Ref<str>) -> Result<&SymID> {
+    let name = name.borrow();
+
+    use lookups::*;
+
+    let flow = default_auto();
+
+    #[cfg(feature = "funny_name_lookup")]
+    let flow = match_scope(|name, scope| {
+        let next = last_of_path_match();
+        let next = next.to_match_symbol();
+        let next = next.to_match_scope();
+        let flow = flow.or_else(next);
+
+        let x = flow(name, scope);
+        x
+    });
+
+    let flow = flow.to_match_scopes();
+
+    let sym_id = flow(name, this);
+
+    sym_id
+}
+
 pub fn last_of_path_match() -> NameMatch {
     |name, var| {
         if var.len() >= name.len() + 1 {

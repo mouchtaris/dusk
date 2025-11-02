@@ -28,8 +28,10 @@ pub fn xsi() -> impl Cmd {
             // These are direct copies from original utilities that showed the way (xs-compile, xs-call, ..).
             // Instead of adapting *them*, we prehandle args here to give them as expected.
             // <3
-            Some("compile") => te!(compile()(args.reversed())), // args in order
-            Some("call") => te!(call()(args.poped().reversed())), // args without prog in order
+            // *ALSO* they are still used by traditional utils, so they need to handle
+            // actual CLI themselves as well.
+            Some("compile") => te!(compile()(args.reversed())),
+            Some("call") => te!(call()(args.reversed())),
             // ---- New CLI commands ----
             // These are new implementations for front-end.
             Some("decompile") => te!(decompile()(args)),
@@ -99,6 +101,7 @@ pub fn call() -> impl Cmd {
             let mut args = te!(if_source_newer_than_target(args));
 
             args.reverse();
+            args.pop(); // skip-prog-name
 
             let mut module_path = te!(args.pop(), "Missing module path");
             let func_addr = te!(args.pop(), "Missing function addr");

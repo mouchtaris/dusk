@@ -17,7 +17,10 @@ impl Show for Compiler {
                 i += 1;
             }
             writeln!(o, "=== SYMBOLS ===")?;
-            self.sym_table.write_to_impl(o)?;
+            self.sym_table.write_to_impl(&mut o)?;
+
+            #[cfg(feature = "funny_name_lookup")]
+            writeln!(o, "=== [Funny Name Lookup]")?;
         })
     }
 }
