@@ -25,13 +25,32 @@ def package::dist.tar = {
       xsi-list-func
 }
 
+def package::install_to = {
+  let dest = $args[0];
+
+  !tar
+    <$package::dist.tar
+    -C $dest
+    --extract
+    --verbose
+  ;
+}
+
+def package::install-local =
+  package::install_to (HOME/ .local/bin)
+;
+
 def package::test.sandbox = {
   let tmp = mktemp -d;
-  !tar <$package::dist.tar -C $tmp --extract;
+  package::install_to $tmp;
+
   !tee @$tmp <"PATH_add ./" .envrc;
   !direnv allow $tmp;
+
   !nvim @$tmp;
+
   !direnv revoke $tmp;
+
   !rm -rvf $tmp;
 }
 

@@ -57,7 +57,13 @@ impl Vm {
         self.instr_ptr = 0;
     }
 
-    pub fn init(&mut self, revargs: Vec<String>) -> Result<()> {
+    pub fn init<Args>(&mut self, revargs: Args) -> Result<()>
+    where
+        Args: IntoIterator,
+        Args::IntoIter: ExactSizeIterator,
+        Args::Item: Into<String>,
+    {
+        let revargs = revargs.into_iter();
         // synthetic call context
         // - RetVal
         // - # input redirs
@@ -72,7 +78,7 @@ impl Vm {
         te!(self.push_null()); // invocation target
         te!(self.push_null()); // cwd
         for arg in revargs {
-            let strid = self.add_dynstring(arg);
+            let strid = self.add_dynstring(arg.into());
             te!(self.push_val(value::DynString(strid)));
         }
         te!(self.push_val(argc)); // nargs

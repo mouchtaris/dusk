@@ -1,5 +1,5 @@
 use {
-    super::{fs, io, sd, Result},
+    super::{env, fs, io, sd, Result},
     compile::{ScopeRef, SymbolTableExt},
     error::{ldebug, te, temg},
 };
@@ -41,6 +41,25 @@ pub fn read_compiler<R: io::Read>(mut input: R) -> Result<compile::Compiler> {
     Ok(cmp)
 }
 
+pub fn compile_from_input<I: IntoIterator>(input: I) -> Result<compile::Compiler>
+where
+    I::Item: AsRef<str>,
+{
+    let input = input.into_iter().next();
+    let input = input.as_ref().map(<_>::as_ref).unwrap_or("-");
+
+    Ok(if input == "-" {
+        let cwd = te!(env::current_dir());
+        let inp = io::stdin();
+        te!(compile_input_with_base(
+            inp,
+            cwd.to_str().unwrap_or("/dev/stdin")
+        ))
+    } else {
+        te!(compile_file(input))
+    })
+}
+
 pub fn compile_input_with_base(input: impl io::Read, base_path: &str) -> Result<compile::Compiler> {
     let input_text = te!(io::read_to_string(input));
     let module_ast = te!(parse::parse(&input_text)
@@ -73,19 +92,23 @@ pub fn make_vm() -> Result<vm::Vm> {
     Ok(vm)
 }
 
-pub fn make_vm_call(
+pub fn make_vm_call<Args: IntoIterator>(
     vm: &mut vm::Vm,
     cmp: &compile::Compiler,
     func_addr: &str,
-    args: Vec<String>,
-) -> Result<()> {
+    revargs: Args,
+) -> Result<()>
+where
+    Args::IntoIter: ExactSizeIterator,
+    Args::Item: Into<String>,
+{
     let sinfo = cmp.lookup_by_name_everywhere(func_addr).ok();
     Ok(match sinfo {
         None => temg!("Function not found: {}", func_addr),
         Some(sym_id) => {
             let sinfo = sym_id.sym_info();
             let addr = te!(sinfo.as_addr_ref()).addr;
-            te!(vm.init(args));
+            te!(vm.init(revargs));
             vm.jump(addr);
             te!(vm.eval_icode(&cmp.icode));
             te!(vm::Instr::CleanUp(0).operate_on(vm));

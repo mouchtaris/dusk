@@ -1,5 +1,6 @@
 pub const VERSION: &str = "0.0.1";
 
+use std::borrow::BorrowMut;
 pub use std::collections::{
     hash_map::{Entry, HashMap as Map},
     VecDeque as Deq,
@@ -48,6 +49,28 @@ where
         let mut v = self.to_vec();
         v.sort();
         v
+    }
+
+    fn rereverse(self) -> Vec<Self::Item> {
+        let mut x = self.to_vec();
+        x.reverse();
+        x
+    }
+
+    fn reversed(mut self) -> Self
+    where
+        Self: BorrowMut<Vec<Self::Item>>,
+    {
+        self.borrow_mut().reverse();
+        self
+    }
+
+    fn poped(mut self) -> Self
+    where
+        Self: BorrowMut<Vec<Self::Item>>,
+    {
+        self.borrow_mut().pop();
+        self
     }
 }
 impl<S: IntoIterator> Recollect for S {}

@@ -1,4 +1,5 @@
 use super::*;
+use collection::Recollect;
 use error::temg;
 
 pub trait Cmd: Fn(Vec<String>) -> Result<()> {}
@@ -6,23 +7,92 @@ impl<S: Fn(Vec<String>) -> Result<()>> Cmd for S {}
 
 pub fn xsi() -> impl Cmd {
     fn help() {
-        eprintln!("compile [- | IN_PATH] [- | OUT_PATH]");
-        eprintln!("call    [- | IN_PATH] FUNC_NAME [ARGS...]");
+        eprintln!("compile      [- | IN_PATH] [- | OUT_PATH]");
+        eprintln!("decompile    [- | IN_PATH] [- | OUT_PATH]");
+        eprintln!("dump         [- | IN_PATH] [- | OUT_PATH]");
+        eprintln!("call         [- | IN_PATH] FUNC_NAME [ARGS...]");
+        eprintln!("ccall        [- | IN_SRCE] FUNC_NAME [ARGS...]");
     }
-    |args| {
-        let subcommand = args[1].as_ref();
-        match subcommand {
-            "compile" => te!(compile()(args)),
-            "call" => te!(call()(args)),
+    |mut args| {
+        // Reverse args for easier traverse (.pop())
+        args.reverse();
+        // Pop exec-name
+        let prog = args.pop();
+        // Pop subcommand-name
+        let subcommand = args.pop();
+        // Repush prog-name as first arg
+        prog.into_iter().for_each(|x| args.push(x));
+        // Dispatch subcommand
+        match subcommand.as_ref().map(String::as_str) {
+            // ---- Legacy CLI commands ----
+            // These are direct copies from original utilities that showed the way (xs-compile, xs-call, ..).
+            // Instead of adapting *them*, we prehandle args here to give them as expected.
+            // <3
+            Some("compile") => te!(compile()(args.reversed())), // args in order
+            Some("call") => te!(call()(args.poped().reversed())), // args without prog in order
+            // ---- New CLI commands ----
+            // These are new implementations for front-end.
+            Some("decompile") => te!(decompile()(args)),
+            Some("dump") => te!(dump()(args)),
+            Some("ccall") => te!(compile_and_call()(args)),
+            Some("help") => help(),
             other => {
                 help();
-                temg!("Unknown command: {other}")
+                temg!("Unknown command: {other:?}")
             }
         }
         Ok(())
     }
 }
 
+pub fn compile_and_call() -> impl Cmd {
+    |revargs| {
+        let arg = |n| revargs.iter().rev().skip(n);
+        let revrest = |n| revargs.iter().skip(n);
+
+        Ok(te!(make_vm_call(
+            &mut te!(make_vm()),
+            &te!(compile_from_input(arg(1))),
+            te!(arg(2).next(), "Missing func_addr"),
+            revrest(3)
+        )))
+    }
+}
+
+pub fn dump() -> impl Cmd {
+    |args| {
+        let args = |n| args.iter().rev().skip(n);
+
+        let input = te!(args_get_input(args(1)));
+        let mut input = args(1);
+        let output = te!(args_get_output(args(2)));
+
+        let icode = te!(compile_file(input.next().expect("input file path")));
+
+        use show::Show;
+        te!(icode.write_to(Ok(output)));
+
+        Ok(())
+    }
+}
+
+pub fn decompile() -> impl Cmd {
+    |args| {
+        let args = |n| args.iter().rev().skip(n);
+
+        let input = te!(args_get_input(args(1)));
+        let output = te!(args_get_output(args(2)));
+        let icode = te!(read_compiler(input));
+
+        use show::Show;
+        te!(icode.write_to(Ok(output)));
+
+        Ok(())
+    }
+}
+
+// ----------------------------------------------------------------------------
+// [!!] The origincal xs-call. Do not alter.
 pub fn call() -> impl Cmd {
     |args| {
         let xs_call = || -> Result<()> {
@@ -89,6 +159,9 @@ pub fn call() -> impl Cmd {
     }
 }
 
+// ----------------------------------------------------------------------------
+// [!!] The origincal xs-compile. Do not alter.
+//
 pub fn compile() -> impl Cmd {
     |args| {
         let input_path = args.get(1).map(String::as_str).unwrap_or("-");
