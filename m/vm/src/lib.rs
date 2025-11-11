@@ -5,7 +5,7 @@ pub mod syscall;
 pub mod to_sh;
 pub mod value;
 pub use {
-    icode::{ICode, Instr, StringInfo},
+    icode::{ICode, Instr, Instrs, StringInfo, Strings},
     value::{Value, ValueTypeInfo},
     vm::{Vm, DEBUG_STACK_SIZE},
 };

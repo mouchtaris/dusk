@@ -5,6 +5,7 @@ use {
     error::{te, temg},
     std::{
         borrow::{Borrow, Borrow as Ref, BorrowMut, BorrowMut as Mut},
+        collections::HashMap,
         fmt, fs, io,
         iter::{self, ExactSizeIterator as Seq},
         mem, num,
@@ -24,11 +25,13 @@ error::Error! {
 
 mod compile;
 mod compile_util;
+mod compiler_ext;
 mod compilers;
 mod emit;
 pub mod facade;
 mod file_path;
 mod include;
+pub mod link;
 mod sd;
 mod show;
 pub mod symbol_info;
@@ -37,6 +40,9 @@ use symbol_table::ScopesRef;
 pub use {
     crate::compile::{Compile, CompileEv},
     compile_util::CompileUtil,
+    compiler_ext::{
+        add_string, get_string_id, instrs_emit, CompilerExt, CompilerMut, VmICodeMut, VmICodeRef,
+    },
     compilers::{Compilers, CompilersImpl as cmps},
     emit::EmitExt,
     file_path::{compute_include_path, FilePathExt},
@@ -91,8 +97,7 @@ impl Compiler {
     where
         S: Into<String>,
     {
-        let vm::StringInfo { id } = te!(vm::StringInfo::add(&mut self.icode, s));
-        Ok(id)
+        Ok(CompilerMut::add_string(self, s))
     }
 
     /// Return the last instruction id

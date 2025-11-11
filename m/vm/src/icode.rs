@@ -8,10 +8,13 @@ fn _use() {
     soft_todo!();
 }
 
+pub type Instrs = Deq<Instr>;
+pub type Strings = Map<String, StringInfo>;
+
 #[derive(Default, Debug)]
 pub struct ICode {
-    pub instructions: Deq<Instr>,
-    pub strings: Map<String, StringInfo>,
+    pub instructions: Instrs,
+    pub strings: Strings,
 }
 
 #[derive(Default, Debug, Copy, Eq, Ord, Hash, PartialEq, PartialOrd, Clone)]
@@ -100,16 +103,15 @@ impl Instr {
 }
 
 impl StringInfo {
-    pub fn add<S, C>(mut icode: C, s: S) -> Result<StringInfo>
+    pub fn add_to_strings<S>(this: &mut Strings, s: S) -> StringInfo
     where
         S: Into<String>,
-        C: BorrowMut<ICode>,
     {
-        let t = &mut icode.borrow_mut().strings;
+        let t = this;
         let id = t.len();
         match t.entry(s.into()) {
-            Entry::Occupied(occ) => Ok(occ.get().clone()),
-            Entry::Vacant(vac) => Ok(vac.insert(StringInfo { id }).to_owned()),
+            Entry::Occupied(occ) => occ.get().clone(),
+            Entry::Vacant(vac) => vac.insert(StringInfo { id }).to_owned(),
         }
     }
 }

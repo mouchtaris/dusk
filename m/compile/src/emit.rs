@@ -1,4 +1,4 @@
-use super::{iter, Compiler, Mut, Result};
+use super::{iter, Compiler, Mut, Result, VmICodeMut};
 
 pub trait EmitExt
 where
@@ -19,11 +19,7 @@ where
         I: IntoIterator,
         I::Item: Into<vm::Instr>,
     {
-        let cmp = self.borrow_mut();
-
-        for i in instr {
-            cmp.icode.instructions.push_back(i.into());
-        }
+        VmICodeMut::emit(&mut self.borrow_mut().icode, instr);
     }
 
     /// Emit the given instructions into instr_table
@@ -33,12 +29,7 @@ where
         I::Item: Into<vm::Instr>,
         Self: Sized,
     {
-        let cmp = self.borrow_mut();
-
-        for i in instr {
-            cmp.icode.instructions.push_back(i.into());
-        }
-
+        Self::emit(&mut self, instr);
         Ok(self)
     }
 
@@ -48,10 +39,7 @@ where
         I: Into<vm::Instr>,
         Self: Sized,
     {
-        let cmp = self.borrow_mut();
-
-        cmp.emit1(instr);
-
+        Self::emit1(&mut self, instr);
         Ok(self)
     }
 }
