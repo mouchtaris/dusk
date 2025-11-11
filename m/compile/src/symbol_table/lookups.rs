@@ -17,6 +17,7 @@ pub fn lookup_auto(this: &(impl ?Sized + ScopesRef), name: impl Ref<str>) -> Res
         let next = next.to_match_symbol();
         let next = next.to_match_scope();
         let next = next.to_match_scopes();
+
         let flow = flow.or_else(next);
 
         let x = flow(name, x);
@@ -31,14 +32,26 @@ pub fn lookup_auto(this: &(impl ?Sized + ScopesRef), name: impl Ref<str>) -> Res
 }
 
 pub fn last_of_path_match() -> NameMatch {
+    //use std::eprintln as db;
+    use std::format_args as db;
     |name, var| {
+        db!("Checking {name} vs {var}: ");
         if var.len() >= name.len() + 1 {
             // +1 because '.../<name>'
-            let (_, suffix) = var.split_at(var.len() - name.len());
+            let (_, suffix) = var.split_at(var.len() - name.len() - 1);
 
             if suffix.starts_with('/') && suffix.ends_with(name) {
+                db!("IT IS!");
                 return true;
+            } else {
+                db!(
+                    "Suffix not ok: {} starts_with '/' && ends_with {}",
+                    suffix,
+                    name
+                );
             }
+        } else {
+            db!("Length not ok: {} >= {} + 1", var.len(), name.len());
         }
 
         false
@@ -128,4 +141,48 @@ pub trait Match {
     type T;
     type U;
     fn apply(&self, name: &str, data: Self::T) -> Self::U;
+}
+
+#[test]
+#[cfg(feature = "funny_name_lookup")]
+fn test_funny_names_lookup() -> Result<()> {
+    let mut cmp = crate::Compiler::new();
+
+    let st = &mut cmp.sym_table;
+
+    use std::format as f;
+
+    fn empty() -> impl Iterator<Item = SymInfo> {
+        std::iter::empty()
+    }
+    st.enter_scope();
+    let info_0 = st.new_local(empty(), f!("a")).to_owned();
+    let info_1 = st.new_local(empty(), f!("a/b")).to_owned();
+    let info_2 = st.new_local(empty(), f!("a/b/c")).to_owned();
+
+    let info = te!(lookup_auto(st, "a"));
+    assert_eq!(info.sym_info(), &info_0);
+
+    let info = te!(lookup_auto(st, "a/b"));
+    assert_eq!(info.sym_info(), &info_1);
+
+    let info = te!(lookup_auto(st, "a/b/c"));
+    assert_eq!(info.sym_info(), &info_2);
+
+    // FUNNY NAME LOOKUP
+    let info = te!(lookup_auto(st, "c"));
+    assert_eq!(info.sym_info(), &info_2);
+
+    let scope_id = st.enter_scope();
+
+    let info_3 = st.new_local(empty(), f!("a/b/c/a")).to_owned();
+
+    let info = te!(lookup_auto(st, "a"));
+    assert_eq!(info.sym_info(), &info_0);
+
+    let info = te!(lookup_auto(st, "c/a"));
+    assert_eq!(info.sym_info(), &info_3);
+    assert_eq!(info.sym_info().scope_id, scope_id);
+
+    Ok(())
 }
