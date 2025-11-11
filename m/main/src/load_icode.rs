@@ -41,6 +41,9 @@ pub fn read_compiler<R: io::Read>(mut input: R) -> Result<compile::Compiler> {
     Ok(cmp)
 }
 
+/// Compile from the first string in the input-iter.
+///
+/// If the string is "-" read from stdin, otherwise delegate to [compile_file].
 pub fn compile_from_input<I: IntoIterator>(input: I) -> Result<compile::Compiler>
 where
     I::Item: AsRef<str>,
@@ -60,28 +63,24 @@ where
     })
 }
 
+/// Read file content and delegate to [compile_input_with_base].
+pub fn compile_file(input_path: &str) -> Result<compile::Compiler> {
+    Ok(te!(compile_input_with_base(
+        te!(fs::File::open(input_path)),
+        input_path
+    )))
+}
+
 pub fn compile_input_with_base(input: impl io::Read, base_path: &str) -> Result<compile::Compiler> {
     let input_text = te!(io::read_to_string(input));
-    let module_ast = te!(parse::parse(&input_text)
-        .map_err(|err| err.with_comment(format!("Parsing input as {base_path}"))));
+    let module_ast =
+        te!(parse::parse(&input_text)
+            .map_err(|err| err.with_comment(format!("Parsing: {base_path}"))));
     let mut compiler = compile::Compiler::new();
     te!(compiler.init(base_path));
     te!(compiler
         .compile(module_ast)
-        .map_err(|err| err.with_comment(format!("Compiling with base path: {base_path}"))));
-    Ok(compiler)
-}
-
-pub fn compile_file(input_path: &str) -> Result<compile::Compiler> {
-    let input_text = te!(fs::read_to_string(input_path));
-    let module_ast =
-        te!(parse::parse(&input_text)
-            .map_err(|err| err.with_comment(format!("Parsing {input_path}"))));
-    let mut compiler = compile::Compiler::new();
-    te!(compiler.init(input_path));
-    te!(compiler
-        .compile(module_ast)
-        .map_err(|err| err.with_comment(format!("Compiling {input_path}"))));
+        .map_err(|err| err.with_comment(format!("Compiling: {base_path}"))));
     Ok(compiler)
 }
 
@@ -90,6 +89,20 @@ pub fn make_vm() -> Result<vm::Vm> {
     vm.reset();
     te!(vm.init_bin_path_from_path_env());
     Ok(vm)
+}
+
+pub fn run_vm_script<T: ExactSizeIterator>(
+    vm: &mut vm::Vm,
+    compile::Compiler { icode, .. }: &compile::Compiler,
+    args: impl IntoIterator<IntoIter = T, Item = T::Item>,
+) -> Result<()>
+where
+    T::Item: Into<String>,
+{
+    let mut vm = te!(make_vm());
+    te!(vm.init(args));
+    te!(vm.eval_icode(icode));
+    Ok(())
 }
 
 pub fn make_vm_call<Args: IntoIterator>(

@@ -7,11 +7,13 @@ impl<S: Fn(Vec<String>) -> Result<()>> Cmd for S {}
 
 pub fn xsi() -> impl Cmd {
     fn help() {
-        eprintln!("compile      [- | IN_PATH] [- | OUT_PATH]");
-        eprintln!("decompile    [- | IN_PATH] [- | OUT_PATH]");
-        eprintln!("dump         [- | IN_PATH] [- | OUT_PATH]");
-        eprintln!("call         [- | IN_PATH] FUNC_NAME [ARGS...]");
-        eprintln!("ccall        [- | IN_SRCE] FUNC_NAME [ARGS...]");
+        eprintln!("compile      [- | IN_PATH.src] [- | OUT_PATH.obj]");
+        eprintln!("decompile    [- | IN_PATH.obj] [- | OUT_PATH.txt]");
+        eprintln!("dump         [- | IN_PATH.obj] [- | OUT_PATH.txt]");
+        eprintln!("call         [- | IN_PATH.obj] FUNC_NAME [ARGS...]");
+        eprintln!("ccall        [- | IN_PATH.src] FUNC_NAME [ARGS...]");
+        eprintln!("crun         [- | IN_PATH.src] [ARGS...]");
+        eprintln!("run          [- | IN_PATH.obj] [ARGS...]");
     }
     |mut args| {
         // Reverse args for easier traverse (.pop())
@@ -37,6 +39,8 @@ pub fn xsi() -> impl Cmd {
             Some("decompile") => te!(decompile()(args)),
             Some("dump") => te!(dump()(args)),
             Some("ccall") => te!(compile_and_call()(args)),
+            Some("crun") => te!(compile_and_run()(args)),
+            Some("run") => te!(run()(args)),
             Some("help") => help(),
             other => {
                 help();
@@ -44,6 +48,41 @@ pub fn xsi() -> impl Cmd {
             }
         }
         Ok(())
+    }
+}
+
+fn args<I: DoubleEndedIterator + ExactSizeIterator>(
+    revargs: impl IntoIterator<IntoIter = I>,
+    n: usize,
+) -> impl ExactSizeIterator + DoubleEndedIterator<Item = I::Item> {
+    revargs.into_iter().rev().skip(n)
+}
+
+pub fn run() -> impl Cmd {
+    |revargs| {
+        let args = |n| args(&revargs, n);
+
+        let input = te!(args_get_input(args(1)));
+
+        Ok(te!(run_vm_script(
+            &mut te!(make_vm()),
+            &te!(read_compiler(input)),
+            args(2)
+        )))
+    }
+}
+
+pub fn compile_and_run() -> impl Cmd {
+    |revargs| {
+        let args = |n| args(&revargs, n);
+
+        let input = args(1);
+
+        Ok(te!(run_vm_script(
+            &mut te!(make_vm()),
+            &te!(compile_from_input(input)),
+            args(2)
+        )))
     }
 }
 
@@ -65,7 +104,7 @@ pub fn dump() -> impl Cmd {
     |args| {
         let args = |n| args.iter().rev().skip(n);
 
-        let input = te!(args_get_input(args(1)));
+        let _input = te!(args_get_input(args(1)));
         let mut input = args(1);
         let output = te!(args_get_output(args(2)));
 

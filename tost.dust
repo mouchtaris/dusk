@@ -2,6 +2,8 @@
   --bin xs-compile
   --bin xsi-list-func
   --bin xs-call
+  --bin xs-link
+  --bin xsi
 ;
 
 def sip     = !dd <$args[0] "of=/dev/null" "status=none";
@@ -10,6 +12,7 @@ def list.0  = !xargs <$args[1] -0 -I ":::" -- printf "%s%s\n" $args[0] ":::";
 def xc-path = ./target/debug/xs-compile $args[0];
 def xc-lf   = ./target/debug/xsi-list-func <$args[0] -;
 def xc-call = ./target/debug/xs-call <$args[0] - $args[1;];
+def xsi     = ./target/debug/xsi $args;
 
 let obj = xc-path /home/bob/jctl/dust.dust;
 let funcs = !sort <(list.0 "- " (xc-lf $obj));
