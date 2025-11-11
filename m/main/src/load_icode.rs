@@ -205,6 +205,10 @@ where
 {
     Ok(match args.into_iter().next().as_ref().map(<_>::as_ref) {
         Some("-") | None => Box::new(io::stdout()),
-        Some(path) => te!(fs::File::open(path).map(Box::new), "output path: {}", path),
+        Some(path) => te!(
+            fs::File::create(path).map(Box::new),
+            "output path: {}",
+            path
+        ),
     })
 }

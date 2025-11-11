@@ -14,6 +14,7 @@ pub fn xsi() -> impl Cmd {
         eprintln!("ccall        [- | IN_PATH.src] FUNC_NAME [ARGS...]");
         eprintln!("crun         [- | IN_PATH.src] [ARGS...]");
         eprintln!("run          [- | IN_PATH.obj] [ARGS...]");
+        eprintln!("link         [- | OUT_PATH.lib] [- | IN_PATH.obj...]     Generated lib files cannot be `run`.");
     }
     |mut args| {
         // Reverse args for easier traverse (.pop())
@@ -41,6 +42,7 @@ pub fn xsi() -> impl Cmd {
             Some("ccall") => te!(compile_and_call()(args)),
             Some("crun") => te!(compile_and_run()(args)),
             Some("run") => te!(run()(args)),
+            Some("link") => te!(link()(args)),
             Some("help") => help(),
             other => {
                 help();
@@ -58,6 +60,21 @@ fn args<I: DoubleEndedIterator + ExactSizeIterator>(
     revargs.into_iter().rev().skip(n)
 }
 
+pub fn link() -> impl Cmd {
+    |revargs| {
+        let args = |n| args(&revargs, n);
+
+        let modules: Result<Vec<_>> = args(2).map(|path| load_compiler(&path)).collect();
+        let modules = te!(modules);
+
+        let module = compile::link::link_modules(modules);
+
+        let mut output = te!(args_get_output(args(1)));
+        te!(sd::ser(&mut output, &module));
+
+        Ok(())
+    }
+}
 pub fn run() -> impl Cmd {
     |revargs| {
         let args = |n| args(&revargs, n);
