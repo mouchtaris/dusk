@@ -1,7 +1,5 @@
 use super::*;
 
-pub type NameMatch = fn(/*name*/ &str, /*var*/ &str) -> bool;
-
 /// The main entry-point for auto-name lookups.
 pub fn lookup_auto(this: &(impl ?Sized + ScopesRef), name: impl Ref<str>) -> Result<&SymID> {
     let name = name.borrow();
@@ -13,11 +11,16 @@ pub fn lookup_auto(this: &(impl ?Sized + ScopesRef), name: impl Ref<str>) -> Res
 
     #[cfg(feature = "funny_name_lookup")]
     let flow = match_scopes(|name, x| {
-        let next = last_of_path_match();
+        let next = last_of_path_match("/");
         let next = next.to_match_symbol();
         let next = next.to_match_scope();
         let next = next.to_match_scopes();
+        let flow = flow.or_else(next);
 
+        let next = last_of_path_match("::");
+        let next = next.to_match_symbol();
+        let next = next.to_match_scope();
+        let next = next.to_match_scopes();
         let flow = flow.or_else(next);
 
         let x = flow(name, x);
@@ -31,27 +34,33 @@ pub fn lookup_auto(this: &(impl ?Sized + ScopesRef), name: impl Ref<str>) -> Res
     sym_id
 }
 
-pub fn last_of_path_match() -> NameMatch {
-    //use std::eprintln as db;
-    use std::format_args as db;
-    |name, var| {
-        db!("Checking {name} vs {var}: ");
-        if var.len() >= name.len() + 1 {
+pub fn last_of_path_match(sep: &str) -> impl '_ + MatchName {
+    use std::eprintln as db;
+    //use std::format_args as db;
+    move |name, var| {
+        db!("Checking {name} {sep} {var}: ");
+        if var.len() >= name.len() + sep.len() {
             // +1 because '.../<name>'
-            let (_, suffix) = var.split_at(var.len() - name.len() - 1);
+            let (_, suffix) = var.split_at(var.len() - name.len() - sep.len());
 
-            if suffix.starts_with('/') && suffix.ends_with(name) {
+            if suffix.starts_with(sep) && suffix.ends_with(name) {
                 db!("IT IS!");
                 return true;
             } else {
                 db!(
-                    "Suffix not ok: {} starts_with '/' && ends_with {}",
+                    "Suffix not ok: {} starts_with '{}' && ends_with {}",
                     suffix,
+                    sep,
                     name
                 );
             }
         } else {
-            db!("Length not ok: {} >= {} + 1", var.len(), name.len());
+            db!(
+                "Length not ok: {} >= {} + {}",
+                var.len(),
+                name.len(),
+                sep.len()
+            );
         }
 
         false
@@ -183,6 +192,13 @@ fn test_funny_names_lookup() -> Result<()> {
     let info = te!(lookup_auto(st, "c/a"));
     assert_eq!(info.sym_info(), &info_3);
     assert_eq!(info.sym_info().scope_id, scope_id);
+
+    let info_5 = st.new_local(empty(), f!("a::b")).to_owned();
+    assert_eq!(te!(lookup_auto(st, "b")).sym_info(), &info_1);
+    assert_eq!(te!(lookup_auto(st, "a::b")).sym_info(), &info_5);
+
+    let info_6 = st.new_local(empty(), f!("a::d")).to_owned();
+    assert_eq!(te!(lookup_auto(st, "d")).sym_info(), &info_6);
 
     Ok(())
 }
