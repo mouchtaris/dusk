@@ -35,32 +35,14 @@ pub fn lookup_auto(this: &(impl ?Sized + ScopesRef), name: impl Ref<str>) -> Res
 }
 
 pub fn last_of_path_match(sep: &str) -> impl '_ + MatchName {
-    use std::eprintln as db;
-    //use std::format_args as db;
     move |name, var| {
-        db!("Checking {name} {sep} {var}: ");
         if var.len() >= name.len() + sep.len() {
             // +1 because '.../<name>'
             let (_, suffix) = var.split_at(var.len() - name.len() - sep.len());
 
             if suffix.starts_with(sep) && suffix.ends_with(name) {
-                db!("IT IS!");
                 return true;
-            } else {
-                db!(
-                    "Suffix not ok: {} starts_with '{}' && ends_with {}",
-                    suffix,
-                    sep,
-                    name
-                );
             }
-        } else {
-            db!(
-                "Length not ok: {} >= {} + {}",
-                var.len(),
-                name.len(),
-                sep.len()
-            );
         }
 
         false
