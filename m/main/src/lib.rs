@@ -13,8 +13,8 @@ pub use {
     exec_common::{run_app, run_main},
     load_icode::{
         args_get_input, args_get_output, compile_file, compile_from_input, compile_input_with_base,
-        list_func, load_compiler, load_icode, make_vm, make_vm_call, read_compiler, run_vm_script,
-        script_call_getret,
+        list_func, load_compiler, load_icode, make_vm, make_vm_call, make_vm_call2, read_compiler,
+        run_vm_script, script_call_getret,
     },
     std::{
         boxed, collections, env, fmt, fs, io, iter, prelude, slice, str, string, u32, u8, usize,

@@ -86,7 +86,7 @@ Opt: ast::Opt<'input> = {
     ShortOpt => <>.into(),
     LongOpt => <>.into(),
 }
-Path: ast::Path<'input> = {
+pub Path: ast::Path<'input> = {
     AbsPath => <>.into(),
     RelPath => <>.into(),
     HomePath => <>.into(),

@@ -31,7 +31,6 @@ pub struct Spec {
     pub input: Vec<Job>,
 }
 
-#[derive(Debug)]
 pub enum SystemItem {
     Child(Child),
     Buffer(Vec<u8>),
@@ -53,7 +52,6 @@ pub enum Cleanup {
     Thread(Thread),
 }
 
-#[derive(Debug)]
 pub enum Buffer {
     Null,
     Bytes(Command, Vec<u8>),
@@ -497,5 +495,44 @@ impl Byteable for Vec<u8> {
 impl Byteable for String {
     fn into_bytes(self) -> Vec<u8> {
         self.into_bytes()
+    }
+}
+
+macro_rules! fmt_sane {
+    (
+        $s: expr,
+        $fmt:expr
+    ) => {{
+        let s = &$s[..];
+
+        const MAX_LEN: usize = 16;
+
+        let (s, dots) = if s.len() <= MAX_LEN {
+            (s, "")
+        } else {
+            (&s[0..16], "...")
+        };
+
+        fn as_func<F: FnOnce(fmt::Arguments) -> fmt::Result>(f: F) -> F {
+            f
+        }
+        as_func($fmt)(format_args!("{s:?}{dots}"))
+    }};
+}
+impl fmt::Debug for Buffer {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Null => write!(f, "Null"),
+            Self::Bytes(cmd, bs) => fmt_sane!(bs, |bs| write!(f, "Bytes({cmd:?} -> {bs})")),
+            Self::String(cmd, s) => fmt_sane!(s, |s| write!(f, "String({cmd:?} -> {s})",)),
+        }
+    }
+}
+impl fmt::Debug for SystemItem {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Child(child) => f.debug_tuple("Child").field(child).finish(),
+            Self::Buffer(bs) => fmt_sane!(bs, |bs| write!(f, "Buffer({bs})")),
+        }
     }
 }

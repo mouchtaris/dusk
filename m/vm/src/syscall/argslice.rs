@@ -66,8 +66,8 @@ pub fn argslice(vm: &mut Vm) -> Result<()> {
     te!(vm.wait_debugger(format_args!("{:?}", args)));
     te!(vm.push_val(args));
     te!(vm.set_ret_val_from_local(0));
-    te!(vm.return_from_call(0));
     vm.dealloc(1);
+    te!(vm.return_from_call(0));
     Ok(())
 }
 

@@ -8,11 +8,13 @@ pub fn load_icode(input_path: &str) -> Result<vm::ICode> {
     Ok(te!(load_compiler(input_path)).icode)
 }
 
+/// Load compiler from `input_path`.
 pub fn load_compiler(input_path: &str) -> Result<compile::Compiler> {
     ldebug!("Loading {}", input_path);
     Ok(te!(read_compiler(&mut te!(fs::File::open(input_path)))))
 }
 
+/// Blantly read compiler serialized data from input stream.
 pub fn read_compiler<R: io::Read>(mut input: R) -> Result<compile::Compiler> {
     let inp: Vec<u8> = {
         let mut inp: Vec<u8> = vec![];
@@ -71,6 +73,7 @@ pub fn compile_file(input_path: &str) -> Result<compile::Compiler> {
     )))
 }
 
+/// Compile text reading from `input`, using `base_path` as the compilation base path.
 pub fn compile_input_with_base(input: impl io::Read, base_path: &str) -> Result<compile::Compiler> {
     let input_text = te!(io::read_to_string(input));
     let module_ast =
@@ -93,23 +96,54 @@ pub fn make_vm() -> Result<vm::Vm> {
 
 pub fn run_vm_script<T: ExactSizeIterator>(
     vm: &mut vm::Vm,
-    compile::Compiler { icode, .. }: &compile::Compiler,
+    cmp @ compile::Compiler { icode, .. }: &compile::Compiler,
     args: impl IntoIterator<IntoIter = T, Item = T::Item>,
+    debug: bool,
 ) -> Result<()>
 where
     T::Item: Into<String>,
 {
-    let mut vm = te!(make_vm());
     te!(vm.init(args));
-    te!(vm.eval_icode(icode));
+    if debug {
+        let mut bugger = te!(vm::debugger::Bugger::open());
+        let mut cmp = cmp.to_owned();
+        let icode = std::mem::take(&mut cmp.icode);
+        default_debugger_callbacks(&mut bugger, cmp);
+        te!(te!(te!(vm.debug_icode(&icode, bugger))
+            .receiver_thread
+            .join()
+            .map_err(|_| format!("Wait receiver thread"))));
+    } else {
+        te!(vm.eval_icode(icode));
+    }
     Ok(())
 }
 
+#[deprecated(note = "use make_vm_call2 with debug=false")]
 pub fn make_vm_call<Args: IntoIterator>(
     vm: &mut vm::Vm,
     cmp: &compile::Compiler,
     func_addr: &str,
     revargs: Args,
+) -> Result<()>
+where
+    Args::IntoIter: ExactSizeIterator,
+    Args::Item: Into<String>,
+{
+    Ok(te!(make_vm_call2(
+        vm,
+        cmp.to_owned(),
+        func_addr,
+        revargs,
+        false
+    )))
+}
+pub fn make_vm_call2<Args: IntoIterator>(
+    vm: &mut vm::Vm,
+    mut cmp: compile::Compiler,
+    func_addr: &str,
+    revargs: Args,
+    debug: bool,
 ) -> Result<()>
 where
     Args::IntoIter: ExactSizeIterator,
@@ -123,10 +157,37 @@ where
             let addr = te!(sinfo.as_addr_ref()).addr;
             te!(vm.init(revargs));
             vm.jump(addr);
-            te!(vm.eval_icode(&cmp.icode));
+            //te!(vm.prepare_call());
+            if debug {
+                let mut bugger = te!(vm::debugger::Bugger::open());
+                let icode = std::mem::take(&mut cmp.icode);
+                default_debugger_callbacks(&mut bugger, cmp);
+                bugger.set_in_main();
+                te!(te!(te!(vm.debug_icode(&icode, bugger))
+                    .receiver_thread
+                    .join()
+                    .map_err(|_| format!("Wait receiver thread"))));
+            } else {
+                te!(vm.eval_icode(&cmp.icode));
+            }
             te!(vm::Instr::CleanUp(0).operate_on(vm));
         }
     })
+}
+
+pub fn default_debugger_callbacks(bugger: &mut vm::debugger::Bugger, compiler: compile::Compiler) {
+    bugger.callbacks.data.push(Box::new(move |vm, instr| {
+        use std::io;
+        let err = Ok(io::stderr());
+        //te!(vm.write_to(err).map_err(Box::new));
+        te!(vm_debug::write_to(vm, &compiler, err).map_err(Box::new));
+        eprintln!("");
+        eprintln!("");
+        eprintln!("");
+        eprintln!("===== ===== =====");
+        eprintln!("[BUGGER] {} {:?}", vm.instr_addr(), instr);
+        Ok(())
+    }));
 }
 
 pub fn script_call_getret(

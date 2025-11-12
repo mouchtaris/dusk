@@ -22,9 +22,10 @@ let funcs = !sort <(list.0 "- " (xc-lf $obj));
 
 sip (!tee <$obj _.dust.dustlib);
 xc-call $obj ssh::list_hostnames.xs;
-
-!cat
-  <"ena"
-  <"dyn"
-  <(!echo "Tesssssera")
-;
+#
+#!cat
+#  <"ena"
+#  <"dyn"
+#  <(!echo "Tesssssera")
+#;
+#def a = __builtin __lib;

@@ -1,9 +1,9 @@
 use {
     super::{
-        debugger::Bugger as Debugger, ltrace, te, temg, value, Deq, ICode, Job, Result, StringInfo,
-        TryFrom, Value, ValueTypeInfo,
+        debugger::Bugger as Debugger, ltrace, syscall, te, temg, value, Deq, ICode, Job, Result,
+        StringInfo, TryFrom, Value, ValueTypeInfo,
     },
-    std::{borrow::Borrow, fmt, io, mem, result},
+    std::{fmt, io, mem, result},
 };
 
 pub const DEBUG_STACK_SIZE: usize = 45;
@@ -19,6 +19,11 @@ pub struct Vm {
     stack_ptr: usize,
     instr_ptr: usize,
     debugger: Option<Debugger>,
+    /// A stack of currently executing scripts (ICode).
+    /// The stack stores a stack_addr, per each invocation
+    /// of [Self::load_icode], which points to a Value of the stack,
+    /// which is a of type [job::Job]-[job::Buffer]-[job::Buffer::Bytes].
+    scripts_stack: Vec<usize>,
 }
 
 pub struct Stack {
@@ -213,8 +218,19 @@ impl Vm {
 
         Ok(())
     }
+    pub fn frame_size(&self) -> usize {
+        let vm = self;
+        // if sp==fp, stack size is 0, not 1
+        vm.stack_ptr() - vm.frame_ptr()
+    }
+    pub fn return_from_call2(&mut self) -> Result<()> {
+        self.return_from_call(self.frame_size())
+    }
+    #[deprecated(note = "frame_size is fixed from stackp - framep. Use return_from_call2")]
     pub fn return_from_call(&mut self, frame_size: usize) -> Result<()> {
         let vm = self;
+
+        assert_eq!(frame_size, vm.frame_size());
 
         let ret_instr = te!(vm.ret_instr_addr());
         let ret_fp = vm.ret_fp_addr();
@@ -299,32 +315,40 @@ impl Vm {
         te!(self.arg_get_val_mut(argn)).try_mut()
     }
 
-    pub fn push_val<T>(&mut self, src: T) -> Result<()>
+    /// # Returns
+    ///
+    /// `stack_id`: this offset can be used directly with the "frame" interface:
+    /// - [Self::frame_get_val()]
+    /// - [Self::frame_get_val_mut()]
+    /// - [Self::cleanup()]
+    ///
+    /// Assumes enough stack [Self::allocate]d.
+    pub fn push_val<T>(&mut self, src: T) -> Result<usize>
     where
         T: Into<Value>,
     {
         let addr = self.stackp_next();
         te!(self.stack_set(addr, src));
-        Ok(())
+        Ok(addr - self.frame_addr(0))
     }
 
-    pub fn push_null(&mut self) -> Result<()> {
+    pub fn push_null(&mut self) -> Result<usize> {
         self.push_val(())
     }
 
-    pub fn push_lit_str(&mut self, strid: usize) -> Result<()> {
+    pub fn push_lit_str(&mut self, strid: usize) -> Result<usize> {
         self.push_val(value::LitString(strid))
     }
 
     // Pushes an array of all arguments passed to this call
-    pub fn push_args(&mut self) -> Result<()> {
+    pub fn push_args(&mut self) -> Result<usize> {
         self.push_val(value::Array {
             ptr: te!(self.arg_addr(0)),
         })
     }
 
     // Pushes local var #
-    pub fn push_local(&mut self, fp_off: usize) -> Result<()> {
+    pub fn push_local(&mut self, fp_off: usize) -> Result<usize> {
         let val = te!(self.frame_get_val(fp_off)).clone();
         self.push_val(val)
     }
@@ -343,13 +367,44 @@ impl Vm {
         stack.truncate(stack.len() - size);
         *stack_ptr -= size;
         ltrace!(
-            "dealloc: stackp [{}] - {} = {}",
-            stack.len(),
+            "dealloc: -{} len:{} stackp:{}",
             size,
+            stack.len(),
             stack_ptr
         );
     }
 
+    pub fn push_script(&mut self, icode: &ICode) -> Result<()> {
+        use syscall::util::{FramePtr, ValuesVmExt};
+
+        // Push icode as bytes on stack
+        let FramePtr(x) = te!(self.add_tmp_icode(icode));
+        // Translate frame_ptr to global address
+        let x = self.frame_addr(x);
+        ltrace!("Store icode at {x}");
+        // Push
+        self.scripts_stack.push(x);
+
+        Ok(())
+    }
+    pub fn current_script_value(&self) -> Result<&Value> {
+        // Find last script stack-ptr value on the script stack
+        let last_script_sp = *te!(self.scripts_stack.last(), "No script on the stack");
+        let value = te!(self.stack_get_val(last_script_sp));
+        Ok(value)
+    }
+    pub fn current_script_data(&self) -> Result<&[u8]> {
+        let jobid = te!(self.current_script_value());
+        let bytes: &[u8] = te!(self.val_as_bytes(jobid));
+        Ok(bytes)
+    }
+    pub fn pop_script(&mut self) {
+        // Do not ckean up. Assumingly the stack frame management will
+        // get to that eventually.
+        self.scripts_stack.pop();
+    }
+
+    /// # Super public entrypoint
     pub fn eval_icode(&mut self, icode: &ICode) -> Result<()> {
         self.load_icode(&icode)
             .and_then(|_| self.run_instructions(icode))
@@ -379,6 +434,7 @@ impl Vm {
     }
 
     pub fn load_icode(&mut self, icode: &ICode) -> Result<()> {
+        te!(self.push_script(icode));
         for (s, i) in &icode.strings {
             ltrace!("Load literal string {} {}", i.id, s);
             self.add_string(i.clone(), s.clone());
@@ -637,11 +693,37 @@ impl Vm {
         let vm = self;
 
         let val = te!(vm.frame_get_val_mut(fp_off));
+        // based on the predicate that Values are thin pointer-like
+        // types, cloning them and cleaning by the clone yields to the
+        // same results (i.e. clean tables from IDs, ..)
+        let x = val.to_owned();
+
+        // HOWEVER, the values are "cleaned-up" "in-place", which means
+        // the old value must stay there. This is not the place to nullify
+        // values, because some "cleanups" are simple "collects".
+        //
+        //*val = Value::Null(());
+
+        let val = x;
+
+        te!(vm.cleanup_value(val, _cln_name, cln));
+
+        Ok(())
+    }
+
+    pub fn cleanup_value<E>(
+        &mut self,
+        val: Value,
+        _cln_name: &str,
+        cln: impl FnOnce(&mut Job) -> result::Result<(), E>,
+    ) -> Result<()>
+    where
+        result::Result<(), E>: error::IntoResult<super::ErrorKind, ()>,
+    {
+        let vm = self;
+
         match val {
-            &mut Value::Job(value::Job(proc_id)) => {
-                let job: &mut Job = te!(vm.job_table.get_mut(proc_id), "Proc {}", proc_id);
-                te!(cln(job));
-            }
+            Value::Job(value::Job(proc_id)) => te!(cln(te!(vm.get_job_mut(proc_id)))),
             v @ (Value::ArrayView(_)
             | Value::FuncAddr(_)
             | Value::LitString(_)
@@ -675,7 +757,17 @@ impl Vm {
             other => error::temg!("Not a string value: {:?}", other),
         })
     }
+    pub fn val_as_bytes<'a>(&'a self, val: &'a Value) -> Result<&'a [u8]> {
+        let vm = self;
 
+        Ok(match val {
+            &Value::Job(value::Job(job_id)) => match te!(vm.get_job(job_id)) {
+                Job::Buffer(buf) => buf.as_bytes(),
+                other => error::temg!("Not a string job: {:?}", other),
+            },
+            other => te!(self.val_as_str(other), "Not a byte value: {val:?}").as_bytes(),
+        })
+    }
     pub fn add_job<C>(&mut self, child: C) -> usize
     where
         C: Into<Job>,

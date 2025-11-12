@@ -1,7 +1,6 @@
 use {
     super::{value, Job, Result, Value, Vm},
     error::{ldebug, te, temg},
-    std::borrow::Borrow,
 };
 
 pub const SPAWN: usize = usize::MAX;
@@ -11,7 +10,12 @@ pub const BUILTIN: usize = usize::MAX - 2;
 mod argslice;
 mod builtin;
 mod spawn;
-pub use {argslice::argslice, builtin::builtin, spawn::spawn};
+pub mod util;
+pub use {
+    argslice::argslice,
+    builtin::{builtin, BuiltinArgs},
+    spawn::spawn,
+};
 
 /// An addressor function; translates a conceptual index (for example:
 /// an argument index, input redirection index, environment setting index,
@@ -96,21 +100,8 @@ pub struct CallArgs<Value> {
     targt: Value,
     // Current working directory passed at call site
     cwd: Value,
-}
-impl<'v> CallArgs<&'v Value> {
-    /// Collect the values representing argument from the VM stack.
-    ///
-    /// The resulting `Vec` is always `nargs + 1` length.
-    ///
-    /// Before the actual arguments (at index `0`), the number of
-    /// total arguments (`nargs`) is included as a VM [`Value`].
-    /// This is exactly the same source of information as `nargs`,
-    /// and it is only provided in case the `Value` form is prefered.
-    ///
-    pub(self) fn vmargs(&self, vm: &'v Vm) -> Result<Vec<&'v Value>> {
-        let &Self { nargs, .. } = self;
-        (0..=nargs).map(|i| vm.arg_get_val(i)).collect()
-    }
+    // Actual args array
+    args: Vec<Value>,
 }
 
 impl<V> CallArgs<V> {
@@ -124,6 +115,9 @@ impl<V> CallArgs<V> {
         let target: &Value = te!(vm.arg_get_val(nargs + 2));
         let &inp_redir_n: &usize = te!(vm.arg_get(nargs + 3));
         let &nenvs: &usize = te!(vm.arg_get(nargs + 3 + inp_redir_n + 1));
+        let args: Vec<&Value> = te!((0..=nargs)
+            .map(|i| vm.arg_get_val(i))
+            .collect::<Result<_>>());
 
         let call_args = CallArgs {
             nargs,
@@ -132,6 +126,7 @@ impl<V> CallArgs<V> {
             nouts: 0,
             targt: target,
             cwd,
+            args,
         };
         Ok(call_args)
     }
@@ -146,18 +141,19 @@ impl<V> CallArgs<V> {
             nenvs,
             ninps,
             nouts,
+            ref targt,
+            ref cwd,
+            ref args,
             ..
         } = self;
-        let Self { targt, cwd, .. } = self;
-        let targt = targt.to_owned();
-        let cwd = cwd.to_owned();
         CallArgs {
             nargs,
             nenvs,
             ninps,
             nouts,
-            targt: targt,
-            cwd: cwd,
+            targt: targt.to_owned(),
+            cwd: cwd.to_owned(),
+            args: args.iter().map(<_>::to_owned).collect(),
         }
     }
 }

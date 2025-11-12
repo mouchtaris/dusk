@@ -21,7 +21,11 @@ pub trait ScopeRef: Ref<Scope> {
         ScopeApiRef::lookup_by_name(self, name)
     }
 
-    #[deprecated(note = "use lookup_by_name with SymID")]
+    fn lookup_name(&self, info: &SymID) -> Option<&str> {
+        ScopeApiRef::sym_name(self, info)
+    }
+
+    #[deprecated(note = "use lookup_name with SymID")]
     fn symbol_name_from_info_alone(&self, info: &SymInfo) -> Option<&str> {
         ScopeApiRef::sym_name_from_info(self, info)
     }

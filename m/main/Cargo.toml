@@ -55,3 +55,15 @@ path = '../vm'
 [dependencies.vm-debug]
 version = '0.0.1'
 path = '../vm-debug'
+
+[dependencies.code_tools_util]
+optional = true
+version = "0.0.1"
+path = "/home/bob/code_tools/p/code_tools_util"
+
+[features]
+has_code_tools = ["code_tools_util"]
+debug = []
+release = []
+serde_cbor = []
+default = ["has_code_tools"]

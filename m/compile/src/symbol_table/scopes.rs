@@ -76,8 +76,8 @@ macro_rules! invariants {
         let this = $this;
 
         let SymbolTable {
-            scopes,
-            scope_stack,
+            //scopes,
+            //scope_stack,
             ..
         } = &*this;
 

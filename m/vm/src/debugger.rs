@@ -33,6 +33,7 @@ pub struct Bugger {
     pub callbacks: Callbacks,
     recv: Recv,
     in_system_main: bool,
+    skip_system_main: bool,
 }
 
 #[derive(Debug)]
@@ -41,6 +42,12 @@ pub enum Command {
 }
 
 impl Bugger {
+    pub fn set_in_main(&mut self) {
+        self.in_system_main = true
+    }
+    pub fn set_skip_system_main(&mut self, x: bool) {
+        self.skip_system_main = x;
+    }
     pub fn run<I>(&mut self, vm: &mut Vm, instr: I) -> Result<()>
     where
         I: fmt::Debug,
@@ -48,20 +55,21 @@ impl Bugger {
         let Self {
             recv,
             in_system_main,
+            ref skip_system_main,
             ..
         } = self;
 
         let instr_id = vm.instr_addr();
 
-        if !*in_system_main {
+        if !*in_system_main && *skip_system_main {
             if instr_id == 2 {
                 *in_system_main = true;
             }
         } else {
-            te!(recv.recv());
             for cb in &mut self.callbacks.data {
                 te!(cb.as_mut()(vm, &instr));
             }
+            te!(recv.recv());
             //te!(vm.write_to(Ok(io::stderr())).map_err(Box::new));
             //eprintln!("");
             //eprintln!("");
@@ -81,6 +89,7 @@ impl Bugger {
         Ok(Bugger {
             recv,
             in_system_main: false,
+            skip_system_main: true,
             callbacks: <_>::default(),
             receiver_thread: thread::spawn(move || {
                 use io::BufRead;

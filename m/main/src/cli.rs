@@ -15,6 +15,9 @@ pub fn xsi() -> impl Cmd {
         eprintln!("crun         [- | IN_PATH.src] [ARGS...]");
         eprintln!("run          [- | IN_PATH.obj] [ARGS...]");
         eprintln!("link         [- | OUT_PATH.lib] [- | IN_PATH.obj...]     Generated lib files cannot be `run`.");
+        eprintln!("debug-run    [- | IN_PATH.obj] [ARGS...]");
+        eprintln!("debug-call   [- | IN_PATH.obj] FUNC_NAME [ARGS...]");
+        eprintln!("debug-ccall  [- | IN_PATH.src] FUNC_NAME [ARGS...]");
     }
     |mut args| {
         // Reverse args for easier traverse (.pop())
@@ -43,6 +46,9 @@ pub fn xsi() -> impl Cmd {
             Some("crun") => te!(compile_and_run()(args)),
             Some("run") => te!(run()(args)),
             Some("link") => te!(link()(args)),
+            Some("debug-run") => te!(debug_run()(args)),
+            Some("debug-call") => te!(debug_call()(args)),
+            Some("debug-ccall") => te!(debug_compile_and_call()(args)),
             Some("help") => help(),
             other => {
                 help();
@@ -58,6 +64,56 @@ fn args<I: DoubleEndedIterator + ExactSizeIterator>(
     n: usize,
 ) -> impl ExactSizeIterator + DoubleEndedIterator<Item = I::Item> {
     revargs.into_iter().rev().skip(n)
+}
+
+#[cfg(feature = "has_code_tools")]
+pub fn megafront() -> impl Cmd {
+    |revargs| {
+        let args = |n| args(&revargs, n);
+
+        #[derive(Default)]
+        struct Opts<'a> {
+            input_paths: Vec<ast::Path<'a>>,
+            input_scripts: Vec<&'a String>,
+            compile: bool,
+        }
+        let mut opts: Opts = <_>::default();
+        for arg in args(1) {
+            if arg.starts_with("--") {
+                if let Some((opt, val)) = arg.split_once("=") {
+                    match opt {
+                        "--compile" if val != "false" => opts.compile = true,
+                        _ => temg!("Unknown opt: {opt}"),
+                    }
+                }
+            } else {
+                let toks = lex::Lex::new(arg);
+                if let Ok(path) = parse::dust::PathParser::new().parse(toks) {
+                    opts.input_paths.push(path)
+                } else {
+                    opts.input_scripts.push(arg)
+                }
+            }
+        }
+
+        let input_paths = &opts.input_paths[..];
+        let input_scripts = &opts.input_scripts[..];
+
+        let compiler = te!(match (&opts, input_paths, input_scripts,) {
+            (Opts { compile: true, .. }, [], []) => compile_from_input(["-"]),
+            (Opts { compile: true, .. }, [], [input_path]) => compile_file(input_path),
+            (Opts { compile: true, .. }, [], inps @ [base_path, ..]) => {
+                // use the first input path as base
+                let inps = te!(code_tools_util::stx::IterRead::new(
+                    inps.into_iter().map(|x| std::fs::File::open(x))
+                ));
+                compile_input_with_base(inps, base_path)
+            }
+            _ => todo!(),
+        });
+
+        todo!()
+    }
 }
 
 pub fn link() -> impl Cmd {
@@ -84,7 +140,8 @@ pub fn run() -> impl Cmd {
         Ok(te!(run_vm_script(
             &mut te!(make_vm()),
             &te!(read_compiler(input)),
-            args(2)
+            args(2),
+            false
         )))
     }
 }
@@ -98,7 +155,8 @@ pub fn compile_and_run() -> impl Cmd {
         Ok(te!(run_vm_script(
             &mut te!(make_vm()),
             &te!(compile_from_input(input)),
-            args(2)
+            args(2),
+            false
         )))
     }
 }
@@ -117,15 +175,60 @@ pub fn compile_and_call() -> impl Cmd {
     }
 }
 
+pub fn debug_compile_and_call() -> impl Cmd {
+    |revargs| {
+        let args = |n| args(&revargs, n);
+
+        te!(make_vm_call2(
+            &mut te!(make_vm()),
+            te!(compile_from_input(args(1))),
+            te!(args(2).next(), "Missing func name"),
+            args(3).rev(),
+            true,
+        ));
+        Ok(())
+    }
+}
+
+pub fn debug_run() -> impl Cmd {
+    |revargs| {
+        let args = |n| args(&revargs, n);
+
+        let input = te!(args_get_input(args(1)));
+
+        Ok(te!(run_vm_script(
+            &mut te!(make_vm()),
+            &te!(read_compiler(input)),
+            args(2),
+            true
+        )))
+    }
+}
+
+pub fn debug_call() -> impl Cmd {
+    |revargs| {
+        let args = |n| args(&revargs, n);
+
+        te!(make_vm_call2(
+            &mut te!(make_vm()),
+            te!(read_compiler(te!(args_get_input(args(1))))),
+            te!(args(2).next(), "Missing func name"),
+            args(3).rev(),
+            true,
+        ));
+        Ok(())
+    }
+}
+
 pub fn dump() -> impl Cmd {
     |args| {
         let args = |n| args.iter().rev().skip(n);
 
         let _input = te!(args_get_input(args(1)));
-        let mut input = args(1);
+        let input = args(1);
         let output = te!(args_get_output(args(2)));
 
-        let icode = te!(compile_file(input.next().expect("input file path")));
+        let icode = te!(compile_from_input(input));
 
         use show::Show;
         te!(icode.write_to(Ok(output)));

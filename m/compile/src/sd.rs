@@ -1,6 +1,6 @@
 use super::{
     sym::{Address, LitType, Literal, Local, Typ},
-    te, Compiler, SymInfo, SymbolTable,
+    te, Compiler, SymInfo,
 };
 
 buf::sd_struct![SymInfo, typ, scope_id];

@@ -1,4 +1,4 @@
-use super::{te, Result, TryFrom};
+use super::{te, temg, Result, TryFrom};
 
 macro_rules! either {
     ($($t:tt)*) => {
@@ -48,6 +48,12 @@ impl Value {
         match self {
             Self::Null(_) => true,
             _ => false,
+        }
+    }
+    pub fn as_number(&self) -> Result<usize> {
+        match self {
+            &Self::Natural(x) => Ok(x),
+            _ => temg!("Not a natural value: {:?}", self),
         }
     }
 

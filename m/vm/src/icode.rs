@@ -11,7 +11,7 @@ fn _use() {
 pub type Instrs = Deq<Instr>;
 pub type Strings = Map<String, StringInfo>;
 
-#[derive(Default, Debug)]
+#[derive(Default, Debug, Clone)]
 pub struct ICode {
     pub instructions: Instrs,
     pub strings: Strings,
@@ -58,19 +58,33 @@ impl Instr {
             &Self::Allocate { size } => {
                 vm.allocate(size);
             }
-            &Self::PushNull => te!(vm.push_null()),
-            &Self::PushNat(id) => te!(vm.push_val(id)),
-            &Self::PushStr(id) => te!(vm.push_lit_str(id)),
+            &Self::PushNull => {
+                te!(vm.push_null());
+            }
+            &Self::PushNat(id) => {
+                te!(vm.push_val(id));
+            }
+            &Self::PushStr(id) => {
+                te!(vm.push_lit_str(id));
+            }
             &Self::Jump { addr } => vm.jump(addr),
             &Self::Syscall(syscall::SPAWN) => te!(syscall::spawn(vm)),
             &Self::Syscall(syscall::ARG_SLICE) => te!(syscall::argslice(vm)),
             &Self::Syscall(_) => te!(syscall::builtin(vm)),
             &Self::Return(frame_size) => te!(vm.return_from_call(frame_size)),
             &Self::RetLocal(fp_off) => te!(vm.set_ret_val_from_local(fp_off)),
-            &Self::PushArgs => te!(vm.push_args()),
-            &Self::PushLocal(fp_off) => te!(vm.push_local(fp_off)),
-            &Self::PushFuncAddr(addr) => te!(vm.push_val(value::FuncAddr(addr))),
-            &Self::PushSysCall(id) => te!(vm.push_val(value::SysCallId(id))),
+            &Self::PushArgs => {
+                te!(vm.push_args());
+            }
+            &Self::PushLocal(fp_off) => {
+                te!(vm.push_local(fp_off));
+            }
+            &Self::PushFuncAddr(addr) => {
+                te!(vm.push_val(value::FuncAddr(addr)));
+            }
+            &Self::PushSysCall(id) => {
+                te!(vm.push_val(value::SysCallId(id)));
+            }
             &Self::Call(_) => {
                 te!(vm.prepare_call());
                 let addr = te!(vm.call_target_func_addr());

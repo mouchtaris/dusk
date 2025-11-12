@@ -181,15 +181,18 @@ pub fn spawn(vm: &mut Vm) -> Result<()> {
     vm.allocate(1);
     let val: Value = value::Job(job_id).into();
     ldebug!("put {:?} to {}", val, vm.stackp());
-    te!(vm.wait_debugger(format_args!("{:?}", val)));
+    te!(vm.wait_debugger(format_args!("Spawn ---- PushVal: {:?}", val)));
     // - Push the local
     te!(vm.push_val(val));
+    te!(vm.wait_debugger(format_args!("Spawn ---- SetRetVal")));
     // - Set-ret-val from the local
     te!(vm.set_ret_val_from_local(0));
-    // - Return from call
-    te!(vm.return_from_call(0));
+    assert_eq!(vm.frame_size(), 1);
+    te!(vm.wait_debugger(format_args!("Spawn ---- Return {}", vm.frame_size())));
     // - Dealloc the 1
     vm.dealloc(1);
+    // - Return from call
+    te!(vm.return_from_call2());
 
     Ok(())
 }
