@@ -1,6 +1,6 @@
 use super::*;
 
-#[derive(Default, Debug)]
+#[derive(Default, Debug, Clone)]
 pub struct Scope {
     sym_info: Info,
     sym_indx: Indx,

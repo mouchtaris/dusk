@@ -1,6 +1,6 @@
 use super::*;
 
-#[derive(Default, Debug)]
+#[derive(Default, Debug, Clone)]
 pub struct SymbolTable {
     scopes: Scopes,
     scope_stack: ScopeStack,

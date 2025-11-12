@@ -51,7 +51,7 @@ pub use {
     symbol_table::{find_func_name, ScopeMut, ScopeRef, SymInfo, SymbolTable, SymbolTableExt},
 };
 
-#[derive(Default, Debug)]
+#[derive(Default, Debug, Clone)]
 pub struct Compiler {
     pub icode: vm::ICode,
     pub sym_table: SymbolTable,
