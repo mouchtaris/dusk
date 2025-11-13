@@ -1,0 +1,91 @@
+# vim: et ft=config ts=4 sw=4
+
+def build =
+  !cargo build --bin xsim;
+
+build;
+def xsim =
+    ./target/debug/xsim $args;
+def xsim- =
+    ./target/debug/xsim <$args[0] $args[1;];
+
+def test_script = r###"
+    def xsim =
+        ./target/debug/xsim $args;
+    def xsim- =
+        ./target/debug/xsim <$args[0] $args[1;];
+
+    ## Run inline script
+    #
+    xsim "!echo hi0;";
+
+    ## Run many inline scripts
+    #
+    xsim "!echo hi1;" "!echo hi2;";
+
+    ## Run many inline scripts
+    #
+    xsim "!echo hi1;" "!echo hi2;";
+
+    ## Run script from stdin
+    #
+    xsim- "!echo hi3;" --compile=;
+
+    ## Run script from stdin and inline
+    #
+    xsim- "!echo hi4;" - "!echo hi5;";
+
+    ## Script order matters
+    #
+    xsim- "!echo hi7;" "!echo hi6;" -;
+
+    ## Compile to obj
+    #
+    let obj = xsim- "!echo hi8;" --compile= --dump_to=;
+
+    ## Run obj from stdin
+    #
+    xsim- $obj;
+
+    ## Compile to obj file
+    #
+    xsim --compile= "!echo hi9;" --dump_to=_/spec.xsim_xsi_megafront_walkthrough-09.dustlib;
+
+    ## Run from obj file
+    #
+    xsim ./_/spec.xsim_xsi_megafront_walkthrough-09.dustlib;
+"###;
+
+let expected = r#"hi0
+hi1
+hi2
+hi1
+hi2
+hi3
+hi4
+hi5
+hi6
+hi7
+hi8
+hi9
+"#;
+let actual = ./target/debug/xsim $test_script;
+
+!echo Expected:;
+!xxd <$expected;
+
+!echo Actual:;
+!xxd <$actual;
+
+!test $actual "=" $expected;
+
+!echo OK;
+
+## ## Dump text from obj file
+## #
+## xsim ./_/spec.xsim_xsi_megafront_walkthrough-09.dustlib
+##   --dump_text_to=;
+##
+## ## List functions from scripts
+## #
+## xsim --list_funcs_to= "def a = 0; def b = 0;";

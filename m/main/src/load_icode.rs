@@ -98,7 +98,7 @@ pub fn run_vm_script<T: ExactSizeIterator>(
     vm: &mut vm::Vm,
     cmp @ compile::Compiler { icode, .. }: &compile::Compiler,
     args: impl IntoIterator<IntoIter = T, Item = T::Item>,
-    debug: bool,
+    (debug, do_sys_main): (bool, bool),
 ) -> Result<()>
 where
     T::Item: Into<String>,
@@ -109,6 +109,7 @@ where
         let mut cmp = cmp.to_owned();
         let icode = std::mem::take(&mut cmp.icode);
         default_debugger_callbacks(&mut bugger, cmp);
+        bugger.set_skip_system_main(!do_sys_main);
         te!(te!(te!(vm.debug_icode(&icode, bugger))
             .receiver_thread
             .join()

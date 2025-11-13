@@ -23,30 +23,18 @@
 ##   #debug-call - main;
 ##   debug-run;
 
-## ## ----------------------------------------------------------------------------
-## # xsi ccall tast entr
-## def entr = !entr
-##   <(!cat
-##     <(!git ls-files)
-##     <(!lsd -1 tast)
-##   )
-##   -c cargo run --bin xsi -- crun tast;
-##
+## ----------------------------------------------------------------------------
+# xsi ccall tast entr
+def entr = !entr
+  <(!cat
+    <(!git ls-files)
+    <(!lsd -1 tast)
+  )
+  -c cargo run --bin xsi -- crun tast
+;
+
 ## ----------------------------------------------------------------------------
 #
-def xsi = {
-  let cwd=$args[0];
-  ./target/debug/xsi
-    @$cwd <$args[1] RUST_BACKTRACE=1
-    $args[2;]
-}
-xsi . "" mega
-  --compile=yes
-  r#"
-    !echo Yanni;
-  "#
-  r#"
-    !echo IOANNI;
-  "#
-  ./tost.dust
-;
+include ./spec/xsim_xsi_megafront_walkthrough;
+
+xsim ./tost.dust --compile= --debug= --debug-do-system-main=;

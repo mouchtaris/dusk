@@ -1,32 +1,45 @@
 use super::*;
-use collection::Recollect;
 use error::temg;
 
-pub trait Cmd: Fn(Vec<String>) -> Result<()> {}
+pub trait Cmd: Fn(Vec<String>) -> Result<()> {
+    fn revargs(&self) -> impl Cmd {
+        use collection::Recollect;
+        move |args| self(args.reversed())
+    }
+}
 impl<S: Fn(Vec<String>) -> Result<()>> Cmd for S {}
 
+fn xsi_help() {
+    eprintln!(
+        r#"
+compile      [- | IN_PATH.src] [- | OUT_PATH.obj]
+decompile    [- | IN_PATH.obj] [- | OUT_PATH.txt]
+dump         [- | IN_PATH.obj] [- | OUT_PATH.txt]
+call         [- | IN_PATH.obj] FUNC_NAME [ARGS...]
+ccall        [- | IN_PATH.src] FUNC_NAME [ARGS...]
+crun         [- | IN_PATH.src] [ARGS...]
+run          [- | IN_PATH.obj] [ARGS...]
+link         [- | OUT_PATH.lib] [- | IN_PATH.obj...]     Generated lib files cannot be `run`.
+debug-run    [- | IN_PATH.obj] [ARGS...]
+debug-call   [- | IN_PATH.obj] FUNC_NAME [ARGS...]
+debug-ccall  [- | IN_PATH.src] FUNC_NAME [ARGS...]
+
+
+mega ::
+
+  --compile!=false          :: compile inputs as text code
+  --debug!=false            :: enable debugger when running
+  --debug-do-system-main!=false :: do not skip system main init when debugging
+  --call=func_addr          :: call function name instead of running script body
+  --dump_to=dest_path       :: dump compiled object to dest_path (- stdout)
+  --list_funcs_to=dest_path :: write null-separated-list of global functions to dest_path
+
+  input : [ path/script , ... ]
+  -- [ script-args ... ]
+"#
+    )
+}
 pub fn xsi() -> impl Cmd {
-    fn help() {
-        eprintln!("compile      [- | IN_PATH.src] [- | OUT_PATH.obj]");
-        eprintln!("decompile    [- | IN_PATH.obj] [- | OUT_PATH.txt]");
-        eprintln!("dump         [- | IN_PATH.obj] [- | OUT_PATH.txt]");
-        eprintln!("call         [- | IN_PATH.obj] FUNC_NAME [ARGS...]");
-        eprintln!("ccall        [- | IN_PATH.src] FUNC_NAME [ARGS...]");
-        eprintln!("crun         [- | IN_PATH.src] [ARGS...]");
-        eprintln!("run          [- | IN_PATH.obj] [ARGS...]");
-        eprintln!("link         [- | OUT_PATH.lib] [- | IN_PATH.obj...]     Generated lib files cannot be `run`.");
-        eprintln!("debug-run    [- | IN_PATH.obj] [ARGS...]");
-        eprintln!("debug-call   [- | IN_PATH.obj] FUNC_NAME [ARGS...]");
-        eprintln!("debug-ccall  [- | IN_PATH.src] FUNC_NAME [ARGS...]");
-        eprintln!("");
-        eprintln!("");
-        eprintln!("mega ::");
-        eprintln!("");
-        eprintln!("     --compile!=false    :: compile inputs as text code");
-        eprintln!("");
-        eprintln!("  input : [ path/script , ... ]");
-        eprintln!("");
-    }
     |mut args| {
         // Reverse args for easier traverse (.pop())
         args.reverse();
@@ -44,8 +57,8 @@ pub fn xsi() -> impl Cmd {
             // <3
             // *ALSO* they are still used by traditional utils, so they need to handle
             // actual CLI themselves as well.
-            Some("compile") => te!(compile()(args.reversed())),
-            Some("call") => te!(call()(args.reversed())),
+            Some("compile") => te!(compile().revargs()(args)),
+            Some("call") => te!(call().revargs()(args)),
             // ---- New CLI commands ----
             // These are new implementations for front-end.
             Some("decompile") => te!(decompile()(args)),
@@ -58,9 +71,9 @@ pub fn xsi() -> impl Cmd {
             Some("debug-call") => te!(debug_call()(args)),
             Some("debug-ccall") => te!(debug_compile_and_call()(args)),
             Some("mega") => te!(megafront()(args)),
-            Some("help") => help(),
+            Some("help") => xsi_help(),
             other => {
-                help();
+                xsi_help();
                 temg!("Unknown command: {other:?}")
             }
         }
@@ -87,9 +100,11 @@ pub fn megafront() -> impl Cmd {
             input_order: Vec<u8>,
             compile: bool,
             debug: bool,
+            debug_do_system_main: bool,
             call: Option<&'a str>,
             dump_to: Option<&'a str>,
-            list_func: Option<&'a str>,
+            dump_text_to: Option<&'a str>,
+            list_funcs_to: Option<&'a str>,
             rest_args: Option<usize>,
         }
         let mut opts: Opts = Opts::new();
@@ -122,9 +137,13 @@ pub fn megafront() -> impl Cmd {
             match arg.split_once('=') {
                 Some(("--compile", val)) if val != "false" => opts.compile = true,
                 Some(("--debug", val)) if val != "false" => opts.debug = true,
+                Some(("--debug-do-system-main", val)) if val != "false" => {
+                    opts.debug_do_system_main = true
+                }
                 Some(("--call", val)) => opts.call = Some(val),
                 Some(("--dump_to", val)) => opts.dump_to = Some(val),
-                Some(("--list_func", val)) => opts.list_func = Some(val),
+                Some(("--list_funcs_to", val)) => opts.list_funcs_to = Some(val),
+                Some(("--dump_text_to", val)) => opts.dump_text_to = Some(val),
                 Some((opt, _)) if opt.starts_with("--") => temg!("Unknown opt: {opt}"),
                 None if arg == "--" => opts.rest_args = Some(i + 1),
                 _ => {
@@ -142,10 +161,30 @@ pub fn megafront() -> impl Cmd {
         let input_paths = &opts.input_paths[..];
         let input_scripts = &opts.input_scripts[..];
 
-        error::ldebug!("megafront configured: {opts:?}");
+        error::ldebug!("megafront configured:\n{revargs:#?}\n{opts:#?}");
+
+        use std::fs::File;
+        use std::io::stdin;
+        use std::io::stdout;
+        use std::io::Cursor;
+
+        type Inp = io::Result<Box<dyn io::Read>>;
+        fn read_script(x: impl AsRef<str>) -> Inp {
+            let x = x.as_ref();
+            Ok(if x == "-" {
+                Box::new(stdin())
+            } else {
+                Box::new(Cursor::new(x.as_bytes().to_owned()))
+            })
+        }
+        fn read_file(x: impl AsRef<str>) -> Inp {
+            Ok(Box::new(File::open(x.as_ref())?))
+        }
+
+        // ---- Actual code action begins here ----
 
         let compiler = &te!(match (&opts, input_paths, input_scripts,) {
-            (_, [], []) => compile_from_input(["-"]),
+            (Opts { compile: true, .. }, [], []) => compile_from_input(["-"]),
             (Opts { compile: true, .. }, [input_path], []) => compile_file(input_path),
             #[cfg(feature = "has_code_tools")]
             (
@@ -154,19 +193,10 @@ pub fn megafront() -> impl Cmd {
                     input_order,
                     ..
                 },
-                inps @ [base_path, ..],
+                files,
                 scripts,
             ) => {
-                type Inp = io::Result<Box<dyn io::Read>>;
-                fn read_script(x: impl AsRef<str>) -> Inp {
-                    Ok(Box::new(code_tools_util::io_ext::from_iter(
-                        x.as_ref().as_bytes().to_owned().into_iter(),
-                    )))
-                }
-                fn read_file(x: impl AsRef<str>) -> Inp {
-                    Ok(Box::new(File::open(x.as_ref())?))
-                }
-                let mut inps0 = inps.into_iter().map(read_file);
+                let mut inps0 = files.into_iter().map(read_file);
                 let mut inps1 = scripts.into_iter().map(read_script);
                 let inps = input_order.into_iter().flat_map(|&x| match x {
                     0 => inps0.next(),
@@ -176,20 +206,23 @@ pub fn megafront() -> impl Cmd {
                 let inps = te!(code_tools_util::stx::IterRead::new(inps));
 
                 // use the first input path as base
+                let base_path = files.first().map(|&s| s).unwrap_or("./");
                 compile_input_with_base(inps, base_path)
             }
             #[cfg(feature = "has_code_tools")]
-            (_, [], scripts) => {
-                let inps = te!(code_tools_util::stx::IterRead::new(
-                    scripts.into_iter().map(|x| Ok(x.as_bytes()))
-                ));
-                compile_input_with_base(inps, "./")
-            }
+            (_, [], scripts @ [_, ..]) => compile_input_with_base(
+                te!(code_tools_util::stx::IterRead::new(
+                    scripts.into_iter().map(read_script)
+                )),
+                "./",
+            ),
+            #[cfg(feature = "has_code_tools")]
+            (_, paths @ [_, ..], []) => read_compiler(te!(code_tools_util::stx::IterRead::new(
+                paths.into_iter().map(read_file)
+            ))),
+            (_, [], []) => read_compiler(stdin()),
             _ => todo!("{opts:?}"),
         });
-
-        use std::fs::File;
-        use std::io::stdout;
 
         fn try_dest(
             opt: &Option<&str>,
@@ -207,27 +240,42 @@ pub fn megafront() -> impl Cmd {
             Ok(false)
         }
 
-        if te!(try_dest(&opts.dump_to, |dest| compiler.write_out(dest)))
-            || te!(try_dest(&opts.list_func, |dest| Ok({
-                let mut sep = "";
-                for func in list_func(&compiler) {
-                    write!(dest, "{sep}{func}")?;
-                    sep = "\x00";
-                }
-            })))
-        {
+        let dump_to = te!(try_dest(&opts.dump_to, |dest| compiler.write_out(dest)));
+        let dump_text_to = te!(try_dest(&opts.dump_text_to, |dest| show::Show::write_to(
+            compiler,
+            Ok(dest)
+        )));
+        let list_funcs_to = te!(try_dest(&opts.list_funcs_to, |dest| Ok({
+            let mut sep = "";
+            for func in list_func(&compiler) {
+                write!(dest, "{sep}{func}")?;
+                sep = "\x00";
+            }
+        })));
+
+        if dump_to || dump_text_to || list_funcs_to {
             return Ok(());
         }
 
         let vm: &mut vm::Vm = &mut te!(make_vm());
         let cmp: &compile::Compiler = compiler;
         let revargs = opts.rest_args(&revargs[..]).rev();
-        let debug: bool = opts.debug;
 
         Ok(if let Some(func_addr) = opts.call {
-            te!(make_vm_call2(vm, cmp.to_owned(), func_addr, revargs, debug))
+            te!(make_vm_call2(
+                vm,
+                cmp.to_owned(),
+                func_addr,
+                revargs,
+                opts.debug
+            ))
         } else {
-            te!(run_vm_script(vm, cmp, revargs, debug))
+            te!(run_vm_script(
+                vm,
+                cmp,
+                revargs,
+                (opts.debug, opts.debug_do_system_main)
+            ))
         })
     }
 }
@@ -257,7 +305,7 @@ pub fn run() -> impl Cmd {
             &mut te!(make_vm()),
             &te!(read_compiler(input)),
             args(2),
-            false
+            (false, false)
         )))
     }
 }
@@ -272,7 +320,7 @@ pub fn compile_and_run() -> impl Cmd {
             &mut te!(make_vm()),
             &te!(compile_from_input(input)),
             args(2),
-            false
+            (false, false)
         )))
     }
 }
@@ -316,7 +364,7 @@ pub fn debug_run() -> impl Cmd {
             &mut te!(make_vm()),
             &te!(read_compiler(input)),
             args(2),
-            true
+            (true, false)
         )))
     }
 }
