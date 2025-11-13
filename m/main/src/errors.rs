@@ -28,15 +28,16 @@ fn show_trace(trace: error::Trace) {
     eprintln!("Source trace ({}):", trace.len());
     for (f, l, cs) in trace {
         let _ = (f, l);
+        eprintln!(" - {f}:{l}");
         for c in cs {
-            eprintln!(" - {}", c);
+            eprintln!("   -> {c}");
         }
     }
 }
 
 fn show_message<S: fmt::Display>(trace: error::Trace, msg: S) {
-    show_trace(trace);
     eprintln!("{}", msg);
+    show_trace(trace);
 }
 
 fn show_error(err: Error) {
@@ -46,6 +47,9 @@ fn show_error(err: Error) {
         ErrorKind::Compile(err) => show_compile_error(err),
         ErrorKind::Parse(err) => show_parse_error(err),
         ErrorKind::Io(io) => show_message(trace, format_args!("{io:?}")),
+        ErrorKind::Vm(err) => show_message(trace, format_args!("{err:?}")),
+        kind @ ErrorKind::None(()) => eprintln!("{:?}", Error { kind, trace }),
+        //ErrorKind::None(()) => show_message(trace, format_args!("None Option")),
         other => panic!("{:?}", other),
     }
 }
@@ -192,7 +196,15 @@ where
     ctx.iter().enumerate().for_each(|(i, line)| {
         color(
             249 + i as u8,
-            format_args!(" {:6} |  {}", line_count - CTX_LEN + i, line),
+            format_args!(
+                " {:6} |  {}",
+                if line_count >= CTX_LEN - 1 {
+                    line_count - CTX_LEN + i
+                } else {
+                    0
+                },
+                line
+            ),
         )
     });
 

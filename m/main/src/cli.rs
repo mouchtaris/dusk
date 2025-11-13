@@ -18,6 +18,14 @@ pub fn xsi() -> impl Cmd {
         eprintln!("debug-run    [- | IN_PATH.obj] [ARGS...]");
         eprintln!("debug-call   [- | IN_PATH.obj] FUNC_NAME [ARGS...]");
         eprintln!("debug-ccall  [- | IN_PATH.src] FUNC_NAME [ARGS...]");
+        eprintln!("");
+        eprintln!("");
+        eprintln!("mega ::");
+        eprintln!("");
+        eprintln!("     --compile!=false    :: compile inputs as text code");
+        eprintln!("");
+        eprintln!("  input : [ path/script , ... ]");
+        eprintln!("");
     }
     |mut args| {
         // Reverse args for easier traverse (.pop())
@@ -49,6 +57,7 @@ pub fn xsi() -> impl Cmd {
             Some("debug-run") => te!(debug_run()(args)),
             Some("debug-call") => te!(debug_call()(args)),
             Some("debug-ccall") => te!(debug_compile_and_call()(args)),
+            Some("mega") => te!(megafront()(args)),
             Some("help") => help(),
             other => {
                 help();
@@ -66,32 +75,66 @@ fn args<I: DoubleEndedIterator + ExactSizeIterator>(
     revargs.into_iter().rev().skip(n)
 }
 
-#[cfg(feature = "has_code_tools")]
 pub fn megafront() -> impl Cmd {
     |revargs| {
-        let args = |n| args(&revargs, n);
+        let args = |n| args(&revargs, n).map(String::as_str);
 
-        #[derive(Default)]
+        #[derive(Default, Debug)]
         struct Opts<'a> {
-            input_paths: Vec<ast::Path<'a>>,
-            input_scripts: Vec<&'a String>,
+            input_paths: Vec<&'a str>,
+            input_scripts: Vec<&'a str>,
+            /// 0 for next path, 1 for next script
+            input_order: Vec<u8>,
             compile: bool,
+            debug: bool,
+            call: Option<&'a str>,
+            dump_to: Option<&'a str>,
+            list_func: Option<&'a str>,
+            rest_args: Option<usize>,
         }
-        let mut opts: Opts = <_>::default();
-        for arg in args(1) {
-            if arg.starts_with("--") {
-                if let Some((opt, val)) = arg.split_once("=") {
-                    match opt {
-                        "--compile" if val != "false" => opts.compile = true,
-                        _ => temg!("Unknown opt: {opt}"),
+        let mut opts: Opts = Opts::new();
+        impl<'a> Opts<'a> {
+            pub fn new() -> Self {
+                Self { ..<_>::default() }
+            }
+            pub fn rest_args(
+                &self,
+                revargs: &'a [String],
+            ) -> impl ExactSizeIterator + DoubleEndedIterator<Item = &'a str> {
+                let Self { rest_args, .. } = self;
+                let start_at = rest_args.unwrap_or(revargs.len());
+                self::args(revargs, start_at).map(String::as_str)
+            }
+        }
+
+        fn as_path(s: &str) -> Option<ast::Path> {
+            let tokens = lex::Lex::new(s);
+            parse::dust::PathParser::new().parse(tokens).ok()
+        }
+
+        for (i, arg) in args(1).enumerate() {
+            let i = i + 1;
+
+            if opts.rest_args.is_some() {
+                break;
+            }
+
+            match arg.split_once('=') {
+                Some(("--compile", val)) if val != "false" => opts.compile = true,
+                Some(("--debug", val)) if val != "false" => opts.debug = true,
+                Some(("--call", val)) => opts.call = Some(val),
+                Some(("--dump_to", val)) => opts.dump_to = Some(val),
+                Some(("--list_func", val)) => opts.list_func = Some(val),
+                Some((opt, _)) if opt.starts_with("--") => temg!("Unknown opt: {opt}"),
+                None if arg == "--" => opts.rest_args = Some(i + 1),
+                _ => {
+                    if let Some(_) = as_path(arg) {
+                        opts.input_paths.push(arg);
+                        opts.input_order.push(0);
+                    } else {
+                        opts.input_scripts.push(arg);
+                        opts.input_order.push(1);
                     }
-                }
-            } else {
-                let toks = lex::Lex::new(arg);
-                if let Ok(path) = parse::dust::PathParser::new().parse(toks) {
-                    opts.input_paths.push(path)
-                } else {
-                    opts.input_scripts.push(arg)
                 }
             }
         }
@@ -99,20 +142,93 @@ pub fn megafront() -> impl Cmd {
         let input_paths = &opts.input_paths[..];
         let input_scripts = &opts.input_scripts[..];
 
-        let compiler = te!(match (&opts, input_paths, input_scripts,) {
-            (Opts { compile: true, .. }, [], []) => compile_from_input(["-"]),
-            (Opts { compile: true, .. }, [], [input_path]) => compile_file(input_path),
-            (Opts { compile: true, .. }, [], inps @ [base_path, ..]) => {
+        error::ldebug!("megafront configured: {opts:?}");
+
+        let compiler = &te!(match (&opts, input_paths, input_scripts,) {
+            (_, [], []) => compile_from_input(["-"]),
+            (Opts { compile: true, .. }, [input_path], []) => compile_file(input_path),
+            #[cfg(feature = "has_code_tools")]
+            (
+                Opts {
+                    compile: true,
+                    input_order,
+                    ..
+                },
+                inps @ [base_path, ..],
+                scripts,
+            ) => {
+                type Inp = io::Result<Box<dyn io::Read>>;
+                fn read_script(x: impl AsRef<str>) -> Inp {
+                    Ok(Box::new(code_tools_util::io_ext::from_iter(
+                        x.as_ref().as_bytes().to_owned().into_iter(),
+                    )))
+                }
+                fn read_file(x: impl AsRef<str>) -> Inp {
+                    Ok(Box::new(File::open(x.as_ref())?))
+                }
+                let mut inps0 = inps.into_iter().map(read_file);
+                let mut inps1 = scripts.into_iter().map(read_script);
+                let inps = input_order.into_iter().flat_map(|&x| match x {
+                    0 => inps0.next(),
+                    _ => inps1.next(),
+                });
+
+                let inps = te!(code_tools_util::stx::IterRead::new(inps));
+
                 // use the first input path as base
-                let inps = te!(code_tools_util::stx::IterRead::new(
-                    inps.into_iter().map(|x| std::fs::File::open(x))
-                ));
                 compile_input_with_base(inps, base_path)
             }
-            _ => todo!(),
+            #[cfg(feature = "has_code_tools")]
+            (_, [], scripts) => {
+                let inps = te!(code_tools_util::stx::IterRead::new(
+                    scripts.into_iter().map(|x| Ok(x.as_bytes()))
+                ));
+                compile_input_with_base(inps, "./")
+            }
+            _ => todo!("{opts:?}"),
         });
 
-        todo!()
+        use std::fs::File;
+        use std::io::stdout;
+
+        fn try_dest(
+            opt: &Option<&str>,
+            func: impl FnOnce(&mut &mut dyn io::Write) -> io::Result<()>,
+        ) -> Result<bool> {
+            if let Some(dest) = opt {
+                let mut out: &mut dyn io::Write = if dest.is_empty() {
+                    &mut stdout()
+                } else {
+                    &mut te!(File::create(dest))
+                };
+                te!(func(&mut out));
+                return Ok(true);
+            }
+            Ok(false)
+        }
+
+        if te!(try_dest(&opts.dump_to, |dest| compiler.write_out(dest)))
+            || te!(try_dest(&opts.list_func, |dest| Ok({
+                let mut sep = "";
+                for func in list_func(&compiler) {
+                    write!(dest, "{sep}{func}")?;
+                    sep = "\x00";
+                }
+            })))
+        {
+            return Ok(());
+        }
+
+        let vm: &mut vm::Vm = &mut te!(make_vm());
+        let cmp: &compile::Compiler = compiler;
+        let revargs = opts.rest_args(&revargs[..]).rev();
+        let debug: bool = opts.debug;
+
+        Ok(if let Some(func_addr) = opts.call {
+            te!(make_vm_call2(vm, cmp.to_owned(), func_addr, revargs, debug))
+        } else {
+            te!(run_vm_script(vm, cmp, revargs, debug))
+        })
     }
 }
 
@@ -304,15 +420,13 @@ pub fn call() -> impl Cmd {
             let [source_mod, target_mod] = mods;
 
             match () {
-                _ if target_mod == source_mod => {}
                 _ if target_mod > source_mod => {
                     std::process::exit(0);
                 }
                 _ => {
-                    idxs.sort();
                     let [j, i] = idxs;
-                    args.swap_remove(i);
-                    args.swap_remove(j);
+                    args.remove(j);
+                    args.remove(i);
                 }
             }
 
