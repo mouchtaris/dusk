@@ -260,9 +260,9 @@ impl fmt::Debug for Local {
             types,
         } = self;
         let alias = if *is_alias { " alias" } else { "" };
-        write!(f, "${}{}: ", fp_off, alias)?;
+        write!(f, "${}{} ", fp_off, alias)?;
         for typ in types {
-            write!(f, "{:?}", typ)?;
+            write!(f, "::({:?})", typ)?;
         }
         Ok(())
     }
@@ -279,7 +279,7 @@ impl fmt::Debug for Address {
 impl fmt::Debug for Literal {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let Self { id, lit_type } = self;
-        write!(f, "{:?}({})", lit_type, id)?;
+        write!(f, "{:?}#{}", lit_type, id)?;
         Ok(())
     }
 }

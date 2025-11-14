@@ -377,13 +377,15 @@ impl Vm {
     pub fn push_script(&mut self, icode: &ICode) -> Result<()> {
         use syscall::util::{FramePtr, ValuesVmExt};
 
-        // Push icode as bytes on stack
-        let FramePtr(x) = te!(self.add_tmp_icode(icode));
-        // Translate frame_ptr to global address
-        let x = self.frame_addr(x);
-        ltrace!("Store icode at {x}");
-        // Push
-        self.scripts_stack.push(x);
+        log::warn!("Not pushing ICODE");
+
+        // // Push icode as bytes on stack
+        // let FramePtr(x) = te!(self.add_tmp_icode(icode));
+        // // Translate frame_ptr to global address
+        // let x = self.frame_addr(x);
+        // ltrace!("Store icode at {x}");
+        // // Push
+        // self.scripts_stack.push(x);
 
         Ok(())
     }
@@ -452,6 +454,7 @@ impl Vm {
             let success = instruction.operate_on(vm);
             te!(success);
         }
+        ltrace!("run_instructions: done");
         Ok(())
     }
 

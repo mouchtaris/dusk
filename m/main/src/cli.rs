@@ -99,6 +99,7 @@ pub fn megafront() -> impl Cmd {
             /// 0 for next path, 1 for next script
             input_order: Vec<u8>,
             compile: bool,
+            also_run: bool,
             debug: bool,
             debug_do_system_main: bool,
             call: Option<&'a str>,
@@ -136,6 +137,7 @@ pub fn megafront() -> impl Cmd {
 
             match arg.split_once('=') {
                 Some(("--compile", val)) if val != "false" => opts.compile = true,
+                Some(("--also_run", val)) if val != "false" => opts.also_run = true,
                 Some(("--debug", val)) if val != "false" => opts.debug = true,
                 Some(("--debug-do-system-main", val)) if val != "false" => {
                     opts.debug_do_system_main = true
@@ -144,17 +146,26 @@ pub fn megafront() -> impl Cmd {
                 Some(("--dump_to", val)) => opts.dump_to = Some(val),
                 Some(("--list_funcs_to", val)) => opts.list_funcs_to = Some(val),
                 Some(("--dump_text_to", val)) => opts.dump_text_to = Some(val),
-                Some((opt, _)) if opt.starts_with("--") => temg!("Unknown opt: {opt}"),
-                None if arg == "--" => opts.rest_args = Some(i + 1),
-                _ => {
-                    if let Some(_) = as_path(arg) {
-                        opts.input_paths.push(arg);
-                        opts.input_order.push(0);
-                    } else {
-                        opts.input_scripts.push(arg);
-                        opts.input_order.push(1);
-                    }
+                Some((opt, _)) if opt.starts_with("--") => {
+                    xsi_help();
+                    temg!("Unknown opt: {opt}")
                 }
+                None if arg == "--" => opts.rest_args = Some(i + 1),
+                _ => match arg {
+                    "-c" => opts.compile = true,
+                    "-r" => opts.also_run = true,
+                    "-d" => opts.debug = true,
+                    "-ds" => opts.debug_do_system_main = true,
+                    _ => {
+                        if let Some(_) = as_path(arg) {
+                            opts.input_paths.push(arg);
+                            opts.input_order.push(0);
+                        } else {
+                            opts.input_scripts.push(arg);
+                            opts.input_order.push(1);
+                        }
+                    }
+                },
             }
         }
 
@@ -253,7 +264,7 @@ pub fn megafront() -> impl Cmd {
             }
         })));
 
-        if dump_to || dump_text_to || list_funcs_to {
+        if !opts.also_run && (dump_to || dump_text_to || list_funcs_to) {
             return Ok(());
         }
 
@@ -454,29 +465,25 @@ pub fn call() -> impl Cmd {
 
             let now = std::time::SystemTime::now();
             let mut mods = [now, now];
-            let mut idxs = [0, 0];
+            let mut idxs = [None, None];
 
             for (i, arg) in iter {
                 for (j, pat) in PATS.iter().copied().enumerate() {
                     if let Some(path) = arg.strip_prefix(pat) {
                         mods[j] = te!(last_mod(path));
-                        idxs[j] = i;
+                        idxs[j] = Some(i);
                     }
                 }
             }
 
             let [source_mod, target_mod] = mods;
-
-            match () {
-                _ if target_mod > source_mod => {
-                    std::process::exit(0);
-                }
-                _ => {
-                    let [j, i] = idxs;
-                    args.remove(j);
-                    args.remove(i);
-                }
+            if target_mod > source_mod {
+                std::process::exit(0);
             }
+
+            idxs.into_iter().flatten().for_each(|i| {
+                args.remove(i);
+            });
 
             Ok(args)
         }

@@ -142,7 +142,7 @@ where
 pub fn make_vm_call2<Args: IntoIterator>(
     vm: &mut vm::Vm,
     mut cmp: compile::Compiler,
-    func_addr: &str,
+    func_name: &str,
     revargs: Args,
     debug: bool,
 ) -> Result<()>
@@ -150,21 +150,33 @@ where
     Args::IntoIter: ExactSizeIterator,
     Args::Item: Into<String>,
 {
-    let sinfo = cmp.lookup_by_name_everywhere(func_addr).ok();
+    let sinfo = cmp.lookup_by_name_everywhere(func_name).ok();
     Ok(match sinfo {
-        None => temg!("Function not found: {}", func_addr),
+        None => temg!("Function not found: {}", func_name),
         Some(sym_id) => {
             let sinfo = sym_id.sym_info();
-            let addr = te!(sinfo.as_addr_ref()).addr;
+            let addr_info = te!(sinfo.as_addr_ref());
+            let addr = addr_info.addr;
+
+            //let orig_num_instrs = cmp.icode.instructions.len();
+            //let addr = orig_num_instrs;
+
+            //let addr_info = addr_info.clone();
+            //cmp.new_address(func_name, addr_info.addr, &addr_info.ret_t);
+            //let retval_info = te!(compile::facade::compile_invocation(&mut cmp, func_name));
+            //let _ = retval_info;
+
             te!(vm.init(revargs));
             vm.jump(addr);
-            //te!(vm.prepare_call());
+
             if debug {
                 let mut bugger = te!(vm::debugger::Bugger::open());
                 let icode = std::mem::take(&mut cmp.icode);
                 default_debugger_callbacks(&mut bugger, cmp);
                 bugger.set_in_main();
-                te!(te!(te!(vm.debug_icode(&icode, bugger))
+                let afterbugger = te!(vm.debug_icode(&icode, bugger));
+                error::ltrace!("Waiting for afterbugger...");
+                te!(te!(afterbugger
                     .receiver_thread
                     .join()
                     .map_err(|_| format!("Wait receiver thread"))));

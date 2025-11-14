@@ -21,11 +21,11 @@ let funcs = !sort <(list.0 "- " (xc-lf $obj));
 !printf "Lines: %s" (!wc <$funcs --lines);
 
 sip (!tee <$obj _.dust.dustlib);
-#xc-call $obj ssh::list_hostnames.xs;
-#
-#!cat
-#  <"ena"
-#  <"dyn"
-#  <(!echo "Tesssssera")
-#;
+xc-call $obj ssh::list_hostnames.xs;
+
+!cat
+  <"ena"
+  <"dyn"
+ <(!echo "Tesssssera")
+;
 #def a = __builtin __lib;
