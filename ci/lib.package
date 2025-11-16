@@ -2,6 +2,7 @@ def package::build =
   !cargo
     build --release
       --bin xsi
+      --bin xsim
       --bin xs-call
       --bin xs-compile
       --bin xs-debug
@@ -16,6 +17,7 @@ def package::dist.tar = {
   !tar -C ./target/release
     --create
       xsi
+      xsim
       xs-call
       xs-compile
       xs-debug
