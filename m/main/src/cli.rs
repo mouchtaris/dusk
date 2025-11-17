@@ -156,9 +156,10 @@ pub fn megafront() -> impl Cmd {
                     set_func,
                     (|opts, i, x| {
                         set!($name);
-                        if !x.is_empty() {
-                            $name(opts, i, x)
+                        if x.is_empty() {
+                            panic!(concat!(stringify!(name), " canot be empty"))
                         }
+                        $name(opts, i, x)
                     })
                 )
             };
