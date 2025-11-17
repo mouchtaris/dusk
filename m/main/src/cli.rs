@@ -105,6 +105,7 @@ pub fn megafront() -> impl Cmd {
             call: Option<&'a str>,
             dump_to: Option<&'a str>,
             dump_text_to: Option<&'a str>,
+            base_dir: Option<&'a str>,
             list_funcs_to: Option<&'a str>,
             rest_args: Option<usize>,
         }
@@ -120,6 +121,9 @@ pub fn megafront() -> impl Cmd {
                 let Self { rest_args, .. } = self;
                 let start_at = rest_args.unwrap_or(revargs.len());
                 self::args(revargs, start_at).map(String::as_str)
+            }
+            pub fn base_dir(&'a self, or: impl FnOnce() -> &'a str) -> &'a str {
+                self.base_dir.unwrap_or_else(or)
             }
         }
 
@@ -146,6 +150,7 @@ pub fn megafront() -> impl Cmd {
                 Some(("--dump_to", val)) => opts.dump_to = Some(val),
                 Some(("--list_funcs_to", val)) => opts.list_funcs_to = Some(val),
                 Some(("--dump_text_to", val)) => opts.dump_text_to = Some(val),
+                Some(("--base_dir", val)) => opts.base_dir = Some(val),
                 Some((opt, _)) if opt.starts_with("--") => {
                     xsi_help();
                     temg!("Unknown opt: {opt}")
@@ -202,6 +207,7 @@ pub fn megafront() -> impl Cmd {
                 Opts {
                     compile: true,
                     input_order,
+                    base_dir,
                     ..
                 },
                 files,
@@ -217,15 +223,17 @@ pub fn megafront() -> impl Cmd {
                 let inps = te!(code_tools_util::stx::IterRead::new(inps));
 
                 // use the first input path as base
-                let base_path = files.first().map(|&s| s).unwrap_or("./");
+                let base_path = base_dir
+                    .or_else(|| files.first().map(|&s| s))
+                    .unwrap_or("./");
                 compile_input_with_base(inps, base_path)
             }
             #[cfg(feature = "has_code_tools")]
-            (_, [], scripts @ [_, ..]) => compile_input_with_base(
+            (opts, [], scripts @ [_, ..]) => compile_input_with_base(
                 te!(code_tools_util::stx::IterRead::new(
                     scripts.into_iter().map(read_script)
                 )),
-                "./",
+                opts.base_dir(|| "./"),
             ),
             #[cfg(feature = "has_code_tools")]
             (_, paths @ [_, ..], []) => read_compiler(te!(code_tools_util::stx::IterRead::new(
