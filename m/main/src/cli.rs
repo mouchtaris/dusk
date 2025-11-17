@@ -1,3 +1,5 @@
+use std::borrow::Borrow;
+
 use super::*;
 use error::temg;
 
@@ -27,12 +29,13 @@ debug-ccall  [- | IN_PATH.src] FUNC_NAME [ARGS...]
 
 mega ::
 
-  --compile!=false          :: compile inputs as text code
-  --debug!=false            :: enable debugger when running
-  --debug-do-system-main!=false :: do not skip system main init when debugging
-  --call=func_addr          :: call function name instead of running script body
-  --dump_to=dest_path       :: dump compiled object to dest_path (- stdout)
-  --list_funcs_to=dest_path :: write null-separated-list of global functions to dest_path
+  --compile!=false              -c  :: compile inputs as text code
+  --debug!=false                -d  :: enable debugger when running
+  --debug-do-system-main!=false -ds :: do not skip system main init when debugging
+  --call=func_addr              -l  :: call function name instead of running script body
+  --dump_to=dest_path               :: dump compiled object to dest_path (- stdout)
+  --list_funcs_to=dest_path         :: write null-separated-list of global functions to dest_path
+  --also_run!=false             -r  :: --dump* and --list* options will not run unless this
 
   input : [ path/script , ... ]
   -- [ script-args ... ]
@@ -105,7 +108,7 @@ pub fn megafront() -> impl Cmd {
             call: Option<&'a str>,
             dump_to: Option<&'a str>,
             dump_text_to: Option<&'a str>,
-            base_dir: Option<&'a str>,
+            base_path: Option<&'a str>,
             list_funcs_to: Option<&'a str>,
             rest_args: Option<usize>,
         }
@@ -122,14 +125,26 @@ pub fn megafront() -> impl Cmd {
                 let start_at = rest_args.unwrap_or(revargs.len());
                 self::args(revargs, start_at).map(String::as_str)
             }
-            pub fn base_dir(&'a self, or: impl FnOnce() -> &'a str) -> &'a str {
-                self.base_dir.unwrap_or_else(or)
+            pub fn base_path(&'a self, or: impl FnOnce() -> &'a str) -> &'a str {
+                self.base_path.unwrap_or_else(or)
+            }
+            pub fn set(&mut self, s: Set, i: usize, x: &'a str) {
+                s(self, i, x)
             }
         }
 
         fn as_path(s: &str) -> Option<ast::Path> {
             let tokens = lex::Lex::new(s);
             parse::dust::PathParser::new().parse(tokens).ok()
+        }
+
+        type Set = for<'r> fn(&mut Opts<'r>, usize, &'r str);
+        let mut setting: Option<Set> = None;
+        macro_rules! set {
+            ($name:ident) => {
+                let $name: Set =
+                    |Opts { $name, .. }: &mut Opts, _: usize, x: &str| *$name = Some(x);
+            };
         }
 
         for (i, arg) in args(1).enumerate() {
@@ -139,6 +154,16 @@ pub fn megafront() -> impl Cmd {
                 break;
             }
 
+            if let Some(lens) = &mut setting {
+                lens(&mut opts, i, arg);
+                setting = None;
+                continue;
+            }
+            set!(call);
+            let mut set = |s: Set| {
+                setting = Some(s);
+            };
+
             match arg.split_once('=') {
                 Some(("--compile", val)) if val != "false" => opts.compile = true,
                 Some(("--also_run", val)) if val != "false" => opts.also_run = true,
@@ -146,11 +171,11 @@ pub fn megafront() -> impl Cmd {
                 Some(("--debug-do-system-main", val)) if val != "false" => {
                     opts.debug_do_system_main = true
                 }
-                Some(("--call", val)) => opts.call = Some(val),
+                Some(("--call", val)) => opts.set(call, i, val),
                 Some(("--dump_to", val)) => opts.dump_to = Some(val),
                 Some(("--list_funcs_to", val)) => opts.list_funcs_to = Some(val),
                 Some(("--dump_text_to", val)) => opts.dump_text_to = Some(val),
-                Some(("--base_dir", val)) => opts.base_dir = Some(val),
+                Some(("--base_path", val)) => opts.base_path = Some(val),
                 Some((opt, _)) if opt.starts_with("--") => {
                     xsi_help();
                     temg!("Unknown opt: {opt}")
@@ -161,6 +186,7 @@ pub fn megafront() -> impl Cmd {
                     "-r" => opts.also_run = true,
                     "-d" => opts.debug = true,
                     "-ds" => opts.debug_do_system_main = true,
+                    "-l" => set(call),
                     _ => {
                         if let Some(_) = as_path(arg) {
                             opts.input_paths.push(arg);
@@ -207,7 +233,7 @@ pub fn megafront() -> impl Cmd {
                 Opts {
                     compile: true,
                     input_order,
-                    base_dir,
+                    base_path,
                     ..
                 },
                 files,
@@ -223,7 +249,7 @@ pub fn megafront() -> impl Cmd {
                 let inps = te!(code_tools_util::stx::IterRead::new(inps));
 
                 // use the first input path as base
-                let base_path = base_dir
+                let base_path = base_path
                     .or_else(|| files.first().map(|&s| s))
                     .unwrap_or("./");
                 compile_input_with_base(inps, base_path)
@@ -233,7 +259,7 @@ pub fn megafront() -> impl Cmd {
                 te!(code_tools_util::stx::IterRead::new(
                     scripts.into_iter().map(read_script)
                 )),
-                opts.base_dir(|| "./"),
+                opts.base_path(|| "./"),
             ),
             #[cfg(feature = "has_code_tools")]
             (_, paths @ [_, ..], []) => read_compiler(te!(code_tools_util::stx::IterRead::new(
