@@ -141,9 +141,26 @@ pub fn megafront() -> impl Cmd {
         type Set = for<'r> fn(&mut Opts<'r>, usize, &'r str);
         let mut setting: Option<Set> = None;
         macro_rules! set {
+            ($name:ident, set_func, $func:expr) => {
+                let $name: Set = $func;
+            };
+            ($name:ident, func) => {
+                |Opts { $name, .. }: &mut Opts, _: usize, x: &str| *$name = Some(x)
+            };
             ($name:ident) => {
-                let $name: Set =
-                    |Opts { $name, .. }: &mut Opts, _: usize, x: &str| *$name = Some(x);
+                set!($name, set_func, set!($name, func))
+            };
+            ($name:ident, map, $map:expr) => {
+                set!(
+                    $name,
+                    set_func,
+                    (|opts, i, x| {
+                        set!($name);
+                        if !x.is_empty() {
+                            $name(opts, i, x)
+                        }
+                    })
+                )
             };
         }
 
@@ -160,6 +177,7 @@ pub fn megafront() -> impl Cmd {
                 continue;
             }
             set!(call);
+            set!(base_path, map, non_empty);
             let mut set = |s: Set| {
                 setting = Some(s);
             };
@@ -175,7 +193,7 @@ pub fn megafront() -> impl Cmd {
                 Some(("--dump_to", val)) => opts.dump_to = Some(val),
                 Some(("--list_funcs_to", val)) => opts.list_funcs_to = Some(val),
                 Some(("--dump_text_to", val)) => opts.dump_text_to = Some(val),
-                Some(("--base_path", val)) => opts.base_path = Some(val),
+                Some(("--base_path", val)) => opts.set(base_path, i, val),
                 Some((opt, _)) if opt.starts_with("--") => {
                     xsi_help();
                     temg!("Unknown opt: {opt}")
@@ -187,6 +205,7 @@ pub fn megafront() -> impl Cmd {
                     "-d" => opts.debug = true,
                     "-ds" => opts.debug_do_system_main = true,
                     "-l" => set(call),
+                    "-b" => set(base_path),
                     _ => {
                         if let Some(_) = as_path(arg) {
                             opts.input_paths.push(arg);
