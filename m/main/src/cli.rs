@@ -298,8 +298,8 @@ pub fn megafront() -> impl Cmd {
             opt: &Option<&str>,
             func: impl FnOnce(&mut &mut dyn io::Write) -> io::Result<()>,
         ) -> Result<bool> {
-            if let Some(dest) = opt {
-                let mut out: &mut dyn io::Write = if dest.is_empty() {
+            if let &Some(dest) = opt {
+                let mut out: &mut dyn io::Write = if dest.is_empty() || dest == "-" {
                     &mut stdout()
                 } else {
                     &mut te!(File::create(dest))
