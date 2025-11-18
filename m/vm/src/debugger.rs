@@ -22,9 +22,11 @@ type SendError = mpsc::SendError<SendItem>;
 type RecvError = mpsc::RecvError;
 type Recv = Receiver<SendItem>;
 
+type Callback = Box<dyn FnMut(&mut Vm, &dyn fmt::Debug) -> Result<()>>;
+
 #[derive(Default)]
 pub struct Callbacks {
-    pub data: Vec<Box<dyn FnMut(&mut Vm, &dyn fmt::Debug) -> Result<()>>>,
+    pub data: Vec<Callback>,
 }
 
 #[derive(Debug)]
@@ -40,8 +42,22 @@ pub struct Bugger {
 pub enum Command {
     Echo(String),
 }
+impl Default for Bugger {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl Bugger {
+    pub fn new() -> Self {
+        Self {
+            in_system_main: false,
+            skip_system_main: true,
+            callbacks: <_>::default(),
+            receiver_thread: thread::spawn(|| Ok(())),
+            recv: std::sync::mpsc::sync_channel(0).1,
+        }
+    }
     pub fn set_in_main(&mut self) {
         self.in_system_main = true
     }

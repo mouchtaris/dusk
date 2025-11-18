@@ -32,6 +32,7 @@ error::Error! {
     Compile = compile::Error
     CBor = sd::CborError
     Utf8 = std::str::Utf8Error
+    FromUtf8 = std::string::FromUtf8Error
     Log = log::SetLoggerError
     Var = env::VarError
     Job = job::Error

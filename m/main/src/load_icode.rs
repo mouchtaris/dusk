@@ -96,28 +96,59 @@ pub fn make_vm() -> Result<vm::Vm> {
 
 pub fn run_vm_script<T: ExactSizeIterator>(
     vm: &mut vm::Vm,
-    cmp @ compile::Compiler { icode, .. }: &compile::Compiler,
-    args: impl IntoIterator<IntoIter = T, Item = T::Item>,
+    cmp: &compile::Compiler,
+    revargs: impl IntoIterator<IntoIter = T, Item = T::Item>,
     (debug, do_sys_main): (bool, bool),
 ) -> Result<()>
 where
     T::Item: Into<String>,
 {
-    te!(vm.init(args));
-    if debug {
+    te!(vm.init(revargs));
+    Ok(te!(run_with(vm, cmp, (debug, do_sys_main), |_| Ok(()))))
+}
+
+pub fn add_vm_debug_comment(
+    vm: &vm::Vm,
+    cmp: &compile::Compiler,
+    res: vm::Result<vm::debugger::Bugger>, //= vm.debug_icode(&icode, bugger),
+) -> Result<vm::Result<vm::debugger::Bugger>> {
+    let vm_dbg: String = te!(debug_vm_text(cmp, vm, &0));
+    Ok(res.map_err(|e| e.with_comment(vm_dbg)))
+}
+
+pub fn run_with(
+    vm: &mut vm::Vm,
+    cmp: &compile::Compiler,
+    (debug, do_sys_main): (bool, bool),
+    bugger_setup: impl FnOnce(&mut vm::debugger::Bugger) -> Result<()>,
+) -> Result<()> {
+    Ok(if debug {
         let mut bugger = te!(vm::debugger::Bugger::open());
-        let mut cmp = cmp.to_owned();
-        let icode = std::mem::take(&mut cmp.icode);
-        default_debugger_callbacks(&mut bugger, cmp);
         bugger.set_skip_system_main(!do_sys_main);
-        te!(te!(te!(vm.debug_icode(&icode, bugger))
+        te!(bugger_setup(&mut bugger));
+
+        let icode = {
+            let mut cmp = cmp.to_owned();
+            let icode = std::mem::take(&mut cmp.icode);
+            default_debugger_callbacks(&mut bugger, cmp);
+            icode
+        };
+
+        let afterbugger: vm::debugger::Bugger = te!({
+            let ret = vm.debug_icode(&icode, bugger);
+            te!(add_vm_debug_comment(vm, cmp, ret))
+        });
+
+        error::ltrace!("Waiting for afterbugger...");
+        te!(te!(afterbugger
             .receiver_thread
             .join()
             .map_err(|_| format!("Wait receiver thread"))));
     } else {
-        te!(vm.eval_icode(icode));
-    }
-    Ok(())
+        let mut res = vm.eval_icode(&cmp.icode).map(|_| <_>::default());
+        res = te!(add_vm_debug_comment(vm, cmp, res));
+        te!(res);
+    })
 }
 
 #[deprecated(note = "use make_vm_call2 with debug=false")]
@@ -131,17 +162,11 @@ where
     Args::IntoIter: ExactSizeIterator,
     Args::Item: Into<String>,
 {
-    Ok(te!(make_vm_call2(
-        vm,
-        cmp.to_owned(),
-        func_addr,
-        revargs,
-        false
-    )))
+    Ok(te!(make_vm_call2(vm, cmp, func_addr, revargs, false)))
 }
 pub fn make_vm_call2<Args: IntoIterator>(
     vm: &mut vm::Vm,
-    mut cmp: compile::Compiler,
+    cmp: &compile::Compiler,
     func_name: &str,
     revargs: Args,
     debug: bool,
@@ -158,49 +183,50 @@ where
             let addr_info = te!(sinfo.as_addr_ref());
             let addr = addr_info.addr;
 
-            //let orig_num_instrs = cmp.icode.instructions.len();
-            //let addr = orig_num_instrs;
-
-            //let addr_info = addr_info.clone();
-            //cmp.new_address(func_name, addr_info.addr, &addr_info.ret_t);
-            //let retval_info = te!(compile::facade::compile_invocation(&mut cmp, func_name));
-            //let _ = retval_info;
-
             te!(vm.init(revargs));
             vm.jump(addr);
 
-            if debug {
-                let mut bugger = te!(vm::debugger::Bugger::open());
-                let icode = std::mem::take(&mut cmp.icode);
-                default_debugger_callbacks(&mut bugger, cmp);
-                bugger.set_in_main();
-                let afterbugger = te!(vm.debug_icode(&icode, bugger));
-                error::ltrace!("Waiting for afterbugger...");
-                te!(te!(afterbugger
-                    .receiver_thread
-                    .join()
-                    .map_err(|_| format!("Wait receiver thread"))));
-            } else {
-                te!(vm.eval_icode(&cmp.icode));
-            }
+            te!(run_with(vm, cmp, (debug, false), |b| Ok(b.set_in_main())));
+
             te!(vm::Instr::CleanUp(0).operate_on(vm));
         }
     })
 }
 
 pub fn default_debugger_callbacks(bugger: &mut vm::debugger::Bugger, compiler: compile::Compiler) {
+    default_debugger_callbacks_to(std::io::stderr(), bugger, compiler)
+}
+pub fn default_debugger_callbacks_to(
+    mut dest: impl 'static + io::Write,
+    bugger: &mut vm::debugger::Bugger,
+    compiler: compile::Compiler,
+) {
     bugger.callbacks.data.push(Box::new(move |vm, instr| {
-        use std::io;
-        let err = Ok(io::stderr());
-        //te!(vm.write_to(err).map_err(Box::new));
-        te!(vm_debug::write_to(vm, &compiler, err).map_err(Box::new));
-        eprintln!("");
-        eprintln!("");
-        eprintln!("");
-        eprintln!("===== ===== =====");
-        eprintln!("[BUGGER] {} {:?}", vm.instr_addr(), instr);
-        Ok(())
+        Ok(te!(debug_vm_text_to(&mut dest, &compiler, &*vm, &*instr)))
     }));
+}
+pub fn debug_vm_text_to(
+    mut dest: impl io::Write,
+    compiler: &compile::Compiler,
+    vm: &vm::Vm,
+    instr: &dyn std::fmt::Debug,
+) -> vm::debugger::Result<()> {
+    te!(vm_debug::write_to(vm, &compiler, Ok(&mut dest)).map_err(Box::new));
+    te!(writeln!(dest, ""));
+    te!(writeln!(dest, ""));
+    te!(writeln!(dest, ""));
+    te!(writeln!(dest, "===== ===== ====="));
+    te!(writeln!(dest, "[BUGGER] {} {:?}", vm.instr_addr(), instr));
+    Ok(())
+}
+pub fn debug_vm_text(
+    compiler: &compile::Compiler,
+    vm: &vm::Vm,
+    instr: &dyn std::fmt::Debug,
+) -> Result<String> {
+    let mut buf = Vec::new();
+    te!(debug_vm_text_to(&mut buf, compiler, vm, instr));
+    Ok(te!(String::from_utf8(buf)))
 }
 
 pub fn script_call_getret(

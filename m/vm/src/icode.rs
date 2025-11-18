@@ -1,8 +1,6 @@
 use std::io;
 
-use super::{
-    ltrace, soft_todo, syscall, te, terr, value, BorrowMut, Deq, Entry, Job, Map, Result, Vm,
-};
+use super::{ltrace, soft_todo, syscall, te, terr, value, Deq, Entry, Job, Map, Result, Vm};
 
 fn _use() {
     soft_todo!();

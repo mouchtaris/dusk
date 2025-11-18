@@ -332,13 +332,7 @@ pub fn megafront() -> impl Cmd {
         let revargs = opts.rest_args(&revargs[..]).rev();
 
         Ok(if let Some(func_addr) = opts.call {
-            te!(make_vm_call2(
-                vm,
-                cmp.to_owned(),
-                func_addr,
-                revargs,
-                opts.debug
-            ))
+            te!(make_vm_call2(vm, cmp, func_addr, revargs, opts.debug))
         } else {
             te!(run_vm_script(
                 vm,
@@ -415,7 +409,7 @@ pub fn debug_compile_and_call() -> impl Cmd {
 
         te!(make_vm_call2(
             &mut te!(make_vm()),
-            te!(compile_from_input(args(1))),
+            &te!(compile_from_input(args(1))),
             te!(args(2).next(), "Missing func name"),
             args(3).rev(),
             true,
@@ -445,7 +439,7 @@ pub fn debug_call() -> impl Cmd {
 
         te!(make_vm_call2(
             &mut te!(make_vm()),
-            te!(read_compiler(te!(args_get_input(args(1))))),
+            &te!(read_compiler(te!(args_get_input(args(1))))),
             te!(args(2).next(), "Missing func name"),
             args(3).rev(),
             true,
