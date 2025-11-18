@@ -1,5 +1,3 @@
-use std::borrow::Borrow;
-
 use super::*;
 use error::temg;
 
@@ -126,9 +124,6 @@ pub fn megafront() -> impl Cmd {
                 let start_at = rest_args.unwrap_or(revargs.len());
                 self::args(revargs, start_at).map(String::as_str)
             }
-            pub fn base_path(&'a self, or: impl FnOnce() -> &'a str) -> &'a str {
-                self.base_path.unwrap_or_else(or)
-            }
             pub fn set(&mut self, s: Set, i: usize, x: &'a str) {
                 s(self, i, x)
             }
@@ -151,7 +146,7 @@ pub fn megafront() -> impl Cmd {
             ($name:ident) => {
                 set!($name, set_func, set!($name, func))
             };
-            ($name:ident, map, $map:expr) => {
+            ($name:ident, map, non_empty) => {
                 set!(
                     $name,
                     set_func,
@@ -165,6 +160,8 @@ pub fn megafront() -> impl Cmd {
                 )
             };
         }
+        set!(call);
+        set!(base_path, map, non_empty);
 
         for (i, arg) in args(1).enumerate() {
             let i = i + 1;
@@ -178,8 +175,6 @@ pub fn megafront() -> impl Cmd {
                 setting = None;
                 continue;
             }
-            set!(call);
-            set!(base_path, map, non_empty);
             let mut set = |s: Set| {
                 setting = Some(s);
             };
@@ -221,9 +216,6 @@ pub fn megafront() -> impl Cmd {
             }
         }
 
-        let input_paths = &opts.input_paths[..];
-        let input_scripts = &opts.input_scripts[..];
-
         error::ldebug!("megafront configured:\n{revargs:#?}\n{opts:#?}");
 
         use std::fs::File;
@@ -243,23 +235,32 @@ pub fn megafront() -> impl Cmd {
         fn read_file(x: impl AsRef<str>) -> Inp {
             Ok(Box::new(File::open(x.as_ref())?))
         }
+        let cwd_path = te!(std::env::current_dir());
+        let cwd: &str = te!(cwd_path.to_str(), "CWD is not valid UTF8");
 
         // ---- Actual code action begins here ----
 
-        let compiler = &te!(match (&opts, input_paths, input_scripts,) {
-            (Opts { compile: true, .. }, [], []) => compile_from_input(["-"]),
-            (Opts { compile: true, .. }, [input_path], []) => compile_file(input_path),
+        // ---- Get a compiler:
+        // - compile input text streams, or
+        // - load a binary precompiled
+        let Opts {
+            compile,
+            base_path,
+            input_paths,
+            input_scripts,
+            input_order,
+            ..
+        } = &opts;
+        let input_paths = &input_paths[..];
+        let input_scripts = &input_scripts[..];
+        let input_order = &input_order[..];
+
+        let compiler = &te!(match (compile, base_path, input_paths, input_scripts,) {
+            // ---- Compiling section ----
+            (true, _, [input_path], []) => compile_file(input_path),
+            (true, base_path, [], []) => compile_input_with_base(stdin(), base_path.unwrap_or(cwd)),
             #[cfg(feature = "has_code_tools")]
-            (
-                Opts {
-                    compile: true,
-                    input_order,
-                    base_path,
-                    ..
-                },
-                files,
-                scripts,
-            ) => {
+            (true, base_path, files, scripts) => {
                 let mut inps0 = files.into_iter().map(read_file);
                 let mut inps1 = scripts.into_iter().map(read_script);
                 let inps = input_order.into_iter().flat_map(|&x| match x {
@@ -276,17 +277,18 @@ pub fn megafront() -> impl Cmd {
                 compile_input_with_base(inps, base_path)
             }
             #[cfg(feature = "has_code_tools")]
-            (opts, [], scripts @ [_, ..]) => compile_input_with_base(
+            (_, base_path, [], scripts @ [_, ..]) => compile_input_with_base(
                 te!(code_tools_util::stx::IterRead::new(
                     scripts.into_iter().map(read_script)
                 )),
-                opts.base_path(|| "./"),
+                base_path.unwrap_or("./"),
             ),
             #[cfg(feature = "has_code_tools")]
-            (_, paths @ [_, ..], []) => read_compiler(te!(code_tools_util::stx::IterRead::new(
+            // ---- Load lib section ----
+            (_, _, paths @ [_, ..], []) => read_compiler(te!(code_tools_util::stx::IterRead::new(
                 paths.into_iter().map(read_file)
             ))),
-            (_, [], []) => read_compiler(stdin()),
+            (_, _, [], []) => read_compiler(stdin()),
             _ => todo!("{opts:?}"),
         });
 
