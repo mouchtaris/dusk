@@ -36,6 +36,7 @@ mega ::
   --dump_to=dest_path               :: dump compiled object to dest_path (- stdout)
   --list_funcs_to=dest_path         :: write null-separated-list of global functions to dest_path
   --also_run!=false             -r  :: --dump* and --list* options will not run unless this
+  --base_path=/script/path.dust -b  :: use this as base_path for include* directives
 
   input : [ path/script , ... ]
   -- [ script-args ... ]
