@@ -31,7 +31,7 @@ mega ::
   --debug!=false                -d  :: enable debugger when running
   --debug-do-system-main!=false -ds :: do not skip system main init when debugging
   --call=func_addr              -l  :: call function name instead of running script body
-  --dump_to=dest_path               :: dump compiled object to dest_path (- stdout)
+  --dump_to=dest_path           -o  :: dump compiled object to dest_path (- stdout)
   --list_funcs_to=dest_path         :: write null-separated-list of global functions to dest_path
   --also_run!=false             -r  :: --dump* and --list* options will not run unless this
   --base_path=/script/path.dust -b  :: use this as base_path for include* directives
@@ -153,7 +153,7 @@ pub fn megafront() -> impl Cmd {
                     (|opts, i, x| {
                         set!($name);
                         if x.is_empty() {
-                            panic!(concat!(stringify!(name), " canot be empty"))
+                            panic!(concat!(stringify!($name), " canot be empty"))
                         }
                         $name(opts, i, x)
                     })
@@ -162,6 +162,7 @@ pub fn megafront() -> impl Cmd {
         }
         set!(call);
         set!(base_path, map, non_empty);
+        set!(dump_to, map, non_empty);
 
         for (i, arg) in args(1).enumerate() {
             let i = i + 1;
@@ -187,7 +188,7 @@ pub fn megafront() -> impl Cmd {
                     opts.debug_do_system_main = true
                 }
                 Some(("--call", val)) => opts.set(call, i, val),
-                Some(("--dump_to", val)) => opts.dump_to = Some(val),
+                Some(("--dump_to", val)) => opts.set(dump_to, i, val),
                 Some(("--list_funcs_to", val)) => opts.list_funcs_to = Some(val),
                 Some(("--dump_text_to", val)) => opts.dump_text_to = Some(val),
                 Some(("--base_path", val)) => opts.set(base_path, i, val),
@@ -203,6 +204,7 @@ pub fn megafront() -> impl Cmd {
                     "-ds" => opts.debug_do_system_main = true,
                     "-l" => set(call),
                     "-b" => set(base_path),
+                    "-o" => set(dump_to),
                     _ => {
                         if let Some(_) = as_path(arg) {
                             opts.input_paths.push(arg);
