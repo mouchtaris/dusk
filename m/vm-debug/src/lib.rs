@@ -1,35 +1,22 @@
 use {
     compile::Compiler,
-    error::te,
-    std::{fmt, io},
+    error::{te, te_writeln as w},
+    std::{fmt::Write, io},
     vm::{value, Result, Value, Vm, DEBUG_STACK_SIZE},
 };
 
-pub fn write_to<O>(vm: &Vm, cmp: &Compiler, o: io::Result<O>) -> Result<()>
-where
-    O: io::Write,
-{
-    let mut o = te!(o);
-
+pub fn explain_stack(
+    skip_too_far: bool,
+    vm: &Vm,
+    cmp: &Compiler,
+    mut o: impl io::Write,
+) -> Result<()> {
     let mut strbuf = String::new();
-    use fmt::Write;
 
-    use ::error::te_writeln as w;
-    //w!(o, "=== BIN_PATH ===")?;
-    //for path in &vm.bin_path {
-    //    w!(o, "> {}", path)?;
-    //}
-    w!(o, "=== STRING TABLE ===");
-    let mut i = 0;
-    for string in vm.string_table() {
-        w!(o, "[{:4}] {:?}", i, string);
-        i += 1;
-    }
     let mut fp = vm.frame_ptr();
     let mut sp = vm.stack_ptr();
     let len = vm.stack_len();
     let mut count = 0;
-    w!(o, "=== STACK ===");
     w!(o, "fp({fp}) sp({sp}) len({l})", l = len, sp = sp, fp = fp);
     for i in 0..len {
         let i = len - 1 - i;
@@ -43,7 +30,7 @@ where
         }
 
         count += 1;
-        if count > DEBUG_STACK_SIZE {
+        if skip_too_far && count > DEBUG_STACK_SIZE {
             break;
         }
 
@@ -102,9 +89,30 @@ where
         let explain = &strbuf[explain_start..];
         w!(o, "{:10} [{:4}] {:29} | {}", pref, i, cell_str, explain);
     }
-    if count > DEBUG_STACK_SIZE {
+    if skip_too_far && count > DEBUG_STACK_SIZE {
         w!(o, " ... (stack elided)");
     }
+    Ok(())
+}
+
+pub fn write_to<O>(vm: &Vm, cmp: &Compiler, o: io::Result<O>) -> Result<()>
+where
+    O: io::Write,
+{
+    let mut o = te!(o);
+
+    //w!(o, "=== BIN_PATH ===")?;
+    //for path in &vm.bin_path {
+    //    w!(o, "> {}", path)?;
+    //}
+    w!(o, "=== STRING TABLE ===");
+    let mut i = 0;
+    for string in vm.string_table() {
+        w!(o, "[{:4}] {:?}", i, string);
+        i += 1;
+    }
+    w!(o, "=== STACK ===");
+    te!(explain_stack(true, vm, cmp, &mut o));
     w!(o, "=== STATE ===");
     w!(o, "- frame pointer    : {}", vm.frame_ptr());
     w!(o, "- stack pointer    : {}", vm.stack_ptr());

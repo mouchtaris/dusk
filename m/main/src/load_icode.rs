@@ -112,7 +112,7 @@ pub fn add_vm_debug_comment(
     cmp: &compile::Compiler,
     res: vm::Result<vm::debugger::Bugger>, //= vm.debug_icode(&icode, bugger),
 ) -> Result<vm::Result<vm::debugger::Bugger>> {
-    let vm_dbg: String = te!(debug_vm_text(cmp, vm, &0));
+    let vm_dbg: String = te!(debug_vm_stack_text(cmp, vm));
     Ok(res.map_err(|e| e.with_comment(vm_dbg)))
 }
 
@@ -219,13 +219,9 @@ pub fn debug_vm_text_to(
     te!(writeln!(dest, "[BUGGER] {} {:?}", vm.instr_addr(), instr));
     Ok(())
 }
-pub fn debug_vm_text(
-    compiler: &compile::Compiler,
-    vm: &vm::Vm,
-    instr: &dyn std::fmt::Debug,
-) -> Result<String> {
+pub fn debug_vm_stack_text(compiler: &compile::Compiler, vm: &vm::Vm) -> Result<String> {
     let mut buf = Vec::new();
-    te!(debug_vm_text_to(&mut buf, compiler, vm, instr));
+    te!(vm_debug::explain_stack(false, vm, compiler, &mut buf));
     Ok(te!(String::from_utf8(buf)))
 }
 

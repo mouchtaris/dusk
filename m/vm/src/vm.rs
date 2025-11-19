@@ -26,15 +26,6 @@ pub struct Vm {
     scripts_stack: Vec<usize>,
 }
 
-pub struct Stack {
-    mem: Vec<Value>,
-    fp: usize,
-    sp: usize,
-}
-impl Stack {
-    // TODO
-}
-
 impl Vm {
     pub fn string_table(&self) -> &Deq<String> {
         &self.string_table
@@ -807,5 +798,16 @@ impl Vm {
             dynstring_table: d, ..
         } = self;
         Ok(te!(d.get(id)))
+    }
+
+    pub fn stack_frames(&self) -> impl Iterator<Item = (usize, &[Value])> {
+        let view = super::StackView {
+            fp: self.frame_ptr,
+            sp: self.stack_ptr,
+            stack: &self.stack,
+        };
+
+        todo!();
+        std::iter::empty()
     }
 }

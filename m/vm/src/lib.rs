@@ -10,11 +10,13 @@ pub use {
     vm::{Vm, DEBUG_STACK_SIZE},
 };
 
+mod stack_view;
 mod vm;
 
 use {
     collection::{Deq, Entry, Map},
     job::Job,
+    stack_view::StackView,
     std::{borrow::BorrowMut, convert::TryFrom, io},
 };
 
