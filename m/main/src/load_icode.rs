@@ -98,13 +98,13 @@ pub fn run_vm_script<T: ExactSizeIterator>(
     vm: &mut vm::Vm,
     cmp: &compile::Compiler,
     revargs: impl IntoIterator<IntoIter = T, Item = T::Item>,
-    (debug, do_sys_main): (bool, bool),
+    opts: (bool, bool, bool),
 ) -> Result<()>
 where
     T::Item: Into<String>,
 {
     te!(vm.init(revargs));
-    Ok(te!(run_with(vm, cmp, (debug, do_sys_main), |_| Ok(()))))
+    Ok(te!(run_with(vm, cmp, opts, |_| Ok(()))))
 }
 
 pub fn add_vm_debug_comment(
@@ -119,7 +119,7 @@ pub fn add_vm_debug_comment(
 pub fn run_with(
     vm: &mut vm::Vm,
     cmp: &compile::Compiler,
-    (debug, do_sys_main): (bool, bool),
+    (debug, do_sys_main, show_vm_stack_on_error): (bool, bool, bool),
     bugger_setup: impl FnOnce(&mut vm::debugger::Bugger) -> Result<()>,
 ) -> Result<()> {
     Ok(if debug {
@@ -136,7 +136,8 @@ pub fn run_with(
 
         let afterbugger: vm::debugger::Bugger = te!({
             let ret = vm.debug_icode(&icode, bugger);
-            te!(add_vm_debug_comment(vm, cmp, ret))
+            //te!(add_vm_debug_comment(vm, cmp, ret))
+            ret
         });
 
         error::ltrace!("Waiting for afterbugger...");
@@ -146,30 +147,19 @@ pub fn run_with(
             .map_err(|_| format!("Wait receiver thread"))));
     } else {
         let mut res = vm.eval_icode(&cmp.icode).map(|_| <_>::default());
-        res = te!(add_vm_debug_comment(vm, cmp, res));
+        if show_vm_stack_on_error {
+            res = te!(add_vm_debug_comment(vm, cmp, res));
+        }
         te!(res);
     })
 }
 
-#[deprecated(note = "use make_vm_call2 with debug=false")]
-pub fn make_vm_call<Args: IntoIterator>(
-    vm: &mut vm::Vm,
-    cmp: &compile::Compiler,
-    func_addr: &str,
-    revargs: Args,
-) -> Result<()>
-where
-    Args::IntoIter: ExactSizeIterator,
-    Args::Item: Into<String>,
-{
-    Ok(te!(make_vm_call2(vm, cmp, func_addr, revargs, false)))
-}
 pub fn make_vm_call2<Args: IntoIterator>(
     vm: &mut vm::Vm,
     cmp: &compile::Compiler,
     func_name: &str,
     revargs: Args,
-    debug: bool,
+    [debug, show_vm_stack_on_error]: [bool; 2],
 ) -> Result<()>
 where
     Args::IntoIter: ExactSizeIterator,
@@ -186,7 +176,12 @@ where
             te!(vm.init(revargs));
             vm.jump(addr);
 
-            te!(run_with(vm, cmp, (debug, false), |b| Ok(b.set_in_main())));
+            te!(run_with(
+                vm,
+                cmp,
+                (debug, false, show_vm_stack_on_error),
+                |b| Ok(b.set_in_main())
+            ));
 
             te!(vm::Instr::CleanUp(0).operate_on(vm));
         }

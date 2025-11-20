@@ -10,11 +10,11 @@ mod load_icode;
 pub use {
     compile::{self, Compiler},
     error::{te, IntoResult},
-    exec_common::{run_app, run_main},
+    exec_common::{run_main, run_main_app},
     load_icode::{
         args_get_input, args_get_output, compile_file, compile_from_input, compile_input_with_base,
-        list_func, load_compiler, load_icode, make_vm, make_vm_call, make_vm_call2, read_compiler,
-        run_vm_script, script_call_getret,
+        list_func, load_compiler, load_icode, make_vm, make_vm_call2, read_compiler, run_vm_script,
+        script_call_getret,
     },
     std::{
         boxed, collections, env, fmt, fs, io, iter, prelude, slice, str, string, u32, u8, usize,

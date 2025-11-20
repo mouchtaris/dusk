@@ -35,6 +35,7 @@ mega ::
   --list_funcs_to=dest_path         :: write null-separated-list of global functions to dest_path
   --also_run!=false             -r  :: --dump* and --list* options will not run unless this
   --base_path=/script/path.dust -b  :: use this as base_path for include* directives
+  --X-show_debug_vm_stack!=false    :: show a debug view of vm stack on error (takes up space)
 
   input : [ path/script , ... ]
   -- [ script-args ... ]
@@ -104,6 +105,7 @@ pub fn megafront() -> impl Cmd {
             also_run: bool,
             debug: bool,
             debug_do_system_main: bool,
+            show_debug_vm_stack: bool,
             call: Option<&'a str>,
             dump_to: Option<&'a str>,
             dump_text_to: Option<&'a str>,
@@ -180,18 +182,23 @@ pub fn megafront() -> impl Cmd {
                 setting = Some(s);
             };
 
+            const FALSE: &str = "false";
             match arg.split_once('=') {
-                Some(("--compile", val)) if val != "false" => opts.compile = true,
-                Some(("--also_run", val)) if val != "false" => opts.also_run = true,
-                Some(("--debug", val)) if val != "false" => opts.debug = true,
-                Some(("--debug-do-system-main", val)) if val != "false" => {
+                Some(("--compile", val)) if val != FALSE => opts.compile = true,
+                Some(("--also_run", val)) if val != FALSE => opts.also_run = true,
+                Some(("--debug", val)) if val != FALSE => opts.debug = true,
+                Some(("--debug-do-system-main", val)) if val != FALSE => {
                     opts.debug_do_system_main = true
+                }
+                Some(("--show_debug_vm_stack", val)) if val != FALSE => {
+                    opts.show_debug_vm_stack = true
                 }
                 Some(("--call", val)) => opts.set(call, i, val),
                 Some(("--dump_to", val)) => opts.set(dump_to, i, val),
                 Some(("--list_funcs_to", val)) => opts.list_funcs_to = Some(val),
                 Some(("--dump_text_to", val)) => opts.dump_text_to = Some(val),
                 Some(("--base_path", val)) => opts.set(base_path, i, val),
+
                 Some((opt, _)) if opt.starts_with("--") => {
                     xsi_help();
                     temg!("Unknown opt: {opt}")
@@ -332,13 +339,23 @@ pub fn megafront() -> impl Cmd {
         let revargs = opts.rest_args(&revargs[..]).rev();
 
         Ok(if let Some(func_addr) = opts.call {
-            te!(make_vm_call2(vm, cmp, func_addr, revargs, opts.debug))
+            te!(make_vm_call2(
+                vm,
+                cmp,
+                func_addr,
+                revargs,
+                [opts.debug, opts.show_debug_vm_stack]
+            ))
         } else {
             te!(run_vm_script(
                 vm,
                 cmp,
                 revargs,
-                (opts.debug, opts.debug_do_system_main)
+                (
+                    opts.debug,
+                    opts.debug_do_system_main,
+                    opts.show_debug_vm_stack
+                )
             ))
         })
     }
@@ -369,7 +386,7 @@ pub fn run() -> impl Cmd {
             &mut te!(make_vm()),
             &te!(read_compiler(input)),
             args(2),
-            (false, false)
+            (false, false, false)
         )))
     }
 }
@@ -384,7 +401,7 @@ pub fn compile_and_run() -> impl Cmd {
             &mut te!(make_vm()),
             &te!(compile_from_input(input)),
             args(2),
-            (false, false)
+            (false, false, false)
         )))
     }
 }
@@ -394,11 +411,12 @@ pub fn compile_and_call() -> impl Cmd {
         let arg = |n| revargs.iter().rev().skip(n);
         let revrest = |n| revargs.iter().skip(n);
 
-        Ok(te!(make_vm_call(
+        Ok(te!(make_vm_call2(
             &mut te!(make_vm()),
             &te!(compile_from_input(arg(1))),
             te!(arg(2).next(), "Missing func_addr"),
-            revrest(3)
+            revrest(3),
+            [false, false]
         )))
     }
 }
@@ -412,7 +430,7 @@ pub fn debug_compile_and_call() -> impl Cmd {
             &te!(compile_from_input(args(1))),
             te!(args(2).next(), "Missing func name"),
             args(3).rev(),
-            true,
+            [true, false]
         ));
         Ok(())
     }
@@ -428,7 +446,7 @@ pub fn debug_run() -> impl Cmd {
             &mut te!(make_vm()),
             &te!(read_compiler(input)),
             args(2),
-            (true, false)
+            (true, false, false)
         )))
     }
 }
@@ -442,7 +460,7 @@ pub fn debug_call() -> impl Cmd {
             &te!(read_compiler(te!(args_get_input(args(1))))),
             te!(args(2).next(), "Missing func name"),
             args(3).rev(),
-            true,
+            [true, false]
         ));
         Ok(())
     }
@@ -501,8 +519,10 @@ pub fn call() -> impl Cmd {
             let compl = te!(load_compiler(&module_path), "ICode loading {}", module_path);
 
             let mut vm = te!(make_vm());
-            te!(make_vm_call(&mut vm, &compl, &func_addr, args)
-                .map_err(|err| err.with_comment(format!("Loading icode from {}", module_path))));
+            te!(
+                make_vm_call2(&mut vm, &compl, &func_addr, args, [false, false])
+                    .map_err(|err| err.with_comment(format!("Loading icode from {}", module_path)))
+            );
             Ok(())
         };
         return xs_call();

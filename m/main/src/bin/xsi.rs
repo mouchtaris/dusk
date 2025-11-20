@@ -1,3 +1,3 @@
 fn main() {
-    main::run_app(main::cli::xsi())
+    main::run_main_app(main::cli::xsi())
 }
