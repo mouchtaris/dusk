@@ -1,0 +1,5 @@
+def local = {
+  include_str x ./local.yaml;
+  src _ = !xc <$x yj;
+  !jq <$_ $args
+}
