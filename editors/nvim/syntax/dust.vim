@@ -35,7 +35,12 @@ syn match dustDeref /\*[a-zA-Z_][a-zA-Z0-9:.,_=/-]*/
 " ── Strings ──────────────────────────────────────────────────────────
 syn region dustString start=/"/ skip=/\\"/ end=/"/ contains=dustEscape
 syn region dustString start=/'/ end=/'/
+" Order matters: longer hash counts must come first
+syn region dustRawString start=/r####"/ end=/"####/
+syn region dustRawString start=/r###"/ end=/"###/
+syn region dustRawString start=/r##"/ end=/"##/
 syn region dustRawString start=/r#"/ end=/"#/
+syn region dustRawString start=/r"/ end=/"/
 syn match dustEscape /\\./ contained
 
 " ── Numbers ──────────────────────────────────────────────────────────

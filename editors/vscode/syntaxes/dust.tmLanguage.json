@@ -26,13 +26,31 @@
       "match": "#.*$"
     },
     "raw-string": {
-      "name": "string.quoted.other.raw.dust",
-      "begin": "r#\"",
-      "end": "\"#",
       "patterns": [
         {
-          "name": "constant.character.escape.dust",
-          "match": "\\\\."
+          "name": "string.quoted.other.raw.dust",
+          "begin": "r####\"",
+          "end": "\"####"
+        },
+        {
+          "name": "string.quoted.other.raw.dust",
+          "begin": "r###\"",
+          "end": "\"###"
+        },
+        {
+          "name": "string.quoted.other.raw.dust",
+          "begin": "r##\"",
+          "end": "\"##"
+        },
+        {
+          "name": "string.quoted.other.raw.dust",
+          "begin": "r#\"",
+          "end": "\"#"
+        },
+        {
+          "name": "string.quoted.other.raw.dust",
+          "begin": "r\"",
+          "end": "\""
         }
       ]
     },

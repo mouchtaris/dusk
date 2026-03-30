@@ -81,10 +81,6 @@ impl<'a> Lexer<'a> {
         Self { input, pos: 0 }
     }
 
-    fn remaining(&self) -> &'a str {
-        &self.input[self.pos..]
-    }
-
     fn peek(&self) -> Option<u8> {
         self.input.as_bytes().get(self.pos).copied()
     }
@@ -127,14 +123,52 @@ impl<'a> Lexer<'a> {
     }
 
     fn eat_raw_string(&mut self) -> Option<Token<'a>> {
-        // r#"..."#
-        let rem = self.remaining();
-        if rem.starts_with("r#\"") {
-            let start = self.pos;
-            self.advance(3);
-            while self.pos + 1 < self.input.len() {
-                if self.peek() == Some(b'"') && self.peek_at(1) == Some(b'#') {
-                    self.advance(2);
+        // Supports: r"...", r#"..."#, r##"..."##, r###"..."###, etc.
+        if self.peek() != Some(b'r') {
+            return None;
+        }
+
+        let start = self.pos;
+        let mut off = 1; // skip 'r'
+
+        // Count opening hashes
+        let mut hash_count = 0usize;
+        while self.peek_at(off) == Some(b'#') {
+            hash_count += 1;
+            off += 1;
+        }
+
+        // Must have opening quote after r[#*]
+        if self.peek_at(off) != Some(b'"') {
+            return None;
+        }
+        off += 1; // skip opening "
+
+        self.advance(off);
+
+        // Now find closing: "[#]{hash_count}
+        loop {
+            if self.pos >= self.input.len() {
+                // Unterminated raw string - consume rest
+                return Some(Token {
+                    kind: TokenKind::RawString,
+                    text: &self.input[start..self.pos],
+                    start,
+                    end: self.pos,
+                });
+            }
+
+            if self.peek() == Some(b'"') {
+                // Check if followed by exactly hash_count '#'s
+                let mut matched = true;
+                for i in 1..=hash_count {
+                    if self.peek_at(i) != Some(b'#') {
+                        matched = false;
+                        break;
+                    }
+                }
+                if matched {
+                    self.advance(1 + hash_count); // closing " + hashes
                     return Some(Token {
                         kind: TokenKind::RawString,
                         text: &self.input[start..self.pos],
@@ -142,18 +176,10 @@ impl<'a> Lexer<'a> {
                         end: self.pos,
                     });
                 }
-                self.advance(1);
             }
-            // Unterminated raw string - consume rest
-            self.pos = self.input.len();
-            return Some(Token {
-                kind: TokenKind::RawString,
-                text: &self.input[start..self.pos],
-                start,
-                end: self.pos,
-            });
+
+            self.advance(1);
         }
-        None
     }
 
     fn eat_string(&mut self, quote: u8) -> Option<Token<'a>> {

@@ -449,3 +449,109 @@ fn token_at_offset<'a>(text: &'a str, offset: usize) -> Option<Token<'a>> {
     }
     None
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_def_block_no_false_unclosed() {
+        let input = "def test = { !echo hello; }";
+        let diags = diagnose(input);
+        for d in &diags {
+            println!("DIAG: {}", d.message);
+        }
+        assert!(diags.is_empty(), "Expected no diagnostics for valid def block, got: {:?}", 
+            diags.iter().map(|d| &d.message).collect::<Vec<_>>());
+    }
+
+    #[test]
+    fn test_def_block_multiline() {
+        let input = "def test = {\n  !echo hello;\n  !echo world;\n}";
+        let diags = diagnose(input);
+        assert!(diags.is_empty(), "Expected no diagnostics, got: {:?}",
+            diags.iter().map(|d| &d.message).collect::<Vec<_>>());
+    }
+
+    #[test]
+    fn test_nested_blocks() {
+        let input = "def outer = {\n  def inner = { !echo hi; }\n}";
+        let diags = diagnose(input);
+        assert!(diags.is_empty(), "Expected no diagnostics, got: {:?}",
+            diags.iter().map(|d| &d.message).collect::<Vec<_>>());
+    }
+
+    #[test]
+    fn test_real_dust_file() {
+        let input = "include ../jctl/dust/dusk.dust;\n\ndef build =\n  !cargo build\n    --bin xs-compile\n    --bin xs-decompile\n    $args\n;\n\ndef test = {\n  ./target/debug/xs-compile tost.dust tost.dustlib;\n  ./target/debug/xs-decompile tost.dustlib;\n}\n\ndef spec/dynexec = {\n  !cargo build\n    --bin xs-compile\n    --bin xs-run\n  ;\n\n  let lib =\n    ./target/debug/xs-compile\n      RUST_LOG = \"compile=trace\"\n      spec/dynamic_exec\n  ;\n\n  ./target/debug/xs-run\n    <$lib\n    RUST_LOG = \"vm::icode=trace\"\n}\n";
+        let diags = diagnose(input);
+        for d in &diags {
+            eprintln!("DIAG @ {:?}: {}", d.range, d.message);
+        }
+        assert!(diags.is_empty(), "Expected no diagnostics for valid dust file, got: {:?}",
+            diags.iter().map(|d| &d.message).collect::<Vec<_>>());
+    }
+
+    #[test]
+    fn test_comment_with_braces() {
+        // Comments containing { or } should not affect bracket matching
+        let input = "def test = {\n  # { this is a comment with braces }\n  !echo hello;\n}";
+        let diags = diagnose(input);
+        assert!(diags.is_empty(), "Comments with braces should not cause diagnostics, got: {:?}",
+            diags.iter().map(|d| &d.message).collect::<Vec<_>>());
+    }
+
+    #[test]
+    fn test_raw_string_multi_hash() {
+        let input = "val x = r##\"hello \"# world\"##;";
+        let tokens: Vec<Token> = Lexer::new(input).collect();
+        let raw = tokens.iter().find(|t| t.kind == TokenKind::RawString);
+        assert!(raw.is_some(), "Should lex multi-hash raw string, got: {:?}", tokens);
+        assert_eq!(raw.unwrap().text, "r##\"hello \"# world\"##");
+    }
+
+    #[test]
+    fn test_raw_string_no_hash() {
+        let input = "r\"hello\"";
+        let tokens: Vec<Token> = Lexer::new(input).collect();
+        let raw = tokens.iter().find(|t| t.kind == TokenKind::RawString);
+        assert!(raw.is_some(), "Should lex r\"...\" raw string, got: {:?}", tokens);
+        assert_eq!(raw.unwrap().text, "r\"hello\"");
+    }
+
+    #[test]
+    fn test_raw_string_single_hash() {
+        let input = "r#\"Kitty\"#";
+        let tokens: Vec<Token> = Lexer::new(input).collect();
+        let raw = tokens.iter().find(|t| t.kind == TokenKind::RawString);
+        assert!(raw.is_some(), "Should lex r#\"...\"# raw string, got: {:?}", tokens);
+        assert_eq!(raw.unwrap().text, "r#\"Kitty\"#");
+    }
+
+    #[test]
+    fn test_raw_string_triple_hash() {
+        let input = "r###\"hello \"# and \"## end\"###;";
+        let tokens: Vec<Token> = Lexer::new(input).collect();
+        let raw = tokens.iter().find(|t| t.kind == TokenKind::RawString);
+        assert!(raw.is_some(), "Should lex r###\"...\"### raw string, got: {:?}", tokens);
+        assert_eq!(raw.unwrap().text, "r###\"hello \"# and \"## end\"###");
+    }
+
+    #[test]
+    fn test_raw_string_with_braces_no_false_diagnostic() {
+        // Raw strings containing { } should not cause bracket mismatch
+        let input = "src test_script = r#\"\n    def frst = { !echo \"first\"; 0 }\n\"#;\n";
+        let diags = diagnose(input);
+        assert!(diags.is_empty(), "Raw string with braces should not cause diagnostics, got: {:?}",
+            diags.iter().map(|d| &d.message).collect::<Vec<_>>());
+    }
+
+    #[test]
+    fn test_raw_string_in_def_block() {
+        // This is the user's actual bug scenario
+        let input = "def test = {\n  src x = r##\"hello { world }\"##;\n}";
+        let diags = diagnose(input);
+        assert!(diags.is_empty(), "def block with raw string should not cause diagnostics, got: {:?}",
+            diags.iter().map(|d| &d.message).collect::<Vec<_>>());
+    }
+}
