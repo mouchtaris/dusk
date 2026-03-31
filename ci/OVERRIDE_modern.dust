@@ -1,4 +1,7 @@
+## --------------------------------------------------------------- ##
 include ../include/dust.2/std/...;
+
+## --------------------------------------------------------------- ##
 def ci::build =
   !cargo
     build --release
@@ -32,19 +35,41 @@ def ci::include.tar =
   !tar @./include --create -- ./dust.2
 ;
 
-def ci::install/local = {
-  def i dest tar = {
-    let target = env HOME /.local/ $dest;
+## --------------------------------------------------------------- ##
+def ci::install/specific target_prefix dest tar = {
+    let target = p $target_prefix $dest;
 
     !echo Installing to $target ...;
     !mkdir -p $target;
     src files = !tar @$target <$tar --extract --verbose;
     !xargs @$target <$files -- lsd -al --;
-  }
-  def a = i bin       $bin.tar;
-  def b = i "include" $include.tar;
-
-  src a = a;
-  src b = b;
-  let _ = !cat <$a <$b;
 }
+
+def ci::install/by prefix = !cat
+  <(specific $prefix bin       $bin.tar     )
+  <(specific $prefix "include" $include.tar )
+;
+
+def ci::prefix/local  = env HOME /.local/;
+def ci::prefix/system = "/usr/";
+
+def ci::install/local   = by $prefix/local;
+def ci::install/system  = by $prefix/system;
+
+## --------------------------------------------------------------- ##
+def ci::uninstall/specific prefix dest tar = {
+  let target = p $prefix $dest;
+
+  !echo Uninstalling from $target ...;
+  src files = !tar <$tar --list;
+  src files = !grep <$files -v "/$";
+  !xargs @$target <$files -- rm -v --;
+}
+
+def ci::uninstall/by prefix = !cat
+  <(specific $prefix bin        $bin.tar)
+  <(specific $prefix "include"  $include.tar)
+;
+
+def ci::uninstall/local   = by $prefix/local;
+def ci::uninstall/system  = by $prefix/system;
