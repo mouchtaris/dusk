@@ -1,0 +1,45 @@
+def dusk::init.fish = r#"
+  function dusk-select
+    commandline -i 'dust '(dust dusk::select)
+  end
+
+  bind -M insert \cp dusk-select
+"#;
+
+def dusk::init = {
+  !echo "# Fish source";
+  !echo $init.fish;
+}
+
+def dusk::selector obj = !tr <(
+  !fzf <$obj
+    #"--height=~80%"
+    --layout=reverse
+    --border=thinblock
+    "--border-label=Chose a function"
+    --info=right
+    "--scrollbar=|"
+    "--prompt=This is the last day of your ..."
+    "--pointer=<3"
+    "--ellipsis= ... "
+    --ansi
+    "--preview=rg -C 15 'def {}'"
+    --read0
+  ) -d "\n"
+;
+
+def dusk          = !xsim ./dusk.dust -c $args;
+def dusk::funcs.0 = dusk --list_funcs_to=     ;
+def dusk::object  = dusk --dump_to=           ;
+def dusk::build   = dusk --dump_to=./_/dustlib;
+def dusk::built   = !cat           ./_/dustlib;
+## ---------------------------------------------------------------- ##
+def dusk::select =
+  selector $funcs.0;
+def dusk::select-run =
+  dusk -l (selector $object) -- $args;
+## ---------------------------------------------------------------- ##
+def dusk::compiled/select =
+  selector $built;
+def dusk::compiled/select-run =
+  !xsim ./_/dustlib -l (selector $built) ;
