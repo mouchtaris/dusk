@@ -5,7 +5,8 @@ def test =  {
     ux::begin "Testing" $args "";
 
     src _ = !sh -c r###"
-        xs-compile "$@" 2>/dev/null | xs-run >/dev/null 2>&1;
+        #xs-compile "$@" 2>/dev/null | xs-run >/dev/null 2>&1;
+        xsim -c "$@" >/dev/null 2>&1;
         if test $? = 0
         then
             echo 'include '"$(pwd)"'/include/dust/lib.ux/lib;

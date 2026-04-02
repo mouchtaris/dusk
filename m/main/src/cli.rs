@@ -164,7 +164,7 @@ pub fn megafront() -> impl Cmd {
         }
         set!(call);
         set!(base_path, map, non_empty);
-        set!(dump_to, map, non_empty);
+        set!(dump_to);
 
         for (i, arg) in args(1).enumerate() {
             let i = i + 1;
@@ -309,7 +309,14 @@ pub fn megafront() -> impl Cmd {
                 let mut out: &mut dyn io::Write = if dest.is_empty() || dest == "-" {
                     &mut stdout()
                 } else {
-                    &mut te!(File::create(dest))
+                    {
+                        if let Some(parent) = std::path::Path::new(dest).parent() {
+                            if !parent.as_os_str().is_empty() {
+                                te!(std::fs::create_dir_all(parent));
+                            }
+                        }
+                        &mut te!(File::create(dest))
+                    }
                 };
                 te!(func(&mut out));
                 return Ok(true);
