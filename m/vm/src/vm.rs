@@ -19,11 +19,6 @@ pub struct Vm {
     stack_ptr: usize,
     instr_ptr: usize,
     debugger: Option<Debugger>,
-    /// A stack of currently executing scripts (ICode).
-    /// The stack stores a stack_addr, per each invocation
-    /// of [Self::load_icode], which points to a Value of the stack,
-    /// which is a of type [job::Job]-[job::Buffer]-[job::Buffer::Bytes].
-    scripts_stack: Vec<usize>,
 }
 
 impl Vm {
@@ -365,34 +360,6 @@ impl Vm {
         );
     }
 
-    pub fn push_script(&mut self, _icode: &ICode) -> Result<()> {
-        Ok(())
-    }
-    pub fn set_lib_bytes(&mut self, bytes: Vec<u8>) {
-        let job = Job::Buffer(job::Buffer::Bytes(
-            std::process::Command::new("<lib>"),
-            bytes,
-        ));
-        let job_id = self.add_job(job);
-        self.scripts_stack.push(job_id);
-    }
-    pub fn current_script_job(&self) -> Result<usize> {
-        Ok(*te!(self.scripts_stack.last(), "No script on the stack"))
-    }
-    pub fn current_script_value(&self) -> Result<Value> {
-        Ok(value::Job(te!(self.current_script_job())).into())
-    }
-    pub fn current_script_data(&self) -> Result<&[u8]> {
-        let job_id = te!(self.current_script_job());
-        let job = te!(self.get_job(job_id));
-        Ok(te!(job.as_bytes()))
-    }
-    pub fn pop_script(&mut self) {
-        // Do not ckean up. Assumingly the stack frame management will
-        // get to that eventually.
-        self.scripts_stack.pop();
-    }
-
     /// # Super public entrypoint
     pub fn eval_icode(&mut self, icode: &ICode) -> Result<()> {
         self.load_icode(&icode)
@@ -422,8 +389,11 @@ impl Vm {
         Ok(())
     }
 
+    pub fn set_lib_bytes(&mut self, bytes: Vec<u8>) {
+        let job_id = self.add_job(job::from_bytes("<lib>", bytes));
+        assert!(job_id == 0);
+    }
     pub fn load_icode(&mut self, icode: &ICode) -> Result<()> {
-        te!(self.push_script(icode));
         for (s, i) in &icode.strings {
             ltrace!("Load literal string {} {}", i.id, s);
             self.add_string(i.clone(), s.clone());

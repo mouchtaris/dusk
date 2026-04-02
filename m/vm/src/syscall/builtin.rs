@@ -59,9 +59,7 @@ impl<'s> BuiltinArgs<'s> {
 
 type SysCall = fn(&mut Vm) -> Result<Value>;
 
-const GET_VM_ICODE: SysCall = |vm| {
-    vm.current_script_value()
-};
+const GET_VM_ICODE: SysCall = |_| Ok(crate::value::Job(0).into());
 
 pub fn to_shell(call_args: CallArgs<&Value>) -> Result<()> {
     todo!()

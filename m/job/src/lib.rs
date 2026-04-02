@@ -77,6 +77,13 @@ impl Default for Job {
 
 pub type Null = ();
 
+pub fn from_bytes(name: impl Into<String>, bytes: impl ToOwned<Owned = Vec<u8>>) -> Job {
+    Job::Buffer(Buffer::Bytes(
+        Command::new(name.into()),
+        bytes.to_owned(),
+    ))
+}
+
 impl Job {
     pub fn as_spec_mut(&mut self) -> Result<&mut Spec> {
         Ok(match self {
