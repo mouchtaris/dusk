@@ -1,5 +1,3 @@
-# vim: et ft=scala ts=4 sw=4
-
 # Test xsim --link: compile two scripts, link them, call functions from linked lib.
 
 def xsim = ./target/debug/xsim $args;
