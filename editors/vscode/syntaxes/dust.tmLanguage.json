@@ -1,0 +1,171 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Dust",
+  "scopeName": "source.dust",
+  "patterns": [
+    { "include": "#comment" },
+    { "include": "#raw-string" },
+    { "include": "#double-string" },
+    { "include": "#single-string" },
+    { "include": "#keyword" },
+    { "include": "#system-command" },
+    { "include": "#slice" },
+    { "include": "#variable" },
+    { "include": "#dereference" },
+    { "include": "#number" },
+    { "include": "#path" },
+    { "include": "#long-option" },
+    { "include": "#short-option" },
+    { "include": "#operator" },
+    { "include": "#punctuation" },
+    { "include": "#identifier" }
+  ],
+  "repository": {
+    "comment": {
+      "name": "comment.line.number-sign.dust",
+      "match": "#.*$"
+    },
+    "raw-string": {
+      "name": "string.quoted.other.raw.dust",
+      "begin": "r#\"",
+      "end": "\"#",
+      "patterns": [
+        {
+          "name": "constant.character.escape.dust",
+          "match": "\\\\."
+        }
+      ]
+    },
+    "double-string": {
+      "name": "string.quoted.double.dust",
+      "begin": "\"",
+      "end": "\"",
+      "patterns": [
+        {
+          "name": "constant.character.escape.dust",
+          "match": "\\\\."
+        }
+      ]
+    },
+    "single-string": {
+      "name": "string.quoted.single.dust",
+      "begin": "'",
+      "end": "'",
+      "patterns": [
+        {
+          "name": "constant.character.escape.dust",
+          "match": "\\\\."
+        }
+      ]
+    },
+    "keyword": {
+      "match": "\\b(def|let|val|src|include_str|include|for_each|in|new|if)\\b",
+      "name": "keyword.control.dust"
+    },
+    "system-command": {
+      "match": "(!)([a-zA-Z_][a-zA-Z0-9:.,_=/-]*)",
+      "captures": {
+        "1": { "name": "keyword.operator.system.dust" },
+        "2": { "name": "entity.name.function.system.dust" }
+      }
+    },
+    "slice": {
+      "match": "(\\$)([a-zA-Z_][a-zA-Z0-9:.,_=/-]*)(\\[)",
+      "captures": {
+        "1": { "name": "punctuation.definition.variable.dust" },
+        "2": { "name": "variable.other.dust" },
+        "3": { "name": "punctuation.bracket.square.dust" }
+      }
+    },
+    "variable": {
+      "match": "(\\$)([a-zA-Z_][a-zA-Z0-9:.,_=/-]*)",
+      "captures": {
+        "1": { "name": "punctuation.definition.variable.dust" },
+        "2": { "name": "variable.other.dust" }
+      }
+    },
+    "dereference": {
+      "match": "(\\*)([a-zA-Z_][a-zA-Z0-9:.,_=/-]*)",
+      "captures": {
+        "1": { "name": "keyword.operator.dereference.dust" },
+        "2": { "name": "variable.other.dereference.dust" }
+      }
+    },
+    "number": {
+      "name": "constant.numeric.dust",
+      "match": "\\b[0-9]+\\b"
+    },
+    "path": {
+      "patterns": [
+        {
+          "name": "string.unquoted.path.absolute.dust",
+          "match": "(?<=[\\s;={(<>])(/[a-zA-Z0-9:.,_=/-]+)"
+        },
+        {
+          "name": "string.unquoted.path.relative.dust",
+          "match": "\\.\\.?/[a-zA-Z0-9:.,_=/-]*"
+        },
+        {
+          "name": "string.unquoted.path.home.dust",
+          "match": "~/[a-zA-Z0-9:.,_=/-]*"
+        }
+      ]
+    },
+    "long-option": {
+      "name": "variable.parameter.option.long.dust",
+      "match": "--[a-zA-Z0-9:.,_=/-]+"
+    },
+    "short-option": {
+      "name": "variable.parameter.option.short.dust",
+      "match": "(?<=\\s)-[a-zA-Z0-9:.,_=/-]+"
+    },
+    "operator": {
+      "patterns": [
+        {
+          "name": "keyword.operator.redirect.input.dust",
+          "match": "<"
+        },
+        {
+          "name": "keyword.operator.redirect.output.dust",
+          "match": ">"
+        },
+        {
+          "name": "keyword.operator.cwd.dust",
+          "match": "@"
+        },
+        {
+          "name": "keyword.operator.assignment.dust",
+          "match": "="
+        }
+      ]
+    },
+    "punctuation": {
+      "patterns": [
+        {
+          "name": "punctuation.terminator.dust",
+          "match": ";"
+        },
+        {
+          "name": "punctuation.separator.comma.dust",
+          "match": ","
+        },
+        {
+          "name": "punctuation.bracket.curly.dust",
+          "match": "[{}]"
+        },
+        {
+          "name": "punctuation.bracket.round.dust",
+          "match": "[()]"
+        },
+        {
+          "name": "punctuation.bracket.square.dust",
+          "match": "[\\[\\]]"
+        }
+      ]
+    },
+    "identifier": {
+      "name": "entity.name.function.dust",
+      "match": "(?<=\\b(?:def|src)\\s+)[a-zA-Z_][a-zA-Z0-9:.,_=/-]*"
+    }
+  }
+}
