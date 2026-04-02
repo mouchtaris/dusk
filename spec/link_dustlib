@@ -1,0 +1,21 @@
+# vim: et ft=scala ts=4 sw=4
+
+# Test xsim --link: compile two scripts, link them, call functions from linked lib.
+
+def xsim = ./target/debug/xsim $args;
+
+# Compile two modules with separate functions
+xsim -c r#"def hello = !printf "%s" "hello";"# -o _/spec.link_dustlib-a.obj;
+xsim -c r#"def world = !printf "%s" "world";"# -o _/spec.link_dustlib-b.obj;
+
+# Link them
+xsim --link=true ./_/spec.link_dustlib-a.obj ./_/spec.link_dustlib-b.obj -o _/spec.link_dustlib.lib;
+
+# Call each function from the linked lib
+let a = xsim ./_/spec.link_dustlib.lib -l hello;
+let b = xsim ./_/spec.link_dustlib.lib -l world;
+
+!test $a "=" "hello";
+!test $b "=" "world";
+
+!echo OK;
