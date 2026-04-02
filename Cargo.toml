@@ -17,6 +17,9 @@ members = [
     './m/vm',
     './m/vm-debug',
 ]
+exclude = [
+    './m/dust-lsp',
+]
 [patch.crates-io.ast]
 path = './m/ast'
 
