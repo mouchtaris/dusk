@@ -1,6 +1,8 @@
 use super::*;
 use error::temg;
 
+pub const VERSION: u8 = 2;
+
 pub trait Cmd: Fn(Vec<String>) -> Result<()> {
     fn revargs(&self) -> impl Cmd {
         use collection::Recollect;
@@ -27,17 +29,30 @@ debug-ccall  [- | IN_PATH.src] FUNC_NAME [ARGS...]
 
 mega ::
 
-  --compile!=false              -c  :: compile inputs as text code
+    [PROCESS MODE]
+  --compile!=false              -c  ::  Compile inputs as text code.
+  --link!=false                     ::  Input is paths and is compiled xsim.
+                                        Output (to -o) is linked into one bytecode.
+                                        Genereted lib files cannot be "run".
+    [EXEC MODE]
+  --call=func_addr              -l  :: call function name instead of running script body.
+  --base_path=/script/path.dust -b  :: use this as base_path for include* directives.
+  --dump_to=dest_path           -o  :: dump compiled object to dest_path (- stdout).
+  --dump_text_to=dest_path          :: decompile input into debugging text output to dest_path (- stdout).
+  --list_funcs_to=dest_path         :: write null-separated-list of global functions to dest_path (- stdout).
+  --also_run!=false             -r  :: --dump*, --list*, and --decompile* options will not run unless this.
+
+    [DUSK MODE]
+  --dusk=func_addr ...              :: ./dusk.dust -c -l <func> -- ...
+  --compile-call=FUNC PATH ARGS...  :: Useful for `#!/bin/xsim --compile-call=true` situations.
+
+    [DEBUG MODE]
   --debug!=false                -d  :: enable debugger when running
   --debug-do-system-main!=false -ds :: do not skip system main init when debugging
-  --call=func_addr              -l  :: call function name instead of running script body
-  --dump_to=dest_path           -o  :: dump compiled object to dest_path (- stdout)
-  --list_funcs_to=dest_path         :: write null-separated-list of global functions to dest_path
-  --also_run!=false             -r  :: --dump* and --list* options will not run unless this
-  --base_path=/script/path.dust -b  :: use this as base_path for include* directives
-  --X-show_debug_vm_stack!=false    :: show a debug view of vm stack on error (takes up space)
+  --show_debug_vm_stack!=false      :: show a debug view of vm stack on error (takes up space)
 
-  input : [ path/script , ... ]
+    [CMD MODE]
+  input...                          :: [ path/script , ... ]
   -- [ script-args ... ]
 "#
     )
@@ -113,11 +128,15 @@ pub fn megafront() -> impl Cmd {
             list_funcs_to: Option<&'a str>,
             link: bool,
             rest_args: Option<usize>,
+            version: u8, // just to include in debug log
         }
         let mut opts: Opts = Opts::new();
         impl<'a> Opts<'a> {
             pub fn new() -> Self {
-                Self { ..<_>::default() }
+                Self {
+                    version: VERSION,
+                    ..<_>::default()
+                }
             }
             pub fn rest_args(
                 &self,
@@ -129,6 +148,21 @@ pub fn megafront() -> impl Cmd {
             }
             pub fn set(&mut self, s: Set, i: usize, x: &'a str) {
                 s(self, i, x)
+            }
+            fn push_input(&mut self, t: u8, input: &'a str) {
+                match t {
+                    0 => &mut self.input_paths,
+                    1 => &mut self.input_scripts,
+                    x => panic!("Invalid push type: {x}"),
+                }
+                .push(input);
+                self.input_order.push(t);
+            }
+            pub fn push_path(&mut self, path: &'a str) {
+                self.push_input(0, path);
+            }
+            pub fn push_script(&mut self, script: &'a str) {
+                self.push_input(1, script);
             }
         }
 
@@ -167,6 +201,42 @@ pub fn megafront() -> impl Cmd {
         set!(base_path, map, non_empty);
         set!(dump_to);
 
+        {
+            let mut args = args(1);
+            if let Some("--help") = args.next() {
+                xsi_help();
+                return Ok(());
+            }
+        }
+        {
+            let mut args = args(1);
+            match args.next().and_then(|x| x.split_once('=')) {
+                Some(("--compile-call", func)) => {
+                    let path = te!(args.next(), "missing self-script path");
+                    opts.compile = true;
+                    opts.call = Some(func);
+                    opts.push_path(path);
+                    opts.rest_args = Some(3);
+                }
+                Some(("--dusk", func)) => {
+                    opts.push_path("./dusk.dust");
+                    opts.compile = true;
+                    opts.call = Some(func);
+                    opts.rest_args = Some(2);
+                }
+                _ => (),
+            }
+        }
+        {
+            let mut args = args(1);
+            match args.next() {
+                Some("--version") => {
+                    print!("{}", opts.version);
+                    return Ok(());
+                }
+                _ => (),
+            }
+        }
         for (i, arg) in args(1).enumerate() {
             let i = i + 1;
 
@@ -216,11 +286,9 @@ pub fn megafront() -> impl Cmd {
                     "-o" => set(dump_to),
                     _ => {
                         if let Some(_) = as_path(arg) {
-                            opts.input_paths.push(arg);
-                            opts.input_order.push(0);
+                            opts.push_path(arg);
                         } else {
-                            opts.input_scripts.push(arg);
-                            opts.input_order.push(1);
+                            opts.push_script(arg);
                         }
                     }
                 },
@@ -253,7 +321,9 @@ pub fn megafront() -> impl Cmd {
 
         // ---- Link mode: load compiled modules and merge ----
         if opts.link {
-            let modules: Result<Vec<_>> = opts.input_paths.iter()
+            let modules: Result<Vec<_>> = opts
+                .input_paths
+                .iter()
                 .map(|path| load_compiler(path))
                 .collect();
             let modules = te!(modules);
