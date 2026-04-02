@@ -1,0 +1,17 @@
+# vim: et ft=scala ts=4 sw=4
+
+# Test that __builtin __lib returns the currently executing
+# ICode as a bytebuffer containing the script's functions.
+
+def greet = !echo hello;
+
+let lib = __builtin __lib;
+
+# Load the exported bytecode into a fresh xsim and call greet
+let actual = !xsim <$lib -l greet;
+
+let expected = "hello";
+
+!test $actual "=" $expected;
+
+!echo OK;
