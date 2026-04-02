@@ -3,7 +3,7 @@
 # Test that __builtin __lib returns the currently executing
 # ICode as a bytebuffer containing the script's functions.
 
-def greet = !echo hello;
+def greet = !printf "%s" "hello";
 
 let lib = __builtin __lib;
 
