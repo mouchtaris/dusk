@@ -1,5 +1,8 @@
 pub const VERSION: &str = "0.0.1";
 
+pub mod desugar;
+pub use desugar::{desugar_def_params, DefParam};
+
 mod display;
 mod factory;
 pub use factory::*;

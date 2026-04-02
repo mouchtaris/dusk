@@ -100,7 +100,7 @@ pub trait MatchSymbol: for<'r, 'v> Matcher<(&'v str, &'r SymID), Option<X<'r>>> 
 impl<S: for<'r, 'v> Matcher<(&'v str, &'r SymID), Option<X<'r>>>> MatchSymbol for S {}
 
 pub trait MatchScope: for<'r> Matcher<&'r Scope, Result<X<'r>>> {
-    fn or_else(&self, next: impl MatchScope) -> impl MatchScope {
+    fn or_else_(&self, next: impl MatchScope) -> impl MatchScope {
         move |name, scope| self(name, scope).or_else(|_| next(name, scope))
     }
 
