@@ -122,6 +122,14 @@ pub fn run_with(
     (debug, do_sys_main, show_vm_stack_on_error): (bool, bool, bool),
     bugger_setup: impl FnOnce(&mut vm::debugger::Bugger) -> Result<()>,
 ) -> Result<()> {
+    // Serialize the full Compiler to bytes so that __builtin __lib
+    // can return the script's bytecode as a job buffer.
+    {
+        let mut lib_bytes: Vec<u8> = vec![];
+        te!(cmp.write_out(&mut lib_bytes));
+        vm.set_lib_bytes(lib_bytes);
+    }
+
     Ok(if debug {
         let mut bugger = te!(vm::debugger::Bugger::open());
         bugger.set_skip_system_main(!do_sys_main);

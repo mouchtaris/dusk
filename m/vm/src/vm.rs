@@ -365,31 +365,27 @@ impl Vm {
         );
     }
 
-    pub fn push_script(&mut self, icode: &ICode) -> Result<()> {
-        use syscall::util::{FramePtr, ValuesVmExt};
-
-        log::warn!("Not pushing ICODE");
-
-        // // Push icode as bytes on stack
-        // let FramePtr(x) = te!(self.add_tmp_icode(icode));
-        // // Translate frame_ptr to global address
-        // let x = self.frame_addr(x);
-        // ltrace!("Store icode at {x}");
-        // // Push
-        // self.scripts_stack.push(x);
-
+    pub fn push_script(&mut self, _icode: &ICode) -> Result<()> {
         Ok(())
     }
-    pub fn current_script_value(&self) -> Result<&Value> {
-        // Find last script stack-ptr value on the script stack
-        let last_script_sp = *te!(self.scripts_stack.last(), "No script on the stack");
-        let value = te!(self.stack_get_val(last_script_sp));
-        Ok(value)
+    pub fn set_lib_bytes(&mut self, bytes: Vec<u8>) {
+        let job = Job::Buffer(job::Buffer::Bytes(
+            std::process::Command::new("<lib>"),
+            bytes,
+        ));
+        let job_id = self.add_job(job);
+        self.scripts_stack.push(job_id);
+    }
+    pub fn current_script_job(&self) -> Result<usize> {
+        Ok(*te!(self.scripts_stack.last(), "No script on the stack"))
+    }
+    pub fn current_script_value(&self) -> Result<Value> {
+        Ok(value::Job(te!(self.current_script_job())).into())
     }
     pub fn current_script_data(&self) -> Result<&[u8]> {
-        let jobid = te!(self.current_script_value());
-        let bytes: &[u8] = te!(self.val_as_bytes(jobid));
-        Ok(bytes)
+        let job_id = te!(self.current_script_job());
+        let job = te!(self.get_job(job_id));
+        Ok(te!(job.as_bytes()))
     }
     pub fn pop_script(&mut self) {
         // Do not ckean up. Assumingly the stack frame management will

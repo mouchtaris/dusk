@@ -60,9 +60,7 @@ impl<'s> BuiltinArgs<'s> {
 type SysCall = fn(&mut Vm) -> Result<Value>;
 
 const GET_VM_ICODE: SysCall = |vm| {
-    let script = te!(vm.current_script_value());
-    let val: Value = script.to_owned();
-    Ok(val)
+    vm.current_script_value()
 };
 
 pub fn to_shell(call_args: CallArgs<&Value>) -> Result<()> {
