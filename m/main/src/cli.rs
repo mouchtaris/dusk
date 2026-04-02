@@ -111,6 +111,7 @@ pub fn megafront() -> impl Cmd {
             dump_text_to: Option<&'a str>,
             base_path: Option<&'a str>,
             list_funcs_to: Option<&'a str>,
+            link: bool,
             rest_args: Option<usize>,
         }
         let mut opts: Opts = Opts::new();
@@ -198,6 +199,7 @@ pub fn megafront() -> impl Cmd {
                 Some(("--list_funcs_to", val)) => opts.list_funcs_to = Some(val),
                 Some(("--dump_text_to", val)) => opts.dump_text_to = Some(val),
                 Some(("--base_path", val)) => opts.set(base_path, i, val),
+                Some(("--link", val)) if val != FALSE => opts.link = true,
 
                 Some((opt, _)) if opt.starts_with("--") => {
                     xsi_help();
@@ -248,6 +250,17 @@ pub fn megafront() -> impl Cmd {
         let cwd: &str = te!(cwd_path.to_str(), "CWD is not valid UTF8");
 
         // ---- Actual code action begins here ----
+
+        // ---- Link mode: load compiled modules and merge ----
+        if opts.link {
+            let modules: Result<Vec<_>> = opts.input_paths.iter()
+                .map(|path| load_compiler(path))
+                .collect();
+            let modules = te!(modules);
+            let linked = compile::link::link_modules(modules);
+            let dest = opts.dump_to.unwrap_or("");
+            return try_dest(&Some(dest), |out| linked.write_out(out)).map(|_| ());
+        }
 
         // ---- Get a compiler:
         // - compile input text streams, or

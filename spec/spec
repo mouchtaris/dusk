@@ -33,3 +33,4 @@ test ./spec/argument_subslicing;
 test ./spec/xsim_xsi_megafront_walkthrough;
 test ./spec/named_params;
 test ./spec/export_dustlib;
+test ./spec/link_dustlib;
