@@ -1,3 +1,5 @@
 /_.*
 /target
 **/target/
+**/node_modules/
+**/out/
