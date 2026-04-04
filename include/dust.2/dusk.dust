@@ -23,7 +23,7 @@ def dusk::selector obj = !tr <(
     "--pointer=<3"
     "--ellipsis= ... "
     --ansi
-    "--preview=rg -C 15 'def {}'"
+    "--preview=rg --color=always --heading -A 20 'def {}'"
     --read0
   ) -d "\n"
 ;
