@@ -14,7 +14,7 @@ def ci::build =
 ;
 
 def ci::bin.tar =
-  !tar -C ./target/release
+  !tar @./target/release
     --create
     --
       xsi
@@ -29,8 +29,7 @@ def ci::bin.tar =
 ;
 
 def ci::include.tar =
-  !tar --create --
-    ./include/dust.2
+  !tar @./include --create -- ./dust.2
 ;
 
 def ci::install/local = {
@@ -39,7 +38,8 @@ def ci::install/local = {
 
     !echo Installing to $target ...;
     !mkdir -p $target;
-    !tar <$tar -C $target --extract --verbose;
+    src files = !tar @$target <$tar --extract --verbose;
+    !xargs @$target <$files -- lsd -al --;
   }
   def a = i bin       $bin.tar;
   def b = i "include" $include.tar;
