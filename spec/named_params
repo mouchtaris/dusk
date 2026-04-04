@@ -1,0 +1,23 @@
+# Simple named params
+def greet name = !echo "Hello" $name;
+
+# Multiple params
+def add a b = !expr $a "+" $b;
+
+# Rest parameter (variadic tail)
+def log level msgs[] = {
+    let prefix = !printf "[%s]" $level;
+    !echo $prefix $msgs
+}
+
+# Namespaced with params
+def ssh::run host cmd[] = !ssh $host $cmd;
+
+# All existing syntax still works, this is purely additive
+def old-style = {
+    let x = $args[0];
+    !echo $x
+}
+
+!test (greet Bob) "=" (!echo "Hello Bob");
+!test (log Bob all is well) "=" (!echo "[Bob] all is well");
