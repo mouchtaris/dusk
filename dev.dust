@@ -1,15 +1,1 @@
-#!xsim
-#  @./ai_conversations/viewer/
-#  r###"
-#    include ./documents.dust;
-#    documents::regen;
-#  "###
-#;
-
-!cargo
-  run
-  --bin xsim
-  --
-  ./spec/named_params
-  -c
-;
+!echo Dev Loop Things;

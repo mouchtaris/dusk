@@ -1,5 +1,5 @@
-def local = {
-  include_str x ./local.yaml;
-  src _ = !xc <$x yj;
-  !jq <$_ $args
+def local root rest[] = {
+  src _ = !cat @$root ./local.yaml;
+  src _ = !xc <$_ yj;
+  trnl(!jq <$_ --raw-output $rest)
 }

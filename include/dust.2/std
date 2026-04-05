@@ -1,3 +1,4 @@
 include ./std_/hard_core.dust;
 include ./std_/dont.dust;
 include ./std_/can_fail.dust;
+include ./local.dust;
