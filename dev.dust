@@ -1,0 +1,7 @@
+!xsim
+  @./ai_conversations/viewer/
+  r###"
+    include ./documents.dust;
+    documents::regen;
+  "###
+;

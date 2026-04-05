@@ -1,0 +1,14 @@
+def NL = "
+";
+def QT = r#"""#;
+
+def p = !printf "%s" $args;
+def p0 = !printf "%s\x00" $args;
+def qt = !printf r#""%s""# $args;
+def trnl = !tr <$args[0] -d "\n" $args[1;];
+def env = trnl(!printenv $args);
+def cwd = trnl(!pwd);
+def cwd/ = p$cwd /$args;
+def sink = !dd <$args[0] "of=/dev/null" "status=none" $args[1;];
+def sinkerr = sink(!tee <$args[0] /dev/stderr);
+def basename = trnl(!basename $args);
