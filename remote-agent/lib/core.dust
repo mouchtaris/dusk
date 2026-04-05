@@ -1,0 +1,11 @@
+def agent::exec = {
+    !sh -c $args[0];
+};
+
+def agent::try = {
+    !sh -c r#"(eval "$1") 2>&1; echo __EXIT__:$?"# _ $args[0];
+};
+
+def agent::run-script = {
+    !xsim -c $args[0];
+};
