@@ -1,9 +1,11 @@
+include ./include/dust.2/std/can_fail.dust;
+
 def agent::exec = {
     !sh -c $args[0];
 };
 
 def agent::try = {
-    !sh -c r#"(eval "$1") 2>&1; echo __EXIT__:$?"# _ $args[0];
+    can_fail $args[0];
 };
 
 def agent::run-script = {
