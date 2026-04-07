@@ -74,17 +74,24 @@ pub enum DefParam<'i> {
 
     /// Rest / variadic: `name[]` → desugars to `let name = $args[N;];`
     Rest(&'i str),
+
+    /// Const: `&name` → compile-time function address, not passed through $args
+    Const(&'i str),
 }
 
 impl<'i> DefParam<'i> {
     pub fn name(&self) -> &'i str {
         match self {
-            DefParam::Single(n) | DefParam::Rest(n) => n,
+            DefParam::Single(n) | DefParam::Rest(n) | DefParam::Const(n) => n,
         }
     }
 
     pub fn is_rest(&self) -> bool {
         matches!(self, DefParam::Rest(_))
+    }
+
+    pub fn is_const(&self) -> bool {
+        matches!(self, DefParam::Const(_))
     }
 }
 
@@ -151,11 +158,18 @@ pub fn desugar_def_params<'i>(
     let Block((existing_items, final_expr)) = block;
 
     // --- Build synthetic `let` bindings ---
+    // Const params are skipped — they don't consume $args slots.
     let mut new_items: Vec<Item<'i>> =
         Vec::with_capacity(params.len() + existing_items.len());
 
-    for (i, param) in params.iter().enumerate() {
-        let idx: &str = index_str(i);
+    let mut runtime_idx: usize = 0;
+    for param in params.iter() {
+        if param.is_const() {
+            // Const params don't get let bindings — they're resolved at the call site
+            continue;
+        }
+
+        let idx: &str = index_str(runtime_idx);
 
         let (param_name, slice_expr) = match param {
             DefParam::Single(pname) => {
@@ -178,18 +192,38 @@ pub fn desugar_def_params<'i>(
                 let expr = Expr::Slice(Slice(("args", Box::new(range))));
                 (*pname, expr)
             }
+            DefParam::Const(_) => unreachable!(),
         };
 
         new_items.push(let_stmt(param_name, slice_expr));
+        runtime_idx += 1;
     }
 
     // --- Append original body items ---
     new_items.extend(existing_items);
 
-    // --- Reconstruct DefStmt with the augmented block ---
+    // --- Reconstruct with the augmented block ---
     let new_block = Block((new_items, final_expr));
     let new_body = Body::Block(new_block);
-    Item::DefStmt(DefStmt((name, new_body)))
+
+    // --- If there are const params, emit TemplateDef instead of DefStmt ---
+    let const_params: Vec<&'i str> = params
+        .iter()
+        .filter_map(|p| match p {
+            DefParam::Const(n) => Some(*n),
+            _ => None,
+        })
+        .collect();
+
+    if const_params.is_empty() {
+        Item::DefStmt(DefStmt((name, new_body)))
+    } else {
+        Item::TemplateDef(TemplateDef {
+            name,
+            body: new_body,
+            const_params,
+        })
+    }
 }
 
 // ---------------------------------------------------------------------------

@@ -51,10 +51,24 @@ pub use {
     symbol_table::{find_func_name, ScopeMut, ScopeRef, SymInfo, SymbolTable, SymbolTableExt},
 };
 
+/// A compiled function template with holes for const params.
+#[derive(Debug, Clone)]
+pub struct TemplateEntry {
+    /// The compiled instructions for the template body.
+    pub instructions: Vec<vm::Instr>,
+    /// Holes: (instruction_index_in_block, param_index)
+    pub holes: Vec<(usize, usize)>,
+    /// Number of const params this template expects.
+    pub const_param_count: usize,
+    /// Return type of the compiled body.
+    pub ret_t: SymInfo,
+}
+
 #[derive(Default, Debug, Clone)]
 pub struct Compiler {
     pub icode: vm::ICode,
     pub sym_table: SymbolTable,
+    pub templates: Vec<TemplateEntry>,
     pub(crate) current_file_path: Vec<String>,
 }
 
@@ -63,6 +77,7 @@ impl Compiler {
         Self {
             icode: <_>::default(),
             sym_table: <_>::default(),
+            templates: <_>::default(),
             current_file_path: <_>::default(),
         }
     }
@@ -187,11 +202,26 @@ impl Compiler {
         let text = text.as_ref();
         let name = text;
 
-        match te!(cmp.lookup(name)) {
+        let sinfo = te!(cmp.lookup(name));
+        Self::extract_funcaddr(name, sinfo)
+    }
+
+    fn extract_funcaddr(name: &str, sinfo: &SymInfo) -> Result<SymInfo> {
+        match sinfo {
             sinfo @ SymInfo {
                 typ: sym::Typ::Address(_),
                 ..
             } => Ok(sinfo.to_owned()),
+            // Unwrap aliases: Local(is_alias=true, types=[inner])
+            SymInfo {
+                typ:
+                    sym::Typ::Local(sym::Local {
+                        is_alias: true,
+                        types,
+                        ..
+                    }),
+                ..
+            } if !types.is_empty() => Self::extract_funcaddr(name, &types[0]),
             other => temg!("Not a function address {}: {:?}", name, other),
         }
     }

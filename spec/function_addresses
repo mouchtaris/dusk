@@ -4,14 +4,14 @@ def a = !printf "%s" a $args;
 def b = !printf "%s" b $args;
 
 let c = &a;
-!test (*c) "=" a;
+!test (*$c) "=" a;
 
 let c = &b;
-!test (*c) "=" b;
+!test (*$c) "=" b;
 
-def tell_me_which ptr =
-    *ptr bob
+def tell_me_which &ptr =
+    *$ptr bob
 ;
 
-!test (tell_me_which &a) "=" "a bob";
-!test (tell_me_which &b) "=" "b bob";
+!test (tell_me_which &a) "=" abob;
+!test (tell_me_which &b) "=" bbob;

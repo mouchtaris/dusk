@@ -38,6 +38,18 @@ where
         self.insert_to_scope(name, SymInfo::address(addr, ret_t))
     }
 
+    fn new_template<S: Into<String>>(
+        &mut self,
+        name: S,
+        template_id: usize,
+        const_param_count: usize,
+    ) -> SymInfo {
+        self.insert_to_scope(
+            name,
+            SymInfo::typ(sym::Typ::template(template_id, const_param_count)),
+        )
+    }
+
     fn new_local<T>(&mut self, types: T, name: String) -> &mut SymInfo
     where
         T: IntoIterator,

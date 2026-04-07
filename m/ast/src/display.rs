@@ -20,6 +20,11 @@ impl<'i> fmt::Display for InvocationTarget<'i> {
             ))) => {
                 write!(f, "{invocation}")
             }
+            InvocationTarget::InvocationTargetFuncPtrDeref(InvocationTargetFuncPtrDeref((
+                var,
+            ))) => {
+                write!(f, "*{var}")
+            }
         }
     }
 }
@@ -55,6 +60,13 @@ impl<'i> fmt::Display for Dereference<'i> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let Self((id,)) = self;
         write!(f, "*{id}")
+    }
+}
+
+impl<'i> fmt::Display for AddressOf<'i> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let Self((id,)) = self;
+        write!(f, "&{id}")
     }
 }
 
@@ -121,6 +133,7 @@ impl<'i> fmt::Display for InvocationArg<'i> {
             Natural(super::Natural((s,))) => write!(f, "{s}")?,
             Invocation(invocation) => write!(f, "{invocation}")?,
             Slice(slice) => write!(f, "{slice}")?,
+            AddressOf(super::AddressOf((id,))) => write!(f, "&{id}")?,
         }
         Ok(())
     }

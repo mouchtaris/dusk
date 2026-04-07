@@ -76,6 +76,79 @@ pub trait Compilers<'i> {
                 );
                 Ok(sinfo)
             }
+            ast::Item::TemplateDef(ast::TemplateDef {
+                name,
+                body,
+                const_params,
+            }) => {
+                const PLACEHOLDER: usize = 0xDEAD_BEEF;
+
+                // Jump over the template body (it's dead code in the main stream)
+                cmp.emit1(i::Jump { addr: 0 });
+                let jump_instr = cmp.instr_id();
+
+                cmp.emit1(i::Allocate { size: 0 });
+                let alloc_instr = cmp.instr_id();
+                let body_start = alloc_instr;
+
+                cmp.enter_scope();
+
+                // Register const params as Address with placeholder
+                for (idx, cp_name) in const_params.iter().enumerate() {
+                    let _ = idx;
+                    cmp.new_address(*cp_name, PLACEHOLDER, &SymInfo::NULL);
+                }
+
+                let retval = te!(cmp.compile(body));
+                let frame_size = cmp.stack_frame_size();
+
+                te!(cmp.emit_from_symbol(false, &retval));
+
+                cmp.exit_scope();
+
+                te!(cmp.backpatch_with(alloc_instr, frame_size));
+                cmp.emit1(i::Return(frame_size));
+
+                let jump_target = cmp.instr_id() + 1;
+                te!(cmp.backpatch_with(jump_instr, jump_target));
+
+                // Extract the template instructions from the main stream
+                let body_instrs: Vec<vm::Instr> = cmp
+                    .icode
+                    .instructions
+                    .iter()
+                    .skip(body_start)
+                    .take(jump_target - body_start)
+                    .cloned()
+                    .collect();
+
+                // Find holes: PushFuncAddr(PLACEHOLDER) instructions
+                let mut holes = Vec::new();
+                for (rel_idx, instr) in body_instrs.iter().enumerate() {
+                    if let &vm::Instr::PushFuncAddr(addr) = instr {
+                        if addr == PLACEHOLDER {
+                            // Determine which const param this hole belongs to.
+                            // Holes appear in order of the const params as used.
+                            // For now: count previous holes to determine param_index.
+                            let param_index = holes.len();
+                            holes.push((rel_idx, param_index));
+                        }
+                    }
+                }
+
+                let template_id = cmp.templates.len();
+                cmp.templates.push(super::TemplateEntry {
+                    instructions: body_instrs,
+                    holes,
+                    const_param_count: const_params.len(),
+                    ret_t: retval,
+                });
+
+                let ninfo = cmp.new_template(name, template_id, const_params.len());
+                ldebug!("type (template) {}: {:?}", name, ninfo);
+
+                Ok(ninfo)
+            }
             ast::Item::Empty(_) => Ok(SymInfo::NULL),
         }
     }
@@ -87,6 +160,7 @@ pub trait Compilers<'i> {
             ast::Expr::Variable(var) => cmp.compile_variable_as_auto(var),
             ast::Expr::Slice(slice) => cmp.compile_slice(slice),
             ast::Expr::Array(closure) => cmp.compile_array(closure),
+            ast::Expr::AddressOf(ast::AddressOf((name,))) => cmp.compile_funcaddr(name),
         }
     }
     fn block() -> S<Block<'i>> {
@@ -163,7 +237,65 @@ pub trait Compilers<'i> {
             let inp_redir_sinfos = te!(cmp.compile(input_redirections));
             // target
             let invctrgt = format!("{}", invocation_target);
-            let invc_target_sinfo = te!(cmp.compile(invocation_target));
+            let mut invc_target_sinfo = te!(cmp.compile(invocation_target));
+
+            // === Template instantiation ===
+            // If the target is a template, instantiate it:
+            // - separate const args (AddressOf) from regular args
+            // - copy template instructions, patch holes
+            // - register as a new concrete function
+            if let sym::Typ::Template(ref tmpl) = invc_target_sinfo.typ {
+                let template_id = tmpl.template_id;
+                let const_param_count = tmpl.const_param_count;
+
+                // Separate const args from regular args
+                let mut const_addrs: Vec<usize> = Vec::with_capacity(const_param_count);
+                let mut regular_args = Vec::new();
+                for arg in args.iter() {
+                    if let ast::InvocationArg::AddressOf(ast::AddressOf((name,))) = arg {
+                        let addr_si = te!(cmp.compile_funcaddr(name));
+                        let addr = te!(addr_si.addr());
+                        const_addrs.push(addr);
+                    } else {
+                        regular_args.push(arg.clone());
+                    }
+                }
+
+                if const_addrs.len() != const_param_count {
+                    temg!(
+                        "Template {} expects {} const args, got {}",
+                        invctrgt,
+                        const_param_count,
+                        const_addrs.len()
+                    );
+                }
+
+                // Clone template and patch holes
+                let tmpl_entry = cmp.templates[template_id].clone();
+                let mut instrs = tmpl_entry.instructions.clone();
+                for &(instr_idx, param_idx) in &tmpl_entry.holes {
+                    instrs[instr_idx] = i::PushFuncAddr(const_addrs[param_idx]);
+                }
+
+                // Jump over the instantiated body (it's only reached via Call)
+                cmp.emit1(i::Jump { addr: 0 });
+                let jump_instr = cmp.instr_id();
+
+                // Append instantiated instructions to the main stream
+                let inst_addr = cmp.icode.instructions.len();
+                for instr in instrs {
+                    cmp.emit1(instr);
+                }
+
+                // Backpatch the jump to skip over the body
+                let after_body = cmp.icode.instructions.len();
+                te!(cmp.backpatch_with(jump_instr, after_body));
+
+                // Register as a concrete Address
+                invc_target_sinfo = SymInfo::address(inst_addr, &tmpl_entry.ret_t);
+                args = regular_args;
+            }
+
             // cwd
             let cwd_sinfo = if let Some(cwd) = cwd_opt {
                 te!(cmp.compile(cwd))
@@ -246,6 +378,9 @@ pub trait Compilers<'i> {
                 sym::Typ::Literal(_) => {
                     // TODO skip everything above if this is the case
                     retval_si = invc_target_sinfo;
+                }
+                sym::Typ::Template(_) => {
+                    unreachable!("Template should have been instantiated above")
                 }
             }
 
@@ -333,6 +468,7 @@ pub trait Compilers<'i> {
                 A::Path(path) => cmp.compile(path),
                 A::Natural(n) => cmp.compile(n),
                 A::Invocation(invc) => cmp.compile(invc),
+                A::AddressOf(ast::AddressOf((name,))) => cmp.compile_funcaddr(name),
                 other => panic!("{:?}", other),
             }
         }
@@ -354,10 +490,19 @@ pub trait Compilers<'i> {
             use ast::InvocationTargetSystemName as SysName;
             use ast::InvocationTargetSystemPath as SysPath;
 
+            use T::InvocationTargetFuncPtrDeref as TFuncPtr;
+            use ast::InvocationTargetFuncPtrDeref as FuncPtr;
+
             Ok(match invocation_target {
                 TLocal(Local(("__syscall-argslice",))) => SymInfo::syscall(vm::syscall::ARG_SLICE),
                 TLocal(Local(("__builtin",))) => SymInfo::syscall(vm::syscall::BUILTIN),
-                TLocal(Local((id,))) => te!(cmp.compile_funcaddr(id)),
+                TLocal(Local((id,))) => {
+                    let sinfo = te!(cmp.lookup(id));
+                    match &sinfo.typ {
+                        sym::Typ::Template(_) => sinfo.to_owned(),
+                        _ => te!(cmp.compile_funcaddr(id)),
+                    }
+                }
                 TSysName(SysName((id,))) => te!(cmp.compile_text(id)),
                 TSysPath(SysPath((path,))) => te!(cmp.compile(path)),
                 TDeref(Deref((Dereference((name,)),))) => {
@@ -369,6 +514,9 @@ pub trait Compilers<'i> {
                     let inv_si = te!(cmp.compile(*inv));
                     te!(cmp.emit_cleanup(i::BufferString, &inv_si));
                     inv_si
+                }
+                TFuncPtr(FuncPtr((ast::Variable((name,)),))) => {
+                    te!(cmp.compile_funcaddr(name))
                 }
             })
         }

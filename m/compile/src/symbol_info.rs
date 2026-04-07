@@ -14,7 +14,8 @@ either::either![
     pub Typ,
         Local,
         Address,
-        Literal
+        Literal,
+        Template
 ];
 #[derive(Clone, Eq, PartialEq)]
 pub struct Local {
@@ -32,6 +33,12 @@ pub struct Literal {
     pub id: usize,
     pub lit_type: LitType,
 }
+#[derive(Clone, Eq, PartialEq)]
+pub struct Template {
+    pub template_id: usize,
+    pub const_param_count: usize,
+}
+
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum LitType {
     Natural,
@@ -124,14 +131,16 @@ impl Info {
         match self.typ {
             Typ::Address(Address { addr: v, .. })
             | Typ::Local(Local { fp_off: v, .. })
-            | Typ::Literal(Literal { id: v, .. }) => v,
+            | Typ::Literal(Literal { id: v, .. })
+            | Typ::Template(Template { template_id: v, .. }) => v,
         }
     }
     pub fn val_mut(&mut self) -> &mut usize {
         match &mut self.typ {
             Typ::Address(Address { addr: v, .. })
             | Typ::Local(Local { fp_off: v, .. })
-            | Typ::Literal(Literal { id: v, .. }) => v,
+            | Typ::Literal(Literal { id: v, .. })
+            | Typ::Template(Template { template_id: v, .. }) => v,
         }
     }
 }
@@ -170,7 +179,7 @@ impl Local {
 impl Typ {
     pub fn size(&self) -> u16 {
         match self {
-            Typ::Literal(_) | Typ::Address(_) => 1,
+            Typ::Literal(_) | Typ::Address(_) | Typ::Template(_) => 1,
             Typ::Local(local) => local.size(),
         }
     }
@@ -234,6 +243,13 @@ impl Typ {
             lit_type: LitType::Args,
         })
     }
+
+    pub fn template(template_id: usize, const_param_count: usize) -> Self {
+        Self::Template(Template {
+            template_id,
+            const_param_count,
+        })
+    }
 }
 
 impl fmt::Debug for Info {
@@ -249,7 +265,14 @@ impl fmt::Debug for Typ {
             Self::Local(local) => local.fmt(f),
             Self::Address(addr) => addr.fmt(f),
             Self::Literal(lit) => lit.fmt(f),
+            Self::Template(tmpl) => tmpl.fmt(f),
         }
+    }
+}
+impl fmt::Debug for Template {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let Self { template_id, const_param_count } = self;
+        write!(f, "template#{} ({}cp)", template_id, const_param_count)
     }
 }
 impl fmt::Debug for Local {

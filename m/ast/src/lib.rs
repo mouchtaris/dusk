@@ -33,8 +33,8 @@ macro_rules! name {
 
 name![Module, Block];
 
-either![Item, Expr, LetStmt, DefStmt, SrcStmt, Include, IncludeStr, Empty];
-either![Expr, Invocation, String, Natural, Slice, Variable, Array];
+either![Item, Expr, LetStmt, DefStmt, SrcStmt, Include, IncludeStr, Empty, TemplateDef];
+either![Expr, Invocation, String, Natural, Slice, Variable, Array, AddressOf];
 either![Body, Block];
 either![
     InvocationTarget,
@@ -42,7 +42,8 @@ either![
     InvocationTargetSystemName,
     InvocationTargetSystemPath,
     InvocationTargetDereference,
-    InvocationTargetInvocation
+    InvocationTargetInvocation,
+    InvocationTargetFuncPtrDeref
 ];
 either![
     InvocationArg,
@@ -54,7 +55,8 @@ either![
     Word,
     Natural,
     Invocation,
-    Slice
+    Slice,
+    AddressOf
 ];
 either![InvocationCwd, Path, Variable, BoxInvocation];
 either![Path, AbsPath, RelPath, HomePath];
@@ -89,12 +91,14 @@ name![ShortOpt, Text];
 name![Variable, Text];
 name![Slice, Text, BoxRange];
 name![Dereference, Text];
+name![AddressOf, Text];
 name![Natural, Text];
 name![InvocationTargetLocal, Ident];
 name![InvocationTargetSystemName, Ident];
 name![InvocationTargetSystemPath, Path];
 name![InvocationTargetDereference, Dereference];
 name![InvocationTargetInvocation, BoxInvocation];
+name![InvocationTargetFuncPtrDeref, Variable];
 name![
     Invocation,
     AnyDocComment,
@@ -128,6 +132,14 @@ pub type BoxBody<'i> = Box<Body<'i>>;
 pub type BoxInvocation<'i> = Box<Invocation<'i>>;
 pub type BoxRange<'i> = Box<Range<'i>>;
 pub type Any<T> = Vec<T>;
+
+/// A function template with compile-time const params (function addresses).
+#[derive(Debug, Clone)]
+pub struct TemplateDef<'i> {
+    pub name: Ident<'i>,
+    pub body: Body<'i>,
+    pub const_params: Vec<Ident<'i>>,
+}
 
 pub type Empty<'i> = std::marker::PhantomData<&'i ()>;
 pub type Tupl2<T> = (T, T);

@@ -114,6 +114,68 @@ impl Instr {
     }
 }
 
+impl buf::sd2::WriteOut for Instr {
+    fn write_out<O: io::Write>(&self, dst: &mut O) -> io::Result<()> {
+        let (code, arg0) = match *self {
+            Instr::Allocate { size } => (0x00, size),
+            Instr::Jump { addr } => (0x01, addr),
+            Instr::Return(v) => (0x02, v),
+            Instr::PushNull => (0x03, 0x00),
+            Instr::PushStr(v) => (0x04, v),
+            Instr::PushNat(v) => (0x05, v),
+            Instr::Syscall(v) => (0x06, v),
+            Instr::RetLocal(v) => (0x07, v),
+            Instr::PushArgs => (0x08, 0x00),
+            Instr::PushLocal(v) => (0x09, v),
+            Instr::Call(v) => (0x0a, v),
+            Instr::CleanUp(v) => (0x0b, v),
+            Instr::Collect(v) => (0x0c, v),
+            Instr::PushFuncAddr(v) => (0x0d, v),
+            Instr::Pipe(v) => (0x0e, v),
+            Instr::RetStr(v) => (0x0f, v),
+            Instr::RetNat(v) => (0x10, v),
+            Instr::RetFuncAddr(v) => (0x11, v),
+            Instr::PushSysCall(v) => (0x12, v),
+            Instr::BufferString(v) => (0x13, v),
+        };
+        dst.write_all(&[code as u8])?;
+        dst.write_all(&usize::to_le_bytes(arg0))
+    }
+}
+
+impl buf::sd2::ReadIn for Instr {
+    fn read_in<I: io::Read>(inp: &mut I) -> buf::sd2::Result<Self> {
+        let mut code_buf = [0u8; 1];
+        let mut val_buf = usize::to_le_bytes(0);
+        te!(inp.read_exact(&mut code_buf));
+        te!(inp.read_exact(&mut val_buf));
+        let val = usize::from_le_bytes(val_buf);
+        Ok(match code_buf[0] {
+            0x00 => Instr::Allocate { size: val },
+            0x01 => Instr::Jump { addr: val },
+            0x02 => Instr::Return(val),
+            0x03 => Instr::PushNull,
+            0x04 => Instr::PushStr(val),
+            0x05 => Instr::PushNat(val),
+            0x06 => Instr::Syscall(val),
+            0x07 => Instr::RetLocal(val),
+            0x08 => Instr::PushArgs,
+            0x09 => Instr::PushLocal(val),
+            0x0a => Instr::Call(val),
+            0x0b => Instr::CleanUp(val),
+            0x0c => Instr::Collect(val),
+            0x0d => Instr::PushFuncAddr(val),
+            0x0e => Instr::Pipe(val),
+            0x0f => Instr::RetStr(val),
+            0x10 => Instr::RetNat(val),
+            0x11 => Instr::RetFuncAddr(val),
+            0x12 => Instr::PushSysCall(val),
+            0x13 => Instr::BufferString(val),
+            other => panic!("Unknown instruction opcode: {:#x}", other),
+        })
+    }
+}
+
 impl StringInfo {
     pub fn add_to_strings<S>(this: &mut Strings, s: S) -> StringInfo
     where

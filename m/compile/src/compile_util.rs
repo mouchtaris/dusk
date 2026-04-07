@@ -66,6 +66,10 @@ pub trait CompileUtil: Borrow<Compiler> + BorrowMut<Compiler> {
                 typ: sym::Typ::Address(_),
                 ..
             } => cmp.capture_call_to_local_var(var),
+            &SymInfo {
+                typ: sym::Typ::Template(_),
+                ..
+            } => temg!("Cannot use template function {} as a variable", var),
         }
     }
 
@@ -243,6 +247,12 @@ pub trait CompileUtil: Borrow<Compiler> + BorrowMut<Compiler> {
                     te!(cmp.emit_from_symbol(push_or_retval, typ));
                 }
             }
+            SymInfo {
+                typ: sym::Typ::Template(_),
+                ..
+            } => {
+                panic!("Cannot emit template as a value")
+            }
         })
     }
 
@@ -263,7 +273,7 @@ pub trait CompileUtil: Borrow<Compiler> + BorrowMut<Compiler> {
         } else {
             match sinfo {
                 &SymInfo {
-                    typ: sym::Typ::Literal(_),
+                    typ: sym::Typ::Literal(_) | sym::Typ::Address(_) | sym::Typ::Template(_),
                     ..
                 } => {
                     log::trace!("Emit cleanup skipped for {sinfo:?}")

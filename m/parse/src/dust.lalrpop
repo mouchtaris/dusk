@@ -27,6 +27,7 @@ pub Expr: ast::Expr<'input> = {
     Slice => <>.into(),
     Variable => <>.into(),
     Array => <>.into(),
+    AddressOf => <>.into(),
 }
 
 pub Invocation: ast::Invocation<'input> = {
@@ -45,6 +46,7 @@ InvocationTarget: ast::InvocationTarget<'input> = {
     Path => ast::InvocationTarget::InvocationTargetSystemPath((<>,).into()),
     Dereference => ast::InvocationTarget::InvocationTargetDereference((<>,).into()),
     "*" "(" <Box<Invocation>> ")" => ast::InvocationTarget::InvocationTargetInvocation((<>,).into()),
+    "*" <Variable> => ast::InvocationTarget::InvocationTargetFuncPtrDeref((<>,).into()),
 }
 InvocationArg: ast::InvocationArg<'input> = {
     Ident => <>.into(),
@@ -56,6 +58,7 @@ InvocationArg: ast::InvocationArg<'input> = {
     Natural => <>.into(),
     Slice => <>.into(),
     "(" <Invocation> ")" => <>.into(),
+    AddressOf => <>.into(),
 }
 InvocationCwd: ast::InvocationCwd<'input> = {
     "@" <Path> => <>.into(),
@@ -111,6 +114,10 @@ Dereference: ast::Dereference<'input> = {
     "*" <Ident> => (<>,).into(),
 }
 
+AddressOf: ast::AddressOf<'input> = {
+    "&" <Ident> => (<>,).into(),
+}
+
 Body: ast::Body<'input> = {
     <Expr> ";" => ast::Block((<_>::default(), <>)).into(),
     "{" <Block> "}" => <>.into(),
@@ -118,6 +125,7 @@ Body: ast::Body<'input> = {
 
 DefParam: DefParam<'input> = {
     <Ident> "[" "]" => DefParam::Rest(<>),
+    "&" <Ident> => DefParam::Const(<>),
     <Ident> => DefParam::Single(<>),
 }
 
@@ -157,6 +165,7 @@ extern {
         "="                         => Tok::Kwd         (lex::Kwd           ("="            )   ),
         "$"                         => Tok::Kwd         (lex::Kwd           ("$"            )   ),
         "*"                         => Tok::Kwd         (lex::Kwd           ("*"            )   ),
+        "&"                         => Tok::Kwd         (lex::Kwd           ("&"            )   ),
         "\""                        => Tok::Kwd         (lex::Kwd           ("\""           )   ),
         ";"                         => Tok::Kwd         (lex::Kwd           (";"            )   ),
         "@"                         => Tok::Kwd         (lex::Kwd           ("@"            )   ),
