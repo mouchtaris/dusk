@@ -75,14 +75,18 @@ pub enum DefParam<'i> {
     /// Rest / variadic: `name[]` → desugars to `let name = $args[N;];`
     Rest(&'i str),
 
-    /// Const: `&name` → compile-time function address, not passed through $args
+    /// Const: `&name` → compile-time function address (default), not passed through $args
     Const(&'i str),
+
+    /// Typed const: `&(name : type)` → compile-time constant with explicit type
+    TypedConst(&'i str, &'i str),
 }
 
 impl<'i> DefParam<'i> {
     pub fn name(&self) -> &'i str {
         match self {
-            DefParam::Single(n) | DefParam::Rest(n) | DefParam::Const(n) => n,
+            DefParam::Single(n) | DefParam::Rest(n) | DefParam::Const(n)
+            | DefParam::TypedConst(n, _) => n,
         }
     }
 
@@ -91,7 +95,20 @@ impl<'i> DefParam<'i> {
     }
 
     pub fn is_const(&self) -> bool {
-        matches!(self, DefParam::Const(_))
+        matches!(self, DefParam::Const(_) | DefParam::TypedConst(_, _))
+    }
+
+    pub fn const_param_type(&self) -> Option<ConstParamType> {
+        match self {
+            DefParam::Const(_) => Some(ConstParamType::Func),
+            DefParam::TypedConst(_, typ) => Some(match *typ {
+                "func" => ConstParamType::Func,
+                "string" => ConstParamType::String,
+                "number" => ConstParamType::Number,
+                other => panic!("Unknown const param type: {}", other),
+            }),
+            _ => None,
+        }
     }
 }
 
@@ -192,7 +209,7 @@ pub fn desugar_def_params<'i>(
                 let expr = Expr::Slice(Slice(("args", Box::new(range))));
                 (*pname, expr)
             }
-            DefParam::Const(_) => unreachable!(),
+            DefParam::Const(_) | DefParam::TypedConst(_, _) => unreachable!(),
         };
 
         new_items.push(let_stmt(param_name, slice_expr));
@@ -207,11 +224,13 @@ pub fn desugar_def_params<'i>(
     let new_body = Body::Block(new_block);
 
     // --- If there are const params, emit TemplateDef instead of DefStmt ---
-    let const_params: Vec<&'i str> = params
+    let const_params: Vec<ConstParam<'i>> = params
         .iter()
-        .filter_map(|p| match p {
-            DefParam::Const(n) => Some(*n),
-            _ => None,
+        .filter_map(|p| {
+            p.const_param_type().map(|typ| ConstParam {
+                name: p.name(),
+                typ,
+            })
         })
         .collect();
 

@@ -1,0 +1,7 @@
+# vim: et ft=dust ts=4 sw=4
+#
+# Client: calls templates from linked library
+#
+
+!test (invoke_it &greet world) "=" helloworld;
+!test (invoke_it &shout bang) "=" LOUDbang;

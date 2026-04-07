@@ -51,6 +51,14 @@ pub use {
     symbol_table::{find_func_name, ScopeMut, ScopeRef, SymInfo, SymbolTable, SymbolTableExt},
 };
 
+/// Const param type tag for serialization.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ConstParamKind {
+    Func,
+    String,
+    Number,
+}
+
 /// A compiled function template with holes for const params.
 #[derive(Debug, Clone)]
 pub struct TemplateEntry {
@@ -60,8 +68,19 @@ pub struct TemplateEntry {
     pub holes: Vec<(usize, usize)>,
     /// Number of const params this template expects.
     pub const_param_count: usize,
+    /// Type of each const param, in order.
+    pub const_param_kinds: Vec<ConstParamKind>,
     /// Return type of the compiled body.
     pub ret_t: SymInfo,
+}
+
+/// Active during template body compilation. Records holes at emission time.
+#[derive(Debug, Clone)]
+pub(crate) struct TemplateCompileCtx {
+    pub body_start: usize,
+    pub placeholder_base: usize,
+    pub const_param_count: usize,
+    pub holes: Vec<(usize, usize)>,
 }
 
 #[derive(Default, Debug, Clone)]
@@ -70,6 +89,8 @@ pub struct Compiler {
     pub sym_table: SymbolTable,
     pub templates: Vec<TemplateEntry>,
     pub(crate) current_file_path: Vec<String>,
+    /// Set during template body compilation to record holes at emission time.
+    pub(crate) template_ctx: Option<TemplateCompileCtx>,
 }
 
 impl Compiler {
@@ -79,6 +100,7 @@ impl Compiler {
             sym_table: <_>::default(),
             templates: <_>::default(),
             current_file_path: <_>::default(),
+            template_ctx: None,
         }
     }
 
@@ -191,6 +213,21 @@ impl Compiler {
         let nat = te!(text.parse::<usize>());
 
         Ok(SymInfo::lit_natural(nat).in_scope(cmp.current_scope_id()))
+    }
+
+    /// If we're in a template compile context and `val` is a placeholder,
+    /// record the current instruction as a hole.
+    pub(crate) fn record_hole_if_placeholder(&mut self, val: usize) {
+        let instr_id = self.instr_id();
+        if let Some(ref mut ctx) = self.template_ctx {
+            if val >= ctx.placeholder_base
+                && val < ctx.placeholder_base + ctx.const_param_count
+            {
+                let param_idx = val - ctx.placeholder_base;
+                let instr_idx = instr_id - ctx.body_start;
+                ctx.holes.push((instr_idx, param_idx));
+            }
+        }
     }
 
     fn compile_funcaddr<S>(&mut self, text: S) -> Result<SymInfo>

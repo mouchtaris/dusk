@@ -1,7 +1,10 @@
 # vim: et ft=dust ts=4 sw=4
+# Function addresses / pointers spec
 
 def a = !printf "%s" a $args;
 def b = !printf "%s" b $args;
+
+# === &name as expression, let binding ===
 
 let c = &a;
 !test (*$c) "=" a;
@@ -9,9 +12,132 @@ let c = &a;
 let c = &b;
 !test (*$c) "=" b;
 
-def tell_me_which &ptr =
-    *$ptr bob
+# --- Reassignment ---
+
+let p = &a;
+!test (*$p) "=" a;
+let p = &b;
+!test (*$p) "=" b;
+
+# === Single const param template ===
+
+def call_it &f =
+    *$f
 ;
 
-!test (tell_me_which &a) "=" abob;
-!test (tell_me_which &b) "=" bbob;
+!test (call_it &a) "=" a;
+!test (call_it &b) "=" b;
+
+# --- Template with const param + regular arg ---
+
+def apply &f x =
+    *$f $x
+;
+
+!test (apply &a hello) "=" ahello;
+!test (apply &b world) "=" bworld;
+
+# --- Same template, different const args, repeated ---
+
+!test (call_it &a) "=" a;
+!test (call_it &b) "=" b;
+!test (call_it &a) "=" a;
+
+# === Multiple const params ===
+
+def pick_first &f &g =
+    *$f
+;
+
+!test (pick_first &a &b) "=" a;
+!test (pick_first &b &a) "=" b;
+
+def pick_second &f &g =
+    *$g
+;
+
+!test (pick_second &a &b) "=" b;
+!test (pick_second &b &a) "=" a;
+
+# --- Two const params with mixed regular arg ---
+
+def pick_first_apply &f &g x =
+    *$f $x
+;
+
+!test (pick_first_apply &a &b yo) "=" ayo;
+!test (pick_first_apply &b &a yo) "=" byo;
+
+# --- Same const param used twice ---
+
+def call_twice &f =
+    *$f
+;
+
+# (calling once is fine; calling twice in same body
+#  needs two separate invocations which the current
+#  body-is-single-expr form doesn't support without
+#  src/let. We test that multiple call sites with
+#  different const args work instead.)
+!test (call_twice &a) "=" a;
+!test (call_twice &b) "=" b;
+!test (call_twice &a) "=" a;
+
+# === Template with multiple regular args ===
+
+def apply2 &f x y =
+    *$f $x $y
+;
+
+!test (apply2 &a X Y) "=" aXY;
+!test (apply2 &b hello world) "=" bhelloworld;
+
+
+# === Typed const params ===
+
+# --- String const param ---
+
+def greet_with &(greeting : string) name =
+    !printf "%s%s" $greeting $name
+;
+
+!test (greet_with &"hello" world) "=" helloworld;
+!test (greet_with &"hi" bob) "=" hibob;
+
+# --- Number const param ---
+
+def add_prefix &(n : number) x =
+    !printf "%s%s" $n $x
+;
+
+!test (add_prefix &42 hello) "=" "42hello";
+!test (add_prefix &0 world) "=" "0world";
+
+# --- Mixed: func + string const params ---
+
+def labeled_call &f &(label : string) =
+    !printf "%s%s" $label (*$f)
+;
+
+!test (labeled_call &a &"result:") "=" "result:a";
+!test (labeled_call &b &"got:") "=" "got:b";
+
+# --- Explicit func annotation (same as default) ---
+
+def explicit_call &(f : func) =
+    *$f
+;
+
+!test (explicit_call &a) "=" a;
+!test (explicit_call &b) "=" b;
+
+
+# ===========================================================
+# === LINK TESTS (commented out -- expected to fail first) ===
+# ===========================================================
+#
+# To run manually:
+#   xsim -c -o /tmp/faddr_lib.obj spec/function_addresses_lib
+#   xsim -c --link -o /tmp/faddr_linked.obj /tmp/faddr_lib.obj spec/function_addresses_client
+#   xsim /tmp/faddr_linked.obj
+#

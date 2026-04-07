@@ -81,7 +81,7 @@ pub trait Compilers<'i> {
                 body,
                 const_params,
             }) => {
-                const PLACEHOLDER: usize = 0xDEAD_BEEF;
+                const PLACEHOLDER_BASE: usize = 0xDEAD_0000;
 
                 // Jump over the template body (it's dead code in the main stream)
                 cmp.emit1(i::Jump { addr: 0 });
@@ -91,12 +91,32 @@ pub trait Compilers<'i> {
                 let alloc_instr = cmp.instr_id();
                 let body_start = alloc_instr;
 
+                // Set up template compile context to record holes at emission time
+                cmp.template_ctx = Some(super::TemplateCompileCtx {
+                    body_start,
+                    placeholder_base: PLACEHOLDER_BASE,
+                    const_param_count: const_params.len(),
+                    holes: Vec::new(),
+                });
+
                 cmp.enter_scope();
 
-                // Register const params as Address with placeholder
-                for (idx, cp_name) in const_params.iter().enumerate() {
-                    let _ = idx;
-                    cmp.new_address(*cp_name, PLACEHOLDER, &SymInfo::NULL);
+                // Register each const param with appropriate type and unique placeholder
+                for (idx, cp) in const_params.iter().enumerate() {
+                    let placeholder = PLACEHOLDER_BASE + idx;
+                    match cp.typ {
+                        ast::ConstParamType::Func => {
+                            cmp.new_address(cp.name, placeholder, &SymInfo::NULL);
+                        }
+                        ast::ConstParamType::String => {
+                            let si = SymInfo::lit_string(placeholder);
+                            cmp.alias_name(cp.name, &si);
+                        }
+                        ast::ConstParamType::Number => {
+                            let si = SymInfo::lit_natural(placeholder);
+                            cmp.alias_name(cp.name, &si);
+                        }
+                    }
                 }
 
                 let retval = te!(cmp.compile(body));
@@ -112,7 +132,7 @@ pub trait Compilers<'i> {
                 let jump_target = cmp.instr_id() + 1;
                 te!(cmp.backpatch_with(jump_instr, jump_target));
 
-                // Extract the template instructions from the main stream
+                // Extract template body and holes (recorded at emission time)
                 let body_instrs: Vec<vm::Instr> = cmp
                     .icode
                     .instructions
@@ -122,25 +142,23 @@ pub trait Compilers<'i> {
                     .cloned()
                     .collect();
 
-                // Find holes: PushFuncAddr(PLACEHOLDER) instructions
-                let mut holes = Vec::new();
-                for (rel_idx, instr) in body_instrs.iter().enumerate() {
-                    if let &vm::Instr::PushFuncAddr(addr) = instr {
-                        if addr == PLACEHOLDER {
-                            // Determine which const param this hole belongs to.
-                            // Holes appear in order of the const params as used.
-                            // For now: count previous holes to determine param_index.
-                            let param_index = holes.len();
-                            holes.push((rel_idx, param_index));
-                        }
-                    }
-                }
+                let holes = cmp.template_ctx.take().unwrap().holes;
+
+                let const_param_kinds: Vec<super::ConstParamKind> = const_params
+                    .iter()
+                    .map(|cp| match cp.typ {
+                        ast::ConstParamType::Func => super::ConstParamKind::Func,
+                        ast::ConstParamType::String => super::ConstParamKind::String,
+                        ast::ConstParamType::Number => super::ConstParamKind::Number,
+                    })
+                    .collect();
 
                 let template_id = cmp.templates.len();
                 cmp.templates.push(super::TemplateEntry {
                     instructions: body_instrs,
                     holes,
                     const_param_count: const_params.len(),
+                    const_param_kinds,
                     ret_t: retval,
                 });
 
@@ -249,32 +267,62 @@ pub trait Compilers<'i> {
                 let const_param_count = tmpl.const_param_count;
 
                 // Separate const args from regular args
-                let mut const_addrs: Vec<usize> = Vec::with_capacity(const_param_count);
+                let tmpl_entry = cmp.templates[template_id].clone();
+                let mut const_values: Vec<usize> = Vec::with_capacity(const_param_count);
                 let mut regular_args = Vec::new();
+                let mut const_idx = 0usize;
                 for arg in args.iter() {
-                    if let ast::InvocationArg::AddressOf(ast::AddressOf((name,))) = arg {
-                        let addr_si = te!(cmp.compile_funcaddr(name));
-                        let addr = te!(addr_si.addr());
-                        const_addrs.push(addr);
+                    if let ast::InvocationArg::AddressOf(ast::AddressOf((text,))) = arg {
+                        let kind = tmpl_entry.const_param_kinds[const_idx];
+                        let val = match kind {
+                            super::ConstParamKind::Func => {
+                                let addr_si = te!(cmp.compile_funcaddr(text));
+                                te!(addr_si.addr())
+                            }
+                            super::ConstParamKind::String => {
+                                // Strip surrounding quotes if present
+                                let s = if (text.starts_with('"') && text.ends_with('"'))
+                                    || (text.starts_with('\'') && text.ends_with('\''))
+                                {
+                                    &text[1..text.len() - 1]
+                                } else {
+                                    text
+                                };
+                                te!(cmp.add_string(s))
+                            }
+                            super::ConstParamKind::Number => {
+                                te!(text.parse::<usize>())
+                            }
+                        };
+                        const_values.push(val);
+                        const_idx += 1;
                     } else {
                         regular_args.push(arg.clone());
                     }
                 }
 
-                if const_addrs.len() != const_param_count {
+                if const_values.len() != const_param_count {
                     temg!(
                         "Template {} expects {} const args, got {}",
                         invctrgt,
                         const_param_count,
-                        const_addrs.len()
+                        const_values.len()
                     );
                 }
 
-                // Clone template and patch holes
-                let tmpl_entry = cmp.templates[template_id].clone();
+                // Clone template and patch holes (instruction opcode stays, value changes)
                 let mut instrs = tmpl_entry.instructions.clone();
                 for &(instr_idx, param_idx) in &tmpl_entry.holes {
-                    instrs[instr_idx] = i::PushFuncAddr(const_addrs[param_idx]);
+                    let val = const_values[param_idx];
+                    instrs[instr_idx] = match instrs[instr_idx] {
+                        i::PushFuncAddr(_) => i::PushFuncAddr(val),
+                        i::RetFuncAddr(_) => i::RetFuncAddr(val),
+                        i::PushStr(_) => i::PushStr(val),
+                        i::RetStr(_) => i::RetStr(val),
+                        i::PushNat(_) => i::PushNat(val),
+                        i::RetNat(_) => i::RetNat(val),
+                        other => panic!("Unexpected hole instruction: {:?}", other),
+                    };
                 }
 
                 // Jump over the instantiated body (it's only reached via Call)

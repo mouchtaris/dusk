@@ -116,6 +116,8 @@ Dereference: ast::Dereference<'input> = {
 
 AddressOf: ast::AddressOf<'input> = {
     "&" <Ident> => (<>,).into(),
+    "&" <s:String> => ((s.0).0,).into(),
+    "&" <n:Natural> => ((n.0).0,).into(),
 }
 
 Body: ast::Body<'input> = {
@@ -125,6 +127,7 @@ Body: ast::Body<'input> = {
 
 DefParam: DefParam<'input> = {
     <Ident> "[" "]" => DefParam::Rest(<>),
+    "&" "(" <Ident> ":" <Ident> ")" => DefParam::TypedConst(<>),
     "&" <Ident> => DefParam::Const(<>),
     <Ident> => DefParam::Single(<>),
 }
@@ -166,6 +169,7 @@ extern {
         "$"                         => Tok::Kwd         (lex::Kwd           ("$"            )   ),
         "*"                         => Tok::Kwd         (lex::Kwd           ("*"            )   ),
         "&"                         => Tok::Kwd         (lex::Kwd           ("&"            )   ),
+        ":"                         => Tok::Kwd         (lex::Kwd           (":"            )   ),
         "\""                        => Tok::Kwd         (lex::Kwd           ("\""           )   ),
         ";"                         => Tok::Kwd         (lex::Kwd           (";"            )   ),
         "@"                         => Tok::Kwd         (lex::Kwd           ("@"            )   ),

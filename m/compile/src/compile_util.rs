@@ -131,7 +131,8 @@ pub trait CompileUtil: Borrow<Compiler> + BorrowMut<Compiler> {
                 } else {
                     i::RetFuncAddr
                 };
-                cmp.emit1(instr(addr))
+                cmp.emit1(instr(addr));
+                cmp.record_hole_if_placeholder(addr);
             }
             &SymInfo {
                 typ:
@@ -147,7 +148,8 @@ pub trait CompileUtil: Borrow<Compiler> + BorrowMut<Compiler> {
                 } else {
                     i::RetStr
                 };
-                cmp.emit1(instr(id))
+                cmp.emit1(instr(id));
+                cmp.record_hole_if_placeholder(id);
             }
             &SymInfo {
                 typ:
@@ -163,8 +165,8 @@ pub trait CompileUtil: Borrow<Compiler> + BorrowMut<Compiler> {
                 } else {
                     i::RetNat
                 };
-
-                cmp.emit1(instr(id))
+                cmp.emit1(instr(id));
+                cmp.record_hole_if_placeholder(id);
             }
             &SymInfo {
                 typ:

@@ -133,12 +133,27 @@ pub type BoxInvocation<'i> = Box<Invocation<'i>>;
 pub type BoxRange<'i> = Box<Range<'i>>;
 pub type Any<T> = Vec<T>;
 
-/// A function template with compile-time const params (function addresses).
+/// Type annotation for a const param.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ConstParamType {
+    Func,
+    String,
+    Number,
+}
+
+/// A named const param with its type.
+#[derive(Debug, Clone)]
+pub struct ConstParam<'i> {
+    pub name: Ident<'i>,
+    pub typ: ConstParamType,
+}
+
+/// A function template with compile-time const params.
 #[derive(Debug, Clone)]
 pub struct TemplateDef<'i> {
     pub name: Ident<'i>,
     pub body: Body<'i>,
-    pub const_params: Vec<Ident<'i>>,
+    pub const_params: Vec<ConstParam<'i>>,
 }
 
 pub type Empty<'i> = std::marker::PhantomData<&'i ()>;

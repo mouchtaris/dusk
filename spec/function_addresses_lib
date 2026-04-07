@@ -1,0 +1,11 @@
+# vim: et ft=dust ts=4 sw=4
+#
+# Library: template definitions for link testing
+#
+
+def greet = !printf "%s" hello $args;
+def shout = !printf "%s" LOUD $args;
+
+def invoke_it &f x =
+    *$f $x
+;
