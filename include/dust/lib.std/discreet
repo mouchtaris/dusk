@@ -1,2 +1,2 @@
-# vim: et ft=scala ts=4 sw=4
+# vim: et ft=dust ts=4 sw=4
 include ../lib.core/discreet;

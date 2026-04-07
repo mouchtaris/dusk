@@ -1,4 +1,4 @@
-# vim: et ft=scala ts=4 sw=4
+# vim: et ft=dust ts=4 sw=4
 
 # Test that __builtin __lib returns the currently executing
 # ICode as a bytebuffer containing the script's functions.
