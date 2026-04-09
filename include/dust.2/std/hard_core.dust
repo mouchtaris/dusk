@@ -8,6 +8,8 @@ def qt = !printf r#""%s""# $args;
 def trnl = !tr <$args[0] -d "\n" $args[1;];
 def env = p (trnl(!printenv $args[0])) $args[1;];
 def cwd = p (trnl(!pwd)) $args;
+def dirname = p (trnl(!dirname $args[0])) $args[1;];
+def basename = p (trnl(!basename $args[0])) $args[1;];
 def sink = !dd <$args[0] "of=/dev/null" "status=none" $args[1;];
 def sinkerr = sink(!tee <$args[0] /dev/stderr);
 def basename = trnl(!basename $args);

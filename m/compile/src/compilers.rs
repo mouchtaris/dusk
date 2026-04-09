@@ -81,7 +81,7 @@ pub trait Compilers<'i> {
                 body,
                 const_params,
             }) => {
-                const PLACEHOLDER_BASE: usize = 0xDEAD_0000;
+                const PLACEHOLDER: usize = 0xDEAD_BEEF;
 
                 // Jump over the template body (it's dead code in the main stream)
                 cmp.emit1(i::Jump { addr: 0 });
@@ -91,29 +91,30 @@ pub trait Compilers<'i> {
                 let alloc_instr = cmp.instr_id();
                 let body_start = alloc_instr;
 
-                // Set up template compile context to record holes at emission time
                 cmp.template_ctx = Some(super::TemplateCompileCtx {
                     body_start,
-                    placeholder_base: PLACEHOLDER_BASE,
-                    const_param_count: const_params.len(),
                     holes: Vec::new(),
                 });
 
                 cmp.enter_scope();
 
-                // Register each const param with appropriate type and unique placeholder
+                // Register each const param — const_param_idx on the SymInfo
+                // drives hole recording at emission time.
                 for (idx, cp) in const_params.iter().enumerate() {
-                    let placeholder = PLACEHOLDER_BASE + idx;
                     match cp.typ {
                         ast::ConstParamType::Func => {
-                            cmp.new_address(cp.name, placeholder, &SymInfo::NULL);
+                            let si = SymInfo::address(PLACEHOLDER, &SymInfo::NULL)
+                                .with_const_param_idx(idx);
+                            cmp.insert_to_scope(cp.name.to_string(), si);
                         }
                         ast::ConstParamType::String => {
-                            let si = SymInfo::lit_string(placeholder);
+                            let si = SymInfo::lit_string(PLACEHOLDER)
+                                .with_const_param_idx(idx);
                             cmp.alias_name(cp.name, &si);
                         }
                         ast::ConstParamType::Number => {
-                            let si = SymInfo::lit_natural(placeholder);
+                            let si = SymInfo::lit_natural(PLACEHOLDER)
+                                .with_const_param_idx(idx);
                             cmp.alias_name(cp.name, &si);
                         }
                     }

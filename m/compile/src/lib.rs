@@ -37,6 +37,7 @@ mod show;
 pub mod symbol_info;
 mod symbol_table;
 use symbol_table::ScopesRef;
+pub(crate) use symbol_table::ext::ScopesExt;
 pub use {
     crate::compile::{Compile, CompileEv},
     compile_util::CompileUtil,
@@ -78,8 +79,6 @@ pub struct TemplateEntry {
 #[derive(Debug, Clone)]
 pub(crate) struct TemplateCompileCtx {
     pub body_start: usize,
-    pub placeholder_base: usize,
-    pub const_param_count: usize,
     pub holes: Vec<(usize, usize)>,
 }
 
@@ -215,15 +214,11 @@ impl Compiler {
         Ok(SymInfo::lit_natural(nat).in_scope(cmp.current_scope_id()))
     }
 
-    /// If we're in a template compile context and `val` is a placeholder,
-    /// record the current instruction as a hole.
-    pub(crate) fn record_hole_if_placeholder(&mut self, val: usize) {
-        let instr_id = self.instr_id();
-        if let Some(ref mut ctx) = self.template_ctx {
-            if val >= ctx.placeholder_base
-                && val < ctx.placeholder_base + ctx.const_param_count
-            {
-                let param_idx = val - ctx.placeholder_base;
+    /// Record a hole if the emitted symbol is a const param.
+    pub(crate) fn try_record_hole(&mut self, const_param_idx: Option<usize>) {
+        if let Some(param_idx) = const_param_idx {
+            let instr_id = self.instr_id();
+            if let Some(ref mut ctx) = self.template_ctx {
                 let instr_idx = instr_id - ctx.body_start;
                 ctx.holes.push((instr_idx, param_idx));
             }

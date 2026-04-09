@@ -7,6 +7,9 @@ use {
 pub struct Info {
     pub typ: Typ,
     pub scope_id: usize,
+    /// Set during template body compilation to identify const params.
+    /// Not serialized — transient, compilation-time only.
+    pub const_param_idx: Option<usize>,
 }
 
 either::either![
@@ -55,10 +58,16 @@ impl Info {
             id: 0,
             lit_type: LitType::Null,
         }),
+        const_param_idx: None,
     };
 
     pub fn typ(typ: Typ) -> Self {
-        Self { scope_id: 0, typ }
+        Self { scope_id: 0, typ, const_param_idx: None }
+    }
+
+    pub fn with_const_param_idx(mut self, idx: usize) -> Self {
+        self.const_param_idx = Some(idx);
+        self
     }
 
     pub fn lit_string(id: usize) -> Self {
@@ -154,6 +163,7 @@ impl Default for Info {
                 types: vec![],
             }),
             scope_id: 0,
+            const_param_idx: None,
         }
     }
 }
@@ -254,7 +264,7 @@ impl Typ {
 
 impl fmt::Debug for Info {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let Self { scope_id, typ } = self;
+        let Self { scope_id, typ, .. } = self;
         write!(f, "{:?} @{}", typ, scope_id)
     }
 }

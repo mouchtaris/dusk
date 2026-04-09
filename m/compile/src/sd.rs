@@ -3,7 +3,7 @@ use super::{
     te, Compiler, ConstParamKind, SymInfo, TemplateEntry,
 };
 
-buf::sd_struct![SymInfo, typ, scope_id];
+buf::sd_struct![SymInfo, typ, scope_id, const_param_idx];
 
 buf::sd_type![Typ, Local, 0u8, Address, 1u8, Literal, 2u8, Template, 3u8];
 

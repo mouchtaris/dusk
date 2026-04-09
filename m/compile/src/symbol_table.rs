@@ -3,7 +3,7 @@ use {
     error::{ltrace, IntoResult},
 };
 
-mod ext;
+pub(crate) mod ext;
 pub mod lookups;
 mod scope;
 mod scopes;

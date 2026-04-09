@@ -280,3 +280,18 @@ serializable![
     |bx: &Box<T>, dst| bx.as_ref().write_out(dst),
     |inp| Ok(Box::new(te!(T::read_in(inp))))
 ];
+
+serializable![
+    Option<
+        T: { WriteOut + ReadIn },
+    >,
+    |opt: &Option<T>, dst| match opt {
+        None => 0u8.write_out(dst),
+        Some(val) => { 1u8.write_out(dst)?; val.write_out(dst) }
+    },
+    |inp| Ok(match te!(u8::read_in(inp)) {
+        0 => None,
+        1 => Some(te!(T::read_in(inp))),
+        other => error::temg!("Invalid Option tag: {}", other),
+    })
+];

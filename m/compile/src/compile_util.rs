@@ -123,6 +123,7 @@ pub trait CompileUtil: Borrow<Compiler> + BorrowMut<Compiler> {
         Ok(match &sinfo {
             &SymInfo {
                 typ: sym::Typ::Address(sym::Address { addr, .. }),
+                const_param_idx,
                 ..
             } => {
                 let instr = if push_or_retval {
@@ -132,7 +133,7 @@ pub trait CompileUtil: Borrow<Compiler> + BorrowMut<Compiler> {
                     i::RetFuncAddr
                 };
                 cmp.emit1(instr(addr));
-                cmp.record_hole_if_placeholder(addr);
+                cmp.try_record_hole(const_param_idx);
             }
             &SymInfo {
                 typ:
@@ -140,6 +141,7 @@ pub trait CompileUtil: Borrow<Compiler> + BorrowMut<Compiler> {
                         id,
                         lit_type: sym::LitType::String,
                     }),
+                const_param_idx,
                 ..
             } => {
                 let instr = if push_or_retval {
@@ -149,7 +151,7 @@ pub trait CompileUtil: Borrow<Compiler> + BorrowMut<Compiler> {
                     i::RetStr
                 };
                 cmp.emit1(instr(id));
-                cmp.record_hole_if_placeholder(id);
+                cmp.try_record_hole(const_param_idx);
             }
             &SymInfo {
                 typ:
@@ -157,6 +159,7 @@ pub trait CompileUtil: Borrow<Compiler> + BorrowMut<Compiler> {
                         id,
                         lit_type: sym::LitType::Natural,
                     }),
+                const_param_idx,
                 ..
             } => {
                 let instr = if push_or_retval {
@@ -166,7 +169,7 @@ pub trait CompileUtil: Borrow<Compiler> + BorrowMut<Compiler> {
                     i::RetNat
                 };
                 cmp.emit1(instr(id));
-                cmp.record_hole_if_placeholder(id);
+                cmp.try_record_hole(const_param_idx);
             }
             &SymInfo {
                 typ:
@@ -212,6 +215,7 @@ pub trait CompileUtil: Borrow<Compiler> + BorrowMut<Compiler> {
                         },
                     ),
                 scope_id,
+                ..
             } => {
                 let size = local.size();
                 let instr = |p| {
