@@ -76,6 +76,14 @@ pub trait Compilers<'i> {
                 );
                 Ok(sinfo)
             }
+            ast::Item::IncludeBin(ast::IncludeBin((ident, path))) => {
+                let sinfo = te!(
+                    IncludeExt::include_bin(cmp, ident, path.to_string().as_str()),
+                    "Including as bytes: {}",
+                    path
+                );
+                Ok(sinfo)
+            }
             ast::Item::TemplateDef(ast::TemplateDef {
                 name,
                 body,

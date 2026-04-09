@@ -17,6 +17,7 @@ Item: ast::Item<'input> = {
     "def" <n:Ident> <p:DefParam+> "=" <b:Body> => desugar_def_params(n, p, b),
     "include" <Path> ";" => ast::Item::Include((<>,).into()),
     "include_str" <Ident> <Path> ";" => ast::Item::IncludeStr((<>,).into()),
+    "include_bin" <Ident> <Path> ";" => ast::Item::IncludeBin((<>,).into()),
     //"for_each" <Ident> "in" <Expr> <Body> => ast::Item::Empty(<_>::default()),
 }
 
@@ -184,6 +185,7 @@ extern {
         "]"                         => Tok::Kwd         (lex::Kwd           ("]"            )   ),
         "include"                   => Tok::Kwd         (lex::Kwd           ("include"      )   ),
         "include_str"               => Tok::Kwd         (lex::Kwd           ("include_str"  )   ),
+        "include_bin"               => Tok::Kwd         (lex::Kwd           ("include_bin"  )   ),
         "for_each"                  => Tok::Kwd         (lex::Kwd           ("for_each"     )   ),
         "in"                        => Tok::Kwd         (lex::Kwd           ("in"           )   ),
         IDENT                       => Tok::Idnt        (lex::Idnt          (<&'input str>  )   ),

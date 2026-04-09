@@ -324,6 +324,7 @@ pub fn hover(text: &str, pos: Position) -> Option<Hover> {
         TokenKind::Src => Some("**src** — Source binding. Execute now, collect later."),
         TokenKind::Include => Some("**include** — Include and execute another Dust file."),
         TokenKind::IncludeStr => Some("**include_str** — Include the string content of a file into a binding."),
+        TokenKind::IncludeBin => Some("**include_bin** — Include the binary content of a file into a binding."),
         _ => None,
     };
 

@@ -15,6 +15,12 @@ pub trait IncludeExt: Mut<Compiler> {
         Ok(())
     }
 
+    fn include_bin(&mut self, ident: &str, path: &str) -> Result<SymInfo> {
+        // TODO: implement with LitBytes once bytes_table exists
+        // For now, reads as string (placeholder)
+        self.include_str(ident, path)
+    }
+
     fn include_str(&mut self, ident: &str, path: &str) -> Result<SymInfo> {
         let cmp = self.borrow_mut();
 
