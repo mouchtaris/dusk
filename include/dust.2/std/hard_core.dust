@@ -11,3 +11,4 @@ def cwd = p (trnl(!pwd)) $args;
 def sink = !dd <$args[0] "of=/dev/null" "status=none" $args[1;];
 def sinkerr = sink(!tee <$args[0] /dev/stderr);
 def basename = trnl(!basename $args);
+def bytelen = trnl(!wc <$args[0] --bytes);
