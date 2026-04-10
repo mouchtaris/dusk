@@ -1,0 +1,8 @@
+#!/usr/bin/xsim --compile-call=main
+def main =
+  !xsim ./dusk.dust
+    --compile=true
+    -l $args[0]
+    --
+      $args[1;]
+;

@@ -1,6 +1,6 @@
 def dusk::init.fish = r#"
   function dusk-select
-    commandline -i 'dust '(dust dusk::select)
+    commandline -i 'dusk '(dusk dusk::select)
   end
 
   bind -M insert \cp dusk-select

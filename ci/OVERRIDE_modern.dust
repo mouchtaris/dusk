@@ -1,6 +1,5 @@
 ## --------------------------------------------------------------- ##
 include ../include/dust.2/std/...;
-
 ## --------------------------------------------------------------- ##
 def ci::build =
   !cargo
@@ -43,6 +42,7 @@ def ci::install/specific target_prefix dest tar = {
     !mkdir -p $target;
     src files = !tar @$target <$tar --extract --verbose;
     !xargs @$target <$files -- lsd -al --;
+    ""
 }
 
 def ci::install/by prefix = !cat
@@ -50,7 +50,7 @@ def ci::install/by prefix = !cat
   <(specific $prefix "include" $include.tar )
 ;
 
-def ci::prefix/local  = env HOME /.local/;
+def ci::prefix/local  = env HOME /.local/ $args;
 def ci::prefix/system = "/usr/";
 
 def ci::install/local   = by $prefix/local;
@@ -64,6 +64,7 @@ def ci::uninstall/specific prefix dest tar = {
   src files = !tar <$tar --list;
   src files = !grep <$files -v "/$";
   !xargs @$target <$files -- rm -v --;
+  ""
 }
 
 def ci::uninstall/by prefix = !cat
@@ -73,3 +74,19 @@ def ci::uninstall/by prefix = !cat
 
 def ci::uninstall/local   = by $prefix/local;
 def ci::uninstall/system  = by $prefix/system;
+
+def ci::SUDO.install = {
+  install/local;
+  !which xsim;
+  let xsim = prefix/local bin/xsim;
+
+  !xsim r##"
+    let xsim = $args[0];
+    let self = $args[1];
+
+    !sudo $xsim $self -c -l ci::install/system;
+  "## -- $xsim ./ci/OVERRIDE_modern.dust;
+
+  uninstall/local;
+  !which xsim;
+}
