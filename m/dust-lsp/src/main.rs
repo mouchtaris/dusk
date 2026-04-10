@@ -36,7 +36,7 @@ fn main() -> Result<(), Box<dyn Error + Sync + Send>> {
 
     let mut server = Server::new();
     server.main_loop(&connection)?;
-
+    drop(connection);
     io_threads.join()?;
     log::info!("dust-lsp shut down");
     Ok(())
