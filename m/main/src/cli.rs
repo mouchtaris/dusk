@@ -54,6 +54,14 @@ mega ::
     [CMD MODE]
   input...                          :: [ path/script , ... ]
   -- [ script-args ... ]
+
+    The input types, invocation flags, and enabled features, together, specialize the frontend behaviour.
+
+    [Examples]
+    -c ./path.dust                  :: single, text-main, file-path
+    -c -b ./base/path <(text...)    :: single, text-main, stdin
+    -c ./path.dust -l exec -- a b   :: single, text-script, file-path, call `exec a b`
+    ./lib -l exec -- a b            :: single, byte-lib, file-path, call `exec a b`
 "#
     )
 }
@@ -201,6 +209,9 @@ pub fn megafront() -> impl Cmd {
         set!(base_path, map, non_empty);
         set!(dump_to);
 
+        // ---- Special occasions ---- //
+
+        // Check if --help ...
         {
             let mut args = args(1);
             if let Some("--help") = args.next() {
@@ -208,6 +219,7 @@ pub fn megafront() -> impl Cmd {
                 return Ok(());
             }
         }
+        // Check if --compile-call ...
         {
             let mut args = args(1);
             match args.next().and_then(|x| x.split_once('=')) {
@@ -227,6 +239,7 @@ pub fn megafront() -> impl Cmd {
                 _ => (),
             }
         }
+        // Check if --version ...
         {
             let mut args = args(1);
             match args.next() {
@@ -237,17 +250,27 @@ pub fn megafront() -> impl Cmd {
                 _ => (),
             }
         }
+
+        // ---- Usual occasion ---- //
+        //
+        // Cycle through arguments after 0 (exec name).
         for (i, arg) in args(1).enumerate() {
             let i = i + 1;
 
+            // Met the "rest-is-args" separator: `--`:
+            //      rest of arguments are meant for script.
             if opts.rest_args.is_some() {
+                // Stop processing cli opts here.
                 break;
             }
 
+            // A mechanism for setting values to flag switches of the
+            // previous iteration round (`-o -` for example).
             if let Some(lens) = &mut setting {
                 lens(&mut opts, i, arg);
                 setting = None;
                 continue;
+                // Set the value and continue the loop
             }
             let mut set = |s: Set| {
                 setting = Some(s);
@@ -255,35 +278,43 @@ pub fn megafront() -> impl Cmd {
 
             const FALSE: &str = "false";
             match arg.split_once('=') {
+                // Booleans: are true as long as they are set and
+                // not explicitly `false`:
                 Some(("--compile", val)) if val != FALSE => opts.compile = true,
                 Some(("--also_run", val)) if val != FALSE => opts.also_run = true,
                 Some(("--debug", val)) if val != FALSE => opts.debug = true,
+                Some(("--link", val)) if val != FALSE => opts.link = true,
                 Some(("--debug-do-system-main", val)) if val != FALSE => {
                     opts.debug_do_system_main = true
                 }
                 Some(("--show_debug_vm_stack", val)) if val != FALSE => {
                     opts.show_debug_vm_stack = true
                 }
+                // Strings: take the value after '=':
                 Some(("--call", val)) => opts.set(call, i, val),
                 Some(("--dump_to", val)) => opts.set(dump_to, i, val),
                 Some(("--list_funcs_to", val)) => opts.list_funcs_to = Some(val),
                 Some(("--dump_text_to", val)) => opts.dump_text_to = Some(val),
                 Some(("--base_path", val)) => opts.set(base_path, i, val),
-                Some(("--link", val)) if val != FALSE => opts.link = true,
 
+                // Unknown long opt:
                 Some((opt, _)) if opt.starts_with("--") => {
                     xsi_help();
                     temg!("Unknown opt: {opt}")
                 }
+                // Met '--' (rest-is-args): mark for next loop round (See above):
                 None if arg == "--" => opts.rest_args = Some(i + 1),
                 _ => match arg {
+                    // Short bool opts, always true (no arg):
                     "-c" => opts.compile = true,
                     "-r" => opts.also_run = true,
                     "-d" => opts.debug = true,
                     "-ds" => opts.debug_do_system_main = true,
+                    // Short string opts, take next arg as value (See above):
                     "-l" => set(call),
                     "-b" => set(base_path),
                     "-o" => set(dump_to),
+                    // Anything else is input script (text or path)
                     _ => {
                         if let Some(_) = as_path(arg) {
                             opts.push_path(arg);
@@ -319,7 +350,7 @@ pub fn megafront() -> impl Cmd {
 
         // ---- Actual code action begins here ----
 
-        // ---- Link mode: load compiled modules and merge ----
+        // ---- (if) Link mode: load compiled modules and merge ----
         if opts.link {
             let modules: Result<Vec<_>> = opts
                 .input_paths
@@ -331,6 +362,10 @@ pub fn megafront() -> impl Cmd {
             let dest = opts.dump_to.unwrap_or("");
             return try_dest(&Some(dest), |out| linked.write_out(out)).map(|_| ());
         }
+        // Exit after linking.
+        // ----------------------------------------------------
+
+        // ... else ...
 
         // ---- Get a compiler:
         // - compile input text streams, or
@@ -347,10 +382,30 @@ pub fn megafront() -> impl Cmd {
         let input_scripts = &input_scripts[..];
         let input_order = &input_order[..];
 
+        // ---- Compiling section ----
+        //
+        // The combinations of (.)input types, (.)flags, and (.)enabled features,
+        // all together specialize the frontend behaviour.
+        //
         let compiler = &te!(match (compile, base_path, input_paths, input_scripts,) {
-            // ---- Compiling section ----
+            // single text file path:
+            //
+            //      -c ./path.dust
+            //
             (true, _, [input_path], []) => compile_file(input_path),
+
+            // stdin text with base-path specified:
+            //
+            //      -c -b ./base/path <(text...)
+            //
             (true, base_path, [], []) => compile_input_with_base(stdin(), base_path.unwrap_or(cwd)),
+
+            // multiple text file paths and scripts:
+            //
+            //      -c -b ./base/path ./lib/a.dust "def conf::b = 0;" ./dust/b ...
+            //
+            //   =>  compile as a single, cocnatenated xs stream
+            //       under base-path.
             #[cfg(feature = "has_code_tools")]
             (true, base_path, files, scripts) => {
                 let mut inps0 = files.into_iter().map(read_file);
@@ -368,6 +423,12 @@ pub fn megafront() -> impl Cmd {
                     .unwrap_or("./");
                 compile_input_with_base(inps, base_path)
             }
+            // multiple text scripts with no input files:
+            //
+            //      -b ./base/path
+            //
+            //  =>  compile as text (-c status ignored, effective `true`)
+            //      as before: concatenated one script under base-path.
             #[cfg(feature = "has_code_tools")]
             (_, base_path, [], scripts @ [_, ..]) => compile_input_with_base(
                 te!(code_tools_util::stx::IterRead::new(
@@ -375,11 +436,17 @@ pub fn megafront() -> impl Cmd {
                 )),
                 base_path.unwrap_or("./"),
             ),
-            #[cfg(feature = "has_code_tools")]
+
             // ---- Load lib section ----
-            (_, _, paths @ [_, ..], []) => read_compiler(te!(code_tools_util::stx::IterRead::new(
-                paths.into_iter().map(read_file)
-            ))),
+
+            // This is pure wrong, compiler cannot read just a concatenation of objects
+            //#[cfg(feature = "has_code_tools")]
+            //(_, _, paths @ [_, ..], []) => read_compiler(te!(code_tools_util::stx::IterRead::new(
+            //    paths.into_iter().map(read_file)
+            //))),
+
+            // stdin main-bytecode (no paths or scripts, and -c=false):
+            //
             (_, _, [], []) => read_compiler(stdin()),
             _ => todo!("{opts:?}"),
         });
