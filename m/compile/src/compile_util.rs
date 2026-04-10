@@ -157,6 +157,24 @@ pub trait CompileUtil: Borrow<Compiler> + BorrowMut<Compiler> {
                 typ:
                     sym::Typ::Literal(sym::Literal {
                         id,
+                        lit_type: sym::LitType::Bytes,
+                    }),
+                const_param_idx,
+                ..
+            } => {
+                let instr = if push_or_retval {
+                    cmp.new_local_tmp(sinfo, format_args!("bytes-lit-{}", id));
+                    i::PushBytes
+                } else {
+                    i::RetBytes
+                };
+                cmp.emit1(instr(id));
+                cmp.try_record_hole(const_param_idx);
+            }
+            &SymInfo {
+                typ:
+                    sym::Typ::Literal(sym::Literal {
+                        id,
                         lit_type: sym::LitType::Natural,
                     }),
                 const_param_idx,

@@ -31,13 +31,14 @@ mod emit;
 pub mod facade;
 mod file_path;
 mod include;
+mod include_bin_ext;
 pub mod link;
 mod sd;
 mod show;
 pub mod symbol_info;
 mod symbol_table;
-use symbol_table::ScopesRef;
 pub(crate) use symbol_table::ext::ScopesExt;
+use symbol_table::ScopesRef;
 pub use {
     crate::compile::{Compile, CompileEv},
     compile_util::CompileUtil,

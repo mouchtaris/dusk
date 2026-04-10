@@ -12,6 +12,7 @@ pub const DEBUG_STACK_SIZE: usize = 45;
 pub struct Vm {
     pub bin_path: Deq<String>,
     string_table: Deq<String>,
+    bytes_table: Deq<Vec<u8>>,
     dynstring_table: Deq<String>,
     job_table: Deq<Job>,
     stack: Vec<Value>,
@@ -41,6 +42,7 @@ impl Vm {
     /// Reset to zero state
     pub fn reset(&mut self) {
         self.string_table.clear();
+        self.bytes_table.clear();
 
         self.frame_ptr = 0;
         self.stack_ptr = 0;
@@ -326,6 +328,10 @@ impl Vm {
         self.push_val(value::LitString(strid))
     }
 
+    pub fn push_lit_bytes(&mut self, id: usize) -> Result<usize> {
+        self.push_val(value::LitBytes(id))
+    }
+
     // Pushes an array of all arguments passed to this call
     pub fn push_args(&mut self) -> Result<usize> {
         self.push_val(value::Array {
@@ -397,6 +403,10 @@ impl Vm {
         for (s, i) in &icode.strings {
             ltrace!("Load literal string {} {}", i.id, s);
             self.add_string(i.clone(), s.clone());
+        }
+        for (id, blob) in icode.bytes.iter().enumerate() {
+            ltrace!("Load literal bytes {} len={}", id, blob.len());
+            self.bytes_table.push_back(blob.clone());
         }
         Ok(())
     }
@@ -608,6 +618,10 @@ impl Vm {
                 &Value::LitString(value::LitString(strid)) => {
                     te!(write!(strbuf, "{:?}", te!(vm.get_string_id(strid))))
                 }
+                &Value::LitBytes(value::LitBytes(id)) => {
+                    let bytes = te!(vm.get_bytes_id(id));
+                    te!(write!(strbuf, "<{} bytes>", bytes.len()))
+                }
                 &Value::Job(value::Job(jobid)) => {
                     te!(write!(strbuf, "{:?}", te!(vm.get_job(jobid))))
                 }
@@ -643,6 +657,10 @@ impl Vm {
         } else {
             t.resize(id + 1, s);
         }
+    }
+
+    pub fn get_bytes_id(&self, id: usize) -> Result<&[u8]> {
+        Ok(te!(self.bytes_table.get(id), "bytesid {}", id))
     }
 
     pub fn cleanup<F, E>(&mut self, fp_off: usize, _cln_name: &str, cln: F) -> Result<()>
@@ -687,6 +705,7 @@ impl Vm {
             v @ (Value::ArrayView(_)
             | Value::FuncAddr(_)
             | Value::LitString(_)
+            | Value::LitBytes(_)
             | Value::Null(_)
             | Value::Natural(_)) => {
                 ltrace!("No cleanup: {:?}", v);
@@ -721,6 +740,7 @@ impl Vm {
         let vm = self;
 
         Ok(match val {
+            &Value::LitBytes(value::LitBytes(id)) => te!(vm.get_bytes_id(id)),
             &Value::Job(value::Job(job_id)) => match te!(vm.get_job(job_id)) {
                 Job::Buffer(buf) => buf.as_bytes(),
                 other => error::temg!("Not a string job: {:?}", other),

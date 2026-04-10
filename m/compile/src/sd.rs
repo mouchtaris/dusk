@@ -14,7 +14,7 @@ buf::sd_struct![Template, template_id, const_param_count];
 buf::sd_struct![TemplateEntry, instructions, holes, const_param_count, const_param_kinds, ret_t];
 buf::sd_enum![ConstParamKind, Func, 0u8, String, 1u8, Number, 2u8];
 
-buf::sd_enum![LitType, Null, 0u8, String, 1u8, Natural, 2u8, Syscall, 3u8, Args, 4u8];
+buf::sd_enum![LitType, Null, 0u8, String, 1u8, Natural, 2u8, Syscall, 3u8, Args, 4u8, Bytes, 5u8];
 
 buf::sd![
     Compiler,

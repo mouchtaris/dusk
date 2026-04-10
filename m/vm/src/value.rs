@@ -17,10 +17,11 @@ macro_rules! name {
     }
 }
 
-either![Value, Null, LitString, DynString, Natural, Array, Job, FuncAddr, SysCallId, ArrayView];
+either![Value, Null, LitString, LitBytes, DynString, Natural, Array, Job, FuncAddr, SysCallId, ArrayView];
 
 pub type Null = ();
 name![LitString = usize];
+name![LitBytes = usize];
 name![DynString = usize];
 pub type Natural = usize;
 name![Job = usize];
@@ -134,6 +135,7 @@ impl RuntimeTypeInfo for Value {
         match self {
             Value::Null(_) => "null",
             Value::LitString(_) => "lit-string",
+            Value::LitBytes(_) => "lit-bytes",
             Value::Natural(_) => "natural",
             Value::Array(_) => "array",
             Value::Job(_) => "job",
@@ -164,6 +166,11 @@ where
 impl ValueTypeInfo for LitString {
     fn type_info_name() -> &'static str {
         "LitString"
+    }
+}
+impl ValueTypeInfo for LitBytes {
+    fn type_info_name() -> &'static str {
+        "LitBytes"
     }
 }
 impl ValueTypeInfo for Null {

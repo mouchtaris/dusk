@@ -34,3 +34,4 @@ test ./spec/xsim_xsi_megafront_walkthrough;
 test ./spec/named_params;
 test ./spec/export_dustlib;
 test ./spec/link_dustlib;
+test ./spec/include_bin_test;

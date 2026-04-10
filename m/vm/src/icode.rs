@@ -8,11 +8,13 @@ fn _use() {
 
 pub type Instrs = Deq<Instr>;
 pub type Strings = Map<String, StringInfo>;
+pub type BytesTable = Vec<Vec<u8>>;
 
 #[derive(Default, Debug, Clone)]
 pub struct ICode {
     pub instructions: Instrs,
     pub strings: Strings,
+    pub bytes: BytesTable,
 }
 
 #[derive(Default, Debug, Copy, Eq, Ord, Hash, PartialEq, PartialOrd, Clone)]
@@ -47,6 +49,8 @@ pub enum Instr {
     Collect(usize),
     Pipe(usize),
     BufferString(usize),
+    PushBytes(usize),
+    RetBytes(usize),
 }
 
 impl Instr {
@@ -101,6 +105,10 @@ impl Instr {
             &Self::RetStr(id) => te!(vm.set_ret_val(value::LitString(id))),
             &Self::RetNat(val) => te!(vm.set_ret_val(val)),
             &Self::RetFuncAddr(addr) => te!(vm.set_ret_val(value::FuncAddr(addr))),
+            &Self::PushBytes(id) => {
+                te!(vm.push_lit_bytes(id));
+            }
+            &Self::RetBytes(id) => te!(vm.set_ret_val(value::LitBytes(id))),
         }
         Ok(())
     }
@@ -137,6 +145,8 @@ impl buf::sd2::WriteOut for Instr {
             Instr::RetFuncAddr(v) => (0x11, v),
             Instr::PushSysCall(v) => (0x12, v),
             Instr::BufferString(v) => (0x13, v),
+            Instr::PushBytes(v) => (0x14, v),
+            Instr::RetBytes(v) => (0x15, v),
         };
         dst.write_all(&[code as u8])?;
         dst.write_all(&usize::to_le_bytes(arg0))
@@ -171,6 +181,8 @@ impl buf::sd2::ReadIn for Instr {
             0x11 => Instr::RetFuncAddr(val),
             0x12 => Instr::PushSysCall(val),
             0x13 => Instr::BufferString(val),
+            0x14 => Instr::PushBytes(val),
+            0x15 => Instr::RetBytes(val),
             other => panic!("Unknown instruction opcode: {:#x}", other),
         })
     }
@@ -190,42 +202,20 @@ impl StringInfo {
     }
 }
 impl ICode {
+    pub fn add_bytes(&mut self, data: Vec<u8>) -> usize {
+        let id = self.bytes.len();
+        self.bytes.push(data);
+        id
+    }
+
     pub fn write_to<O>(&self, out: io::Result<O>) -> io::Result<()>
     where
         O: io::Write,
     {
-        let ilen = usize::to_le_bytes(self.instructions.len());
         out.and_then(|mut out| {
             buf::sd2::WriteOut::write_out(&self.strings, &mut out)?;
-            out.write_all(&ilen)?;
-            for instr in &self.instructions {
-                let (code, arg0) = match *instr {
-                    Instr::Allocate { size } => (0x00, size),
-                    Instr::Jump { addr } => (0x01, addr),
-                    Instr::Return(sp_off) => (0x02, sp_off),
-                    Instr::PushNull => (0x03, 0x00),
-                    Instr::PushStr(strid) => (0x04, strid),
-                    Instr::PushNat(val) => (0x05, val),
-                    Instr::Syscall(id) => (0x06, id),
-                    Instr::RetLocal(src_fp_off) => (0x07, src_fp_off),
-                    Instr::PushArgs => (0x08, 0x00),
-                    Instr::PushLocal(fp_off) => (0x09, fp_off),
-                    Instr::Call(addr) => (0x0a, addr),
-                    Instr::CleanUp(fp_off) => (0x0b, fp_off),
-                    Instr::Collect(fp_off) => (0x0c, fp_off),
-                    Instr::PushFuncAddr(addr) => (0x0d, addr),
-                    Instr::Pipe(addr) => (0x0e, addr),
-                    Instr::RetStr(id) => (0x0f, id),
-                    Instr::RetNat(val) => (0x10, val),
-                    Instr::RetFuncAddr(addr) => (0x11, addr),
-                    Instr::PushSysCall(id) => (0x12, id),
-                    Instr::BufferString(fp_off) => (0x13, fp_off),
-                };
-                let code = u8::to_le_bytes(code);
-                let arg = usize::to_le_bytes(arg0);
-                out.write_all(&code)?;
-                out.write_all(&arg)?;
-            }
+            buf::sd2::WriteOut::write_out(&self.bytes, &mut out)?;
+            buf::sd2::WriteOut::write_out(&self.instructions, &mut out)?;
             Ok(())
         })
     }
@@ -233,48 +223,16 @@ impl ICode {
     where
         I: io::Read,
     {
-        let mut usize_buf = usize::to_le_bytes(0usize);
-        let mut icode = ICode::default();
-        //let mut byte_buf = Vec::new();
-
         let inp = Ok(te!(inp));
         inp.and_then(|mut inp| {
-            icode.strings = te!(buf::sd2::ReadIn::read_in(&mut inp));
-
-            te!(inp.read_exact(&mut usize_buf));
-            let ilen = usize::from_le_bytes(usize_buf);
-            icode.instructions.reserve(ilen);
-            for _ in 0..ilen {
-                te!(inp.read_exact(&mut usize_buf[0..1]));
-                let code = u8::from_le_bytes([usize_buf[0]]);
-                te!(inp.read_exact(&mut usize_buf));
-                let val = usize::from_le_bytes(usize_buf);
-                let instr = match code {
-                    0x00 => Instr::Allocate { size: val },
-                    0x01 => Instr::Jump { addr: val },
-                    0x02 => Instr::Return(val),
-                    0x03 => Instr::PushNull,
-                    0x04 => Instr::PushStr(val),
-                    0x05 => Instr::PushNat(val),
-                    0x06 => Instr::Syscall(val),
-                    0x07 => Instr::RetLocal(val),
-                    0x08 => Instr::PushArgs,
-                    0x09 => Instr::PushLocal(val),
-                    0x0a => Instr::Call(val),
-                    0x0b => Instr::CleanUp(val),
-                    0x0c => Instr::Collect(val),
-                    0x0d => Instr::PushFuncAddr(val),
-                    0x0e => Instr::Pipe(val),
-                    0x0f => Instr::RetStr(val),
-                    0x10 => Instr::RetNat(val),
-                    0x11 => Instr::RetFuncAddr(val),
-                    0x12 => Instr::PushSysCall(val),
-                    0x13 => Instr::BufferString(val),
-                    other => panic!("{:?}", other),
-                };
-                icode.instructions.push_back(instr);
-            }
-            Ok(icode)
+            let strings = te!(buf::sd2::ReadIn::read_in(&mut inp));
+            let bytes = te!(buf::sd2::ReadIn::read_in(&mut inp));
+            let instructions = te!(buf::sd2::ReadIn::read_in(&mut inp));
+            Ok(ICode {
+                strings,
+                bytes,
+                instructions,
+            })
         })
     }
 }

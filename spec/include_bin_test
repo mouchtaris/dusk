@@ -1,0 +1,10 @@
+# vim: et ft=dust ts=4 sw=4
+def mebin = {
+    include_bin me ./include_bin_test;
+    $me
+}
+def metxt = {
+    include_str me ./include_bin_test;
+    $me
+}
+!test $mebin "=" $metxt;

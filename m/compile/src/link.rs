@@ -40,6 +40,10 @@ where
     let mut number_of_imported_strings = 0;
     let mut on_add_string = |_: &str| number_of_imported_strings += 1;
 
+    // bytes offset: source bytes IDs shift by target's current count
+    let bytes_offset = icode.bytes.len();
+    icode.bytes.extend(source.icode.bytes.iter().cloned());
+
     // ---------------------------------------
     // ---- Importing/Translating strings ----
     // ---------------------------------------
@@ -79,6 +83,8 @@ where
             RetStr(id) => RetStr(translate_string_id(id)),
             PushFuncAddr(addr) => PushFuncAddr(translate_addr(addr)),
             RetFuncAddr(addr) => RetFuncAddr(translate_addr(addr)),
+            PushBytes(id) => PushBytes(id + bytes_offset),
+            RetBytes(id) => RetBytes(id + bytes_offset),
             Jump { addr } => Jump {
                 addr: translate_addr(addr),
             },

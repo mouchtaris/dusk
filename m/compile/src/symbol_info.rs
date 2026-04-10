@@ -46,6 +46,7 @@ pub struct Template {
 pub enum LitType {
     Natural,
     String,
+    Bytes,
     Null,
     Syscall,
     Args,
@@ -62,7 +63,11 @@ impl Info {
     };
 
     pub fn typ(typ: Typ) -> Self {
-        Self { scope_id: 0, typ, const_param_idx: None }
+        Self {
+            scope_id: 0,
+            typ,
+            const_param_idx: None,
+        }
     }
 
     pub fn with_const_param_idx(mut self, idx: usize) -> Self {
@@ -72,6 +77,10 @@ impl Info {
 
     pub fn lit_string(id: usize) -> Self {
         Self::typ(Typ::lit(id, LitType::String))
+    }
+
+    pub fn lit_bytes(id: usize) -> Self {
+        Self::typ(Typ::lit(id, LitType::Bytes))
     }
 
     pub fn lit_natural(id: usize) -> Self {
@@ -281,7 +290,10 @@ impl fmt::Debug for Typ {
 }
 impl fmt::Debug for Template {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let Self { template_id, const_param_count } = self;
+        let Self {
+            template_id,
+            const_param_count,
+        } = self;
         write!(f, "template#{} ({}cp)", template_id, const_param_count)
     }
 }

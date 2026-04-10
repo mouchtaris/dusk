@@ -251,6 +251,7 @@ pub fn script_call_getret(
         Ok(match te!(vm.stack_get_val(0)) {
             vm::Value::Null(_) => todo!(),
             vm::Value::LitString(_) => todo!(),
+            vm::Value::LitBytes(_) => todo!(),
             vm::Value::DynString(_) => todo!(),
             vm::Value::Natural(_) => todo!(),
             vm::Value::Array(_) => todo!(),
