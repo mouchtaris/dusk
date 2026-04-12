@@ -56,20 +56,5 @@ path = '../vm'
 version = '0.0.1'
 path = '../vm-debug'
 
-[dependencies.code_tools_util]
-optional = true
-version = "0.0.1"
-path = "/home/bob/job/cargo/l/code_tools/p/code_tools_util"
-
-[dependencies.ngio]
-optional = true
-version = "0.0.1"
-path = "/home/bob/job/cargo/q/ngio/crate/ngio"
-
 [features]
-has_code_tools = ["code_tools_util"]
-has_ngio = ["ngio"]
-debug = []
-release = []
-serde_cbor = []
-default = ["has_code_tools", "has_ngio"]
+code_tools = []

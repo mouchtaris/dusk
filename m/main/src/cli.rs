@@ -406,7 +406,7 @@ pub fn megafront() -> impl Cmd {
             //
             //   =>  compile as a single, cocnatenated xs stream
             //       under base-path.
-            #[cfg(feature = "has_code_tools")]
+            #[cfg(feature = "code_tools")]
             (true, base_path, files, scripts) => {
                 let mut inps0 = files.into_iter().map(read_file);
                 let mut inps1 = scripts.into_iter().map(read_script);
@@ -429,13 +429,20 @@ pub fn megafront() -> impl Cmd {
             //
             //  =>  compile as text (-c status ignored, effective `true`)
             //      as before: concatenated one script under base-path.
-            #[cfg(feature = "has_code_tools")]
+            #[cfg(feature = "code_tools")]
             (_, base_path, [], scripts @ [_, ..]) => compile_input_with_base(
                 te!(code_tools_util::stx::IterRead::new(
                     scripts.into_iter().map(read_script)
                 )),
                 base_path.unwrap_or("./"),
             ),
+
+            // single script
+            //
+            //      -c [-b ./base/path] 'text...'
+            //
+            (_, base_path, [], [script]) =>
+                compile_input_with_base(script.as_bytes(), base_path.unwrap_or(cwd)),
 
             // ---- Load lib section ----
 
