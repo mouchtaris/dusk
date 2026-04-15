@@ -234,9 +234,10 @@ impl Compiler {
 
         let text = text.as_ref();
         let name = text;
+        let file = cmp.current_file_path.last().cloned().unwrap_or_default();
 
         let sinfo = te!(cmp.lookup(name));
-        Self::extract_funcaddr(name, sinfo)
+        Ok(te!(Self::extract_funcaddr(name, sinfo), "calling `{}` in {}", name, file))
     }
 
     fn extract_funcaddr(name: &str, sinfo: &SymInfo) -> Result<SymInfo> {

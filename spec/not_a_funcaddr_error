@@ -1,0 +1,18 @@
+# vim: et ft=dust ts=4 sw=4
+# Negative test: "not a function address" error should mention the source file.
+#
+# Compiles a script that calls a local variable as a function,
+# captures stderr, and verifies the error trace includes the
+# calling-context from compile_funcaddr.
+
+src result = !sh -c r###"
+    err=$(./target/debug/xsim -c 'let x = !echo hello; x should_fail;' 2>&1) || true
+    if echo "$err" | grep -q 'calling `x`'; then
+        printf "ok"
+    else
+        printf "FAIL: error did not mention source context:\n%s\n" "$err" >&2
+        exit 1
+    fi
+"###;
+
+!test $result "=" ok;
