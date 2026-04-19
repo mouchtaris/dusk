@@ -1,0 +1,38 @@
+# vim: et ft=dust ts=4 sw=4
+# Spec: return value output from xsim execution
+#
+# Covers both -l (call mode) and main-script return value behaviour.
+# Currently FAILING for non-Job values (strings, numbers) — this is what the fix targets.
+
+def build = !cargo build --bin xsim;
+build;
+
+def xsim = ./target/debug/xsim $args;
+
+## -l call mode: Natural return
+let r = xsim -c "def val = 12;" -l val;
+!test $r "=" 12;
+
+## -l call mode: Job return (already works via CleanUp, regression guard)
+let r = xsim -c "def greet = !echo hello;" -l greet;
+!test $r "=" "hello";
+
+## main script: string literal as last expr (no trailing ;)
+let r = xsim -c '"just a string"';
+!test $r "=" "just a string";
+
+## main script: Natural as last expr (no trailing ;)
+let r = xsim -c "def val = 12; val";
+!test $r "=" 12;
+
+## main script: Natural with trailing ; (ending-; bug — block returns EXPR_0 = Natural(0))
+let r = xsim -c "def val = 12; val;";
+!test $r "=" "";
+
+## main script: Job with trailing ; (CleanUp runs on val; as statement)
+let r = xsim -c "def val = !echo hello; val;";
+!test $r "=" "hello";
+
+## main script: Job as last expr (no trailing ;)
+let r = xsim -c "def val = !echo hello; val";
+!test $r "=" "hello";
