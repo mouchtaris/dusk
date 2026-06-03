@@ -59,12 +59,12 @@ path = '../vm-debug'
 [dependencies.code_tools_util]
 optional = true
 version = "0.0.1"
-path = "/home/bob/job/cargo/l/code_tools/p/code_tools_util"
+path = "../../l/job/cargo/l/code_tools/p/code_tools_util"
 
 [dependencies.ngio]
 optional = true
 version = "0.0.1"
-path = "/home/bob/job/cargo/q/ngio/crate/ngio"
+path = "../../l/job/cargo/q/ngio/crate/ngio"
 
 [features]
 has_code_tools = ["code_tools_util"]
