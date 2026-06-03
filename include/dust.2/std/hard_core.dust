@@ -8,6 +8,25 @@ def qt = !printf r#""%s""# $args;
 def trnl = !tr <$args[0] -d "\n" $args[1;];
 def env = p (trnl(!printenv $args[0])) $args[1;];
 def cwd = p (trnl(!pwd)) $args;
+def arch = trnl(!uname -m);
+def wc = trnl(!wc <$args[0] $args[1;]);
+def dirname = p (trnl(!dirname $args[0])) $args[1;];
+def basename = p (trnl(!basename $args[0])) $args[1;];
 def sink = !dd <$args[0] "of=/dev/null" "status=none" $args[1;];
 def sinkerr = sink(!tee <$args[0] /dev/stderr);
 def basename = trnl(!basename $args);
+def dirname = trnl(!dirname $args);
+def bytelen = trnl(!wc <$args[0] --bytes);
+def _this = __builtin __lib;
+def jget = trnl(!jq <$args[0] (p .$args[1]) -r);
+def sinkto path inp = !dd <$inp (p"of="$path) "status=none";
+def sinktoerr inp = sinkto /dev/stderr $inp;
+def _this = __builtin __lib;
+# Not missing or empty or 0 or false
+def if_not_empty = !awk r=$args[0] h=$args[1] r#"BEGIN {
+    h = ENVIRON["h"]; r = ENVIRON["r"];
+    if (length(h) != 0) printf("%s", r); }"#;
+# Strict check =="0"
+def if_zero = !awk r=$args[0] n=$args[1] z=$args[2] r#"BEGIN {
+    r = ENVIRON["r"]; n = ENVIRON["n"]; z = ENVIRON["z"];
+    printf("%s", (r == 0) ? z : n); }"#;
