@@ -704,12 +704,22 @@ impl Vm {
             &Value::LitString(value::LitString(id)) => te!(vm.get_string_id(id)),
             &Value::DynString(value::DynString(sid)) => te!(vm.get_dynstring_id(sid)),
             &Value::Job(value::Job(job_id)) => match te!(vm.get_job(job_id)) {
-                Job::Buffer(buf) => te!(buf.as_str()),
+                // Job::Buffer may be Bytes (raw capture from spawn) or String
+                // (already decoded). Both share the same UTF-8 invariant, so
+                // decode through as_bytes() rather than only accepting String.
+                Job::Buffer(buf) => te!(
+                    std::str::from_utf8(buf.as_bytes()),
+                    "Job buffer is not valid UTF-8: {:?}", buf
+                ),
                 other => error::temg!("Not a string job: {:?}", other),
             },
             &Value::ArrayView(value::ArrayView { start, arr, .. }) => match start {
                 value::Signed::Plus(n) => {
-                    let val = te!(vm.stack_get_val(arr.ptr - n as usize));
+                    // arr.ptr holds the array length; elements are at
+                    // arr.ptr - 1, arr.ptr - 2, ... (see expand_all and
+                    // inject_arg's ArrayView handler). So Plus(n) — element
+                    // index n in the view — lives at arr.ptr - (n + 1).
+                    let val = te!(vm.stack_get_val(arr.ptr - (n as usize + 1)));
                     te!(vm.val_as_str(val))
                 }
                 value::Signed::Minus(_) => panic!("Not allowed"),

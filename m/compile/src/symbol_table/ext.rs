@@ -42,7 +42,7 @@ pub trait ScopeMut: Mut<Scope> {}
 // ----------------------------------------------------------------------------
 // Scopes Ext
 //
-pub(crate) trait ScopesRef: scopes::ApiRef {
+pub trait ScopesRef: scopes::ApiRef {
     /// List all scopes ever defined, in order of appearance.
     fn list_all_scopes(&self) -> impl Seq<Item = &impl ScopeRef> {
         self.all_scopes()
