@@ -1,7 +1,7 @@
 use super::*;
 use error::temg;
 
-pub const VERSION: u8 = 2;
+pub const VERSION: u8 = 10;
 
 pub trait Cmd: Fn(Vec<String>) -> Result<()> {
     fn revargs(&self) -> impl Cmd {
