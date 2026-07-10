@@ -1,0 +1,52 @@
+# vim: et ft=scala ts=4 sw=4
+#
+# burn — the cli.  a narrated key ceremony you can read top to bottom
+#        and run line by line.  every step names the word that performs
+#        it; the words live in ./lib.
+#
+#            run:   xs2 include/dust/burn/burn
+#
+include ./lib;
+
+# ── the ceremony’s own palette (truecolour) ─────────────────────────
+def _alice = fmt "\x1b[38;2;159;196;216m";
+def _bob   = fmt "\x1b[38;2;216;154;114m";
+def _gold  = fmt "\x1b[38;2;232;193;112m";
+def _ember = fmt "\x1b[38;2;232;112;60m";
+def _paper = fmt "\x1b[38;2;201;195;182m";
+def _faint = fmt "\x1b[38;2;140;135;124m";
+def _rs    = fmt "\x1b[m";
+def _b     = fmt "\x1b[1m";
+
+# ── one narrated step:  <n> <name> <poem> <word-you-run> ────────────
+def step = fmt
+    "  %s%s%s  %s%s%s\n     %s%s%s\n     %s》%s %s%s%s\n\n"
+    $_gold $args[0] $_rs   $_b $args[1] $_rs
+    $_faint $args[2] $_rs
+    $_faint $_rs $_gold $args[3] $_rs;
+
+def banner = fmt
+    "\n   %s%s》 ~ 《%s\n   %s%sthe burn%s   %sperfect forward secrecy · one round%s\n   %sidentity signs · ephemera encrypt · the wire only ever sees 》~《%s\n\n"
+    $_b $_gold $_rs
+    $_b $_ember $_rs   $_faint $_rs
+    $_faint $_rs;
+
+def rule = fmt "   %s————————————————————————————————————————————————%s\n" $_faint $_rs;
+
+# ── the eight movements, each pointing at the word that performs it ──
+banner;
+rule;
+fmt "   %s   two long-term pairs already exist in your ~/.gnupg.%s\n" $_faint $_rs;
+fmt "   %s   publics face the wire, privates face away.%s\n\n" $_faint $_rs;
+
+step "1" "identities" "your long-term key — it signs things, never encrypts them"  "  gpg --list-keys                       you@host";
+step "2" "mint      " "a fresh ephemeral pair, this session only, never written down" "burn/lib  mint    alice";
+step "3" "sign      " "identity stamps the ephemeral public — auth, never secrecy"     "burn/lib  sign    you@host   < alice.pub  > alice.sig";
+step "4" "cross     " "only publics travel; the wire’s eternal transcript begins 》a·《b" "burn/lib  cross   alice                   > alice.pub";
+step "5" "verify    " "check the seal against the identity you already know — recognition" "burn/lib  verify  bob.sig bob.pub";
+step "6" "seal      " "convolve your private with the arrived public; K never crosses"   "burn/lib  seal    alice bob  < message.txt > c.asc";
+step "7" "open      " "your own ephemeral condenses K back, and reads the one ciphertext" "burn/lib  open    alice      < c.asc      > message.txt";
+step "8" "burn      " "the ephemeral privates stop existing — this is the entire theorem" "burn/lib  burn    alice";
+
+rule;
+fmt "   %s》a · 《b · K(m) remain, forever. steal 《A next year and you can\n   forge the future — you cannot open the past.%s\n\n" $_faint $_rs;

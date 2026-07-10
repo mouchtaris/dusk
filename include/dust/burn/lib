@@ -1,0 +1,68 @@
+# vim: et ft=scala ts=4 sw=4
+#
+# burn — perfect forward secrecy, spoken as unix gpg.
+#
+#   the ceremony (see “The Burn”):
+#
+#       mint · cross · take · sign · verify · seal · open · burn
+#
+#   identity signs, ephemera encrypt — and the wire only ever sees  》~《.
+#   long-term keys authenticate; a throwaway ring does the secrecy;
+#   burning the ring is the whole theorem.
+#
+#   a “handle” is a party’s name for one session (alice, bob, …).  each
+#   handle owns a ring — a private GNUPGHOME under ~/.burn — and an
+#   ephemeral userid  burn/<handle>  minted inside it.  identity keys
+#   stay in your ordinary ~/.gnupg and are only ever spent on signatures.
+
+include ../lib.term/lib;                 # brings ../std (fmt, p, $HOME, …) + colour words
+
+# ── where an ephemeral pair briefly lives, and what it is called ─────
+def ring = p $HOME / .burn / $args;                      # ~/.burn/<handle>
+def uid  = p "burn/" $args;                              # ephemeral userid for a handle
+
+# ── the one place ephemeral gpg is spoken: inside its own ring ──────
+#    method-level env/redirects are ignored in dust, so the ring must
+#    ride on a real system command — sh sets GNUPGHOME, execs gpg, and
+#    inherits our stdin untouched.  $1 is the ring; the rest are gpg’s.
+def in_ring = !sh -c r###"
+    export GNUPGHOME="$1"; shift
+    exec gpg --batch --yes --quiet --pinentry-mode loopback --passphrase '' "$@"
+"### - $args;
+
+# ── mint · conjure a fresh pair, for this session only ──────────────
+def mint = {
+    let r = ring $args[0];
+    let _ = !mkdir -p $r;
+    let _ = !chmod 700 $r;                               # a ring nobody else may read
+    in_ring $r --quick-generate-key (uid $args[0]) default default 0;
+}
+
+# ── cross · the public faces the wire (》) — export it to send ──────
+def cross = in_ring (ring $args[0]) --armor --export (uid $args[0]);
+
+# ── take · a peer’s public arrives; keep it in the ring (stdin) ─────
+def take = in_ring (ring $args[0]) --import;
+
+# ── sign · identity stamps a public — spent on auth, never secrecy ──
+#    reads the public on stdin, emits a detached armoured signature.
+def sign = !gpg --local-user $args[0] --armor --detach-sign;
+
+# ── verify · recognise the seal — this, not encryption, kills the MITM
+#    args: <signature-file> <public-file>
+def verify = !gpg --verify $args[0] $args[1];
+
+# ── seal · convolve · the only ciphertext the wire will hold (~) ────
+#    reads plaintext on stdin; encrypts to the peer’s ephemeral and
+#    signs with our own.  args: <my-handle> <peer-handle>
+def seal = in_ring (ring $args[0])
+    --recipient (uid $args[1])
+    --local-user (uid $args[0])
+    --armor --sign --encrypt;
+
+# ── open · your own ephemeral condenses K back, and reads (stdin) ───
+def open = in_ring (ring $args[0]) --decrypt;
+
+# ── burn · the ephemeral privates stop existing, anywhere, for anyone
+#    《 a stolen tomorrow forges tomorrow; it opens nothing from yesterday.
+def burn = !rm -rf (ring $args[0]);
